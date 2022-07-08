@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParserTests.Expressions;
+namespace ParserTests.ExpressionTree;
 
 
 //Adapted code from: https://stackoverflow.com/questions/36311991/c-sharp-display-a-binary-search-tree-in-console
@@ -20,7 +20,7 @@ public static class TreePrinter
         public NodeInfo Parent, Left, Right;
     }
 
-    public static void Print(this NodeBase root, int topMargin = 2, int leftMargin = 2)
+    public static void PrintWithDashes(this NodeBase root, int topMargin = 2, int leftMargin = 2)
     {
         if (root == null) return;
         int rootTop = Console.CursorTop + topMargin;
@@ -108,7 +108,7 @@ public static class TreePrinter
     }
 
 
-    public static void Print2(this NodeBase root, int spacing = 1, int topMargin = 2, int leftMargin = 2)
+    public static void PrintWithSlashes(this NodeBase root, int spacing = 1, int topMargin = 2, int leftMargin = 2)
     {
         if (root == null) return;
         int rootTop = Console.CursorTop + topMargin;
