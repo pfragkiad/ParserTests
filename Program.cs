@@ -8,8 +8,8 @@ using ParserTests.ExpressionTree;
 //string expr = "asdf+(2-5*a)* d1-3^2";
 
 //https://www.youtube.com/watch?v=PAceaOSnxQs
-string expr = "K+L-M*N+(O^P)*W/U/V*T+Q";
-//string expr = "a*b/c+e/f*g+k-x*y";
+//string expr = "K+L-M*N+(O^P)*W/U/V*T+Q";
+string expr = "a*b/c+e/f*g+k-x*y";
 //string expr = "2^3^4";
 
 var parserApp = App.GetParserApp();
@@ -23,3 +23,7 @@ Console.WriteLine($"Tree nodes: {tree.Count}");
 Console.WriteLine($"Tree leaf nodes: {tree.CountLeafNodes}");
 
 Console.WriteLine($"Tree height: {tree.GetHeight()}");
+
+Console.WriteLine("Post order traversal: " + String.Join(" ",tree.Root.PostOrderNodes().Select(n=>n.Text)));
+Console.WriteLine("Pre order traversal: " + String.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+Console.WriteLine("In order traversal: " + String.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));

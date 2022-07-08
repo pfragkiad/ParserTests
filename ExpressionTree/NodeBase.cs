@@ -35,33 +35,39 @@ public abstract class NodeBase
     {
         yield return this;
 
-        foreach (var node in Left.PreOrderNodes())
-            yield return node;
+        if (Left is not null)
+            foreach (var node in Left.PreOrderNodes())
+                yield return node;
 
-        foreach (var node in Right.PreOrderNodes())
-            yield return node;
+        if (Right is not null)
+            foreach (var node in Right.PreOrderNodes())
+                yield return node;
     }
 
     public IEnumerable<NodeBase> PostOrderNodes()
     {
-        foreach (var node in Left.PostOrderNodes())
-            yield return node;
+        if (Left is not null)
+            foreach (var node in Left.PostOrderNodes())
+                yield return node;
 
-        foreach (var node in Right.PostOrderNodes())
-            yield return node;
+        if (Right is not null)
+            foreach (var node in Right.PostOrderNodes())
+                yield return node;
 
         yield return this;
     }
 
     public IEnumerable<NodeBase> InOrderNodes()
     {
-        foreach (var node in Left.InOrderNodes())
-            yield return node;
+        if (Left is not null)
+            foreach (var node in Left.InOrderNodes())
+                yield return node;
 
         yield return this;
 
-        foreach (var node in Right.InOrderNodes())
-            yield return node;
+        if (Right is not null)
+            foreach (var node in Right.InOrderNodes())
+                yield return node;
 
     }
 
