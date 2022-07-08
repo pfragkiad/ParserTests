@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace ParserTests.ExpressionTree;
 
-
 //Adapted code from: https://stackoverflow.com/questions/36311991/c-sharp-display-a-binary-search-tree-in-console
 public static class TreePrinter
 {
