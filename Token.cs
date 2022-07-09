@@ -20,7 +20,7 @@ public record Token(
     public const string CloseParenthesisTokenType = "closed parenthesis";
     public const string ArgumentSeparatorTokenType = "argument separator";
 
-    public string Value => Match.Value;
+    public string Text => Match.Value;
 
     public int Index => Match.Index;
 

@@ -22,66 +22,35 @@ public class Parser
         _options = options.Value;
     }
 
-    public Tree Parse(string s)
+    public Tree<Token> Parse(string s)
     {
-        TokensFunctions result = _tokenizer.GetInOrderTokensAndFunctions(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(result.OrderTokens);
+        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
+        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
 
-        return GetExpressionTree(new TokensFunctions(postfixTokens, result.FunctionsArgumentsCount));
+        return GetExpressionTree(postfixTokens);
     }
 
-    public Tree GetExpressionTree(TokensFunctions tokensResult)
+    public Tree<Token> GetExpressionTree(List<Token> postfixTokens)
     {
         _logger.LogDebug("Building expresion tree from postfix tokens...");
 
         //build expression tree from postfix 
         Stack<Token> stack = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = new();
 
-        Dictionary<Token, NodeBase> nodeDictionary = new();
         //https://www.youtube.com/watch?v=WHs-wSo33MM
-        foreach (var token in tokensResult.OrderTokens) //these should be PostfixOrder tokens
+        foreach (var token in postfixTokens) //these should be PostfixOrder tokens
         {
-            //functions take a single parameter (just like unary operators)
-            List<NodeBase> argumentNodes = new();
-            ListToString<Token> argumentTokens = new();
             if (token.TokenType == Token.FunctionOpenParenthesisTokenType)
             {
                 Node<Token> functionNode = new(token);
-                for (int iArgument = 0; iArgument < tokensResult.FunctionsArgumentsCount[token]; iArgument++)
-                //pop the <function argument count> items on the current stack
-                {
-                    Token tokenInFunction = stack.Pop();
-                    argumentNodes.Add(nodeDictionary[tokenInFunction]);
-                    argumentTokens.Add(tokenInFunction);
-                    _logger.LogDebug("Pop {token} from stack (function child)", tokenInFunction);
-                }
+                //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
+                Token tokenInFunction = stack.Pop(); 
+                _logger.LogDebug("Pop {token} from stack (function child)", tokenInFunction);
+                functionNode.Right = nodeDictionary[tokenInFunction];
+                _logger.LogDebug("Function argument child {argument}", tokenInFunction.Text);
 
-                //the problem is that this does NOT allow expressions
-                ////all arguments behave as a single one, in order for the inorder to work as expected!`
-                //argumentTokens.Reverse();
-                //functionNode.Right = new Node<ListToString<Token>>(argumentTokens);
-                //_logger.LogDebug("Function arguments: {arguments} are stored as Left Node", argumentTokens.ToString());
-
-                if (argumentNodes.Count > 0)
-                {
-                    functionNode.Right = argumentNodes[0];
-                    _logger.LogDebug("Function argument child {argument} is stored as Right Node", argumentNodes[0].Text);
-                }
-
-                if (argumentNodes.Count > 1)
-                {
-                    functionNode.Left = argumentNodes[1];
-                    _logger.LogDebug("Function argument child {argument} is stored as Left Node", argumentNodes[1].Text);
-                }
-                //WATCH: OTHER ARGUMENTS (>2) in argumentNodes CAN BE RETRIEVED BUT NOT STORED IN A BINARY TREE!
-
-                if (argumentNodes.Count > 2) functionNode.Other = new List<NodeBase>();
-                for (int iArgument = 2; iArgument < tokensResult.FunctionsArgumentsCount[token]; iArgument++)
-                {
-                    functionNode.Other!.Add(argumentNodes[iArgument]);
-                    _logger.LogWarning("Function argument child {argument} is stored as Other Node [{index}]", argumentNodes[iArgument].Text, iArgument - 2);
-
-                }
+         
 
                 //remember the functionNode
                 nodeDictionary.Add(token, functionNode);
@@ -121,14 +90,14 @@ public class Parser
 
         if (stack.Count > 1)
         {
-            string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Value));
+            string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
             _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
             throw new InvalidOperationException(
                 string.Format("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {0}", stackItemsString));
         }
 
         //the last item on the postfix expression is the root node
-        Tree tree = new Tree() { Root = nodeDictionary[stack.Pop()] };
+        Tree<Token> tree = new () { Root = nodeDictionary[stack.Pop()] };
         tree.NodeDictionary = nodeDictionary;
         return tree;
     }

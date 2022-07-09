@@ -22,7 +22,7 @@ public class Tokenizer : ITokenizer
     }
 
     //The second property contains the number of arguments needed by each corresponding function.
-    public TokensFunctions GetInOrderTokensAndFunctions(string expression)
+    public List<Token> GetInOrderTokens(string expression)
     {
         //inspiration: https://gwerren.com/Blog/Posts/simpleCSharpTokenizerUsingRegex
 
@@ -59,10 +59,10 @@ public class Tokenizer : ITokenizer
         if (matches.Any())
             tokens.AddRange(matches.Select(m => new Token(Token.CloseParenthesisTokenType, m)));
 
-        //argument separators
-        matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.ArgumentSeparator}");
-        if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.CloseParenthesisTokenType, m)));
+        ////argument separators
+        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.ArgumentSeparator}");
+        //if (matches.Any())
+        //    tokens.AddRange(matches.Select(m => new Token(Token.ArgumentSeparatorTokenType, m)));
 
         //operators
         foreach (var op in _options.TokenPatterns.Operators)
@@ -97,42 +97,43 @@ public class Tokenizer : ITokenizer
                 _logger.LogDebug("{token} ({type})", token.Match.Value, token.TokenType);
         }
 
-        Dictionary<Token, int> functionArgumentsCount = new();
-        var functionTokens = tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType).ToList();
-        foreach (Token token in functionTokens)
-        {
-            int tokenIndex = tokens.IndexOf(token);
-            int nextParenthesisIndex = tokens.FindIndex(tokenIndex, t => t.TokenType == Token.CloseParenthesisTokenType);
+        //SHOULD BE REMOVED-------------------------------------------------------
+        //Dictionary<Token, int> functionArgumentsCount = new();
+        //var functionTokens = tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType).ToList();
+        //foreach (Token token in functionTokens)
+        //{
+        //    int tokenIndex = tokens.IndexOf(token);
+        //    int nextParenthesisIndex = tokens.FindIndex(tokenIndex, t => t.TokenType == Token.CloseParenthesisTokenType);
 
-            int argumentsCount = 0;
-            if (nextParenthesisIndex == token.Index + 1)
-                argumentsCount = 0;
-            else
-            {
-                argumentsCount = 1 + 
-                    tokens.Where(t=>
-                    t.Index<nextParenthesisIndex && t.Index>token.Index && t.TokenType==Token.ArgumentSeparatorTokenType)?.Count() ??0;
-            }
+        //    int argumentsCount = 0;
+        //    if (nextParenthesisIndex == token.Index + 1)
+        //        argumentsCount = 0;
+        //    else
+        //    {
+        //        argumentsCount = 1 + 
+        //            tokens.Where(t=>
+        //            t.Index<nextParenthesisIndex && t.Index>token.Index && t.TokenType==Token.ArgumentSeparatorTokenType)?.Count() ??0;
+        //    }
 
-            if (!functionArgumentsCount.ContainsKey(token))
-            {
-                functionArgumentsCount.Add(token, argumentsCount);
+        //    if (!functionArgumentsCount.ContainsKey(token))
+        //    {
+        //        functionArgumentsCount.Add(token, argumentsCount);
 
-                if (argumentsCount > 2)
-                    _logger.LogWarning("There are {count} > 2 arguments used by the function {function}!", argumentsCount,token.Value);
-            }
-            else //there is already a function defined, check that the arguments count is the same or throw an exception!
-            {
-                if (functionArgumentsCount[token] != argumentsCount)
-                {
-                    _logger.LogError("The number of arguments for the function {function} at position {position} should be {count}.",
-                        token.Value.TrimEnd('('), token.Index, functionArgumentsCount[token]);
-                    throw new InvalidOperationException($"The number of arguments for the function {token.Value.TrimEnd('(')} at position {token.Index} should be {functionArgumentsCount[token]}.");
-                }
-            }
-        }
+        //        if (argumentsCount > 2)
+        //            _logger.LogWarning("There are {count} > 2 arguments used by the function {function}!", argumentsCount,token.Text);
+        //    }
+        //    else //there is already a function defined, check that the arguments count is the same or throw an exception!
+        //    {
+        //        if (functionArgumentsCount[token] != argumentsCount)
+        //        {
+        //            _logger.LogError("The number of arguments for the function {function} at position {position} should be {count}.",
+        //                token.Text.TrimEnd('('), token.Index, functionArgumentsCount[token]);
+        //            throw new InvalidOperationException($"The number of arguments for the function {token.Text.TrimEnd('(')} at position {token.Index} should be {functionArgumentsCount[token]}.");
+        //        }
+        //    }
+        //}
 
-        return new TokensFunctions (tokens, functionArgumentsCount);
+        return tokens;
     }
 
     
@@ -145,8 +146,8 @@ public class Tokenizer : ITokenizer
 
         void LogState() => _logger.LogDebug("OP STACK: {stack}, POSTFIX {postfix}",
                     //reverse the operator stack so that the head is the last element
-                    operatorStack.Any() ? string.Join(" ", operatorStack.Reverse().Select(o => o.Value)) : "<empty>",
-                    postfixTokens.Any() ? string.Join(" ", postfixTokens.Select(o => o.Value)) : "<empty>");
+                    operatorStack.Any() ? string.Join(" ", operatorStack.Reverse().Select(o => o.Text)) : "<empty>",
+                    postfixTokens.Any() ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
 
         var operators = _options.TokenPatterns.OperatorDictionary;
 
@@ -190,7 +191,7 @@ public class Tokenizer : ITokenizer
 
             else //operator
             {
-                var currentOperator = operators[token.Value]!;
+                var currentOperator = operators[token.Text]!;
                 while (operatorStack.Any())
                 {
                     var currentHead = operatorStack.Peek();
@@ -204,7 +205,7 @@ public class Tokenizer : ITokenizer
                         goto NextToken;
                     }
 
-                    var currentHeadOperator = operators[currentHead.Value]!;
+                    var currentHeadOperator = operators[currentHead.Text]!;
 
                     //for higher priority push to the stack!
                     if (currentOperator.Priority > currentHeadOperator.Priority ||
