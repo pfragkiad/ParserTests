@@ -22,21 +22,18 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //TODO: Add support for real calculations (postfix)
 
 var parserApp = App.GetParserApp();
-//var tokenizer = parserApp.Services.GetTokenizer()!;
-//tokenizer.Tokenize(expr);
 var parser = parserApp.Services.GetParser();
-var tree = parser.Parse(expr);
-tree.Root.PrintWithDashes();
 
-Console.WriteLine($"Tree nodes: {tree.Count}");
-Console.WriteLine($"Tree leaf nodes: {tree.CountLeafNodes}");
+//var tree = parser.Parse(expr);
+//tree.Root.PrintWithDashes();
+//Console.WriteLine($"Tree nodes: {tree.Count}");
+//Console.WriteLine($"Tree leaf nodes: {tree.CountLeafNodes}");
+//Console.WriteLine($"Tree height: {tree.GetHeight()}");
+//Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
+//Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+//Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 
-Console.WriteLine($"Tree height: {tree.GetHeight()}");
-
-Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
-Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
-Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
-
+expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
 Console.WriteLine(parser.Evaluate<int>(
     expr,
     (s) => int.Parse(s),

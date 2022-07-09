@@ -47,10 +47,8 @@ public class Parser
                 Node<Token> functionNode = new(token);
                 //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
                 Token tokenInFunction = stack.Pop();
-                _logger.LogDebug("Pop {token} from stack (function child)", tokenInFunction);
                 functionNode.Right = nodeDictionary[tokenInFunction];
-                _logger.LogDebug("Function argument child {argument}", tokenInFunction.Text);
-
+                _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
 
 
                 //remember the functionNode
@@ -120,7 +118,7 @@ public class Parser
     }
 
 
-    public V Evaluate<V>(
+    public V Evaluate<V>( //code is practically the same with building the expression tree
         List<Token> postfixTokens,
         Func<string, V> literalParser,
         Dictionary<string, V> variables,
@@ -134,7 +132,6 @@ public class Parser
         //build expression tree from postfix 
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = new();
-
         Dictionary<Node<Token>, V> nodeValueDictionary = new();
 
         //https://www.youtube.com/watch?v=WHs-wSo33MM
@@ -145,20 +142,22 @@ public class Parser
                 Node<Token> functionNode = new(token);
                 //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
                 Token tokenInFunction = stack.Pop();
-                _logger.LogDebug("Pop {token} from stack (function child)", tokenInFunction);
-                functionNode.Right = nodeDictionary[tokenInFunction];
-                _logger.LogDebug("Function argument child {argument}", tokenInFunction.Text);
+                 functionNode.Right = nodeDictionary[tokenInFunction];
+               _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
 
                 //remember the functionNode
                 nodeDictionary.Add(token, functionNode);
 
-                //EVALUATE FUNCTION 1d
+                //EVALUATE FUNCTION 1d XTRA
+                V functionResult = default(V);
                 if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
-                    nodeValueDictionary.Add(functionNode, funcs1Arg[token.Text](nodeValueDictionary[functionNode.Right as Node<Token>]));
-
+                {
+                    functionResult =  funcs1Arg[token.Text](nodeValueDictionary[functionNode.Right as Node<Token>]);
+                    nodeValueDictionary.Add(functionNode, functionResult);
+                }
                 //and push to the stack
                 stack.Push(token);
-                _logger.LogDebug("Pushing {token} from stack (function node)", token);
+                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
             }
 
@@ -170,13 +169,16 @@ public class Parser
             {
                 var tokenNode = new Node<Token>(token);
                 nodeDictionary.Add(token, tokenNode);
+                
+                //XTRA
+                V value=default(V);
                 if (token.TokenType == Token.LiteralTokenType)
-                    nodeValueDictionary.Add(tokenNode, literalParser(token.Text));
+                    nodeValueDictionary.Add(tokenNode, value =literalParser(token.Text));
                 else if (token.TokenType == Token.IdentifierTokenType)
-                    nodeValueDictionary.Add(tokenNode, variables[token.Text]);
+                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 stack.Push(token);
-                _logger.LogDebug("Push {token} to stack", token);
+                _logger.LogDebug("Push {token} to stack (value: {value})", token,value);
                 continue;
             }
 
@@ -192,15 +194,18 @@ public class Parser
             //remember the operatorNode
             nodeDictionary.Add(token, operatorNode);
 
-            if (nodeValueDictionary.ContainsKey(operatorNode.Right as Node<Token>) && nodeValueDictionary.ContainsKey(operatorNode.Left as Node<Token>))
-                nodeValueDictionary.Add( operatorNode,
+            //XTRA
+            var result =
                     operators[token.Text](
                         nodeValueDictionary[operatorNode.Left as Node<Token>],
-                        nodeValueDictionary[operatorNode.Right as Node<Token>]));
+                        nodeValueDictionary[operatorNode.Right as Node<Token>]);
+            nodeValueDictionary.Add(operatorNode, result);
+           //if (nodeValueDictionary.ContainsKey(operatorNode.Right as Node<Token>) && nodeValueDictionary.ContainsKey(operatorNode.Left as Node<Token>))
+           //  );
 
-            //and push to the stack
-            stack.Push(token);
-            _logger.LogDebug("Pushing {token} from stack (operator node)", token);
+           //and push to the stack
+           stack.Push(token);
+            _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token,result);
         }
 
         if (stack.Count > 1)
