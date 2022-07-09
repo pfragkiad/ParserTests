@@ -71,7 +71,7 @@ public class Parser
                 for (int iArgument = 2; iArgument < tokensResult.FunctionsArgumentsCount[token]; iArgument++)
                 {
                     functionNode.Other!.Add(argumentNodes[iArgument]);
-                    _logger.LogWarning("Function argument child {argument} is stored as Other Node", argumentNodes[2].Text);
+                    _logger.LogWarning("Function argument child {argument} is stored as Other Node [{index}]", argumentNodes[iArgument].Text, iArgument-2);
 
                 }
 

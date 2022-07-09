@@ -35,9 +35,13 @@ public abstract class NodeBase
     }
 
     //https://www.csharpstar.com/csharp-program-to-implement-binary-search-tree-traversal/#:~:text=There%20are%20three%20traversal%20methods,of%20the%20node%20key%20values.&text=%E2%80%93%20A%20postorder%20traversal%2C%20the%20method,then%20over%20the%20right%20subtrees.
-    public IEnumerable<NodeBase> PreOrderNodes() //WORKS ONLY FOR Left and Right Nodes
+    public IEnumerable<NodeBase> PreOrderNodes()
     {
         yield return this;
+
+        if (Other?.Any() ?? false) //PRE ORDER TESTED!
+            foreach (var node in (Other as IEnumerable<NodeBase>).Reverse())
+                yield return node;
 
         if (Left is not null)
             foreach (var node in Left.PreOrderNodes())
@@ -48,8 +52,12 @@ public abstract class NodeBase
                 yield return node;
     }
 
-    public IEnumerable<NodeBase> PostOrderNodes() //WORKS ONLY FOR Left and Right Nodes
+    public IEnumerable<NodeBase> PostOrderNodes() 
     {
+        if(Other?.Any() ?? false) //POST ORDER TESTED!
+            foreach(var node in (Other as IEnumerable<NodeBase>).Reverse())
+                yield return node;
+
         if (Left is not null)
             foreach (var node in Left.PostOrderNodes())
                 yield return node;
