@@ -69,18 +69,36 @@ public abstract class NodeBase
         yield return this;
     }
 
-    public IEnumerable<NodeBase> InOrderNodes() //WORKS ONLY FOR Left and Right Nodes
+    public IEnumerable<NodeBase> InOrderNodes() //WORKS ONLY
     {
-        if (Left is not null)
-            foreach (var node in Left.InOrderNodes())
+        if (Other?.Any() ?? false) //Argument case only (Left cannot precede function in any case)
+        {
+            //to be consistent and remove this case, all Other should be stored on the Right Node
+            yield return this;
+
+            foreach (var node in (Other as IEnumerable<NodeBase>).Reverse())
                 yield return node;
 
-        yield return this;
+            if (Left is not null)
+                foreach (var node in Left.InOrderNodes())
+                    yield return node;
 
-        if (Right is not null)
-            foreach (var node in Right.InOrderNodes())
-                yield return node;
+            if (Right is not null)
+                foreach (var node in Right.InOrderNodes())
+                    yield return node;
+        }
+        else
+        {
+            if (Left is not null)
+                foreach (var node in Left.InOrderNodes())
+                    yield return node;
 
+            yield return this;
+
+            if (Right is not null)
+                foreach (var node in Right.InOrderNodes())
+                    yield return node;
+        }
     }
 
 

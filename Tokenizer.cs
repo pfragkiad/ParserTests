@@ -59,6 +59,11 @@ public class Tokenizer : ITokenizer
         if (matches.Any())
             tokens.AddRange(matches.Select(m => new Token(Token.CloseParenthesisTokenType, m)));
 
+        //argument separators
+        matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.ArgumentSeparator}");
+        if (matches.Any())
+            tokens.AddRange(matches.Select(m => new Token(Token.CloseParenthesisTokenType, m)));
+
         //operators
         foreach (var op in _options.TokenPatterns.Operators)
         {
@@ -93,17 +98,28 @@ public class Tokenizer : ITokenizer
         }
 
         Dictionary<Token, int> functionArgumentsCount = new();
-        foreach (Token token in tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType))
+        var functionTokens = tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType).ToList();
+        foreach (Token token in functionTokens)
         {
-            int nextParenthesisIndex = tokens.FindIndex(token.Index + 1, t => t.TokenType == Token.CloseParenthesisTokenType);
-            int argumentsCount = nextParenthesisIndex - token.Index - 1;
+            int tokenIndex = tokens.IndexOf(token);
+            int nextParenthesisIndex = tokens.FindIndex(tokenIndex, t => t.TokenType == Token.CloseParenthesisTokenType);
+
+            int argumentsCount = 0;
+            if (nextParenthesisIndex == token.Index + 1)
+                argumentsCount = 0;
+            else
+            {
+                argumentsCount = 1 + 
+                    tokens.Where(t=>
+                    t.Index<nextParenthesisIndex && t.Index>token.Index && t.TokenType==Token.ArgumentSeparatorTokenType)?.Count() ??0;
+            }
+
             if (!functionArgumentsCount.ContainsKey(token))
             {
                 functionArgumentsCount.Add(token, argumentsCount);
 
                 if (argumentsCount > 2)
                     _logger.LogWarning("There are {count} > 2 arguments used by the function {function}!", argumentsCount,token.Value);
-
             }
             else //there is already a function defined, check that the arguments count is the same or throw an exception!
             {
@@ -178,7 +194,8 @@ public class Tokenizer : ITokenizer
                 while (operatorStack.Any())
                 {
                     var currentHead = operatorStack.Peek();
-                    if (currentHead.TokenType == Token.OpenParenthesisTokenType)
+                    if (currentHead.TokenType == Token.OpenParenthesisTokenType ||
+                        currentHead.TokenType ==Token.FunctionOpenParenthesisTokenType )
                     {
                         //this is equivalent to having an empty stack
                         operatorStack.Push(token);

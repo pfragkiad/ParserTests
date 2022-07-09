@@ -16,6 +16,7 @@ public class TokenPatterns //NOT records here!
 
     public string CloseParenthesis { get; set; } = ")";
 
+    public string ArgumentSeparator { get; set; } = ",";
 
     public List<Operator>? Operators { get; set; } = new List<Operator>();
 

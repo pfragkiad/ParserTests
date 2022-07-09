@@ -18,6 +18,7 @@ public record Token(
     public const string OpenParenthesisTokenType = "open parenthesis";
     public const string FunctionOpenParenthesisTokenType = "function open parenthesis";
     public const string CloseParenthesisTokenType = "closed parenthesis";
+    public const string ArgumentSeparatorTokenType = "argument separator";
 
     public string Value => Match.Value;
 

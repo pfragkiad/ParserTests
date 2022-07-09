@@ -22,7 +22,7 @@ public class Parser
         _options = options.Value;
     }
 
-    public Tree<Token> Parse(string s)
+    public Tree Parse(string s)
     {
         TokensFunctions result = _tokenizer.GetInOrderTokensAndFunctions(s);
         var postfixTokens = _tokenizer.GetPostfixTokens(result.OrderTokens);
@@ -30,19 +30,20 @@ public class Parser
         return GetExpressionTree(new TokensFunctions(postfixTokens, result.FunctionsArgumentsCount));
     }
 
-    public Tree<Token> GetExpressionTree(TokensFunctions tokensResult)
+    public Tree GetExpressionTree(TokensFunctions tokensResult)
     {
         _logger.LogDebug("Building expresion tree from postfix tokens...");
 
         //build expression tree from postfix 
         Stack<Token> stack = new();
 
-        Dictionary<Token, Node<Token>> nodeDictionary = new();
+        Dictionary<Token, NodeBase> nodeDictionary = new();
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in tokensResult.OrderTokens) //these should be PostfixOrder tokens
         {
             //functions take a single parameter (just like unary operators)
-            List<Node<Token>> argumentNodes = new();
+            List<NodeBase> argumentNodes = new();
+            ListToString<Token> argumentTokens = new();
             if (token.TokenType == Token.FunctionOpenParenthesisTokenType)
             {
                 Node<Token> functionNode = new(token);
@@ -51,8 +52,15 @@ public class Parser
                 {
                     Token tokenInFunction = stack.Pop();
                     argumentNodes.Add(nodeDictionary[tokenInFunction]);
+                    argumentTokens.Add(tokenInFunction);
                     _logger.LogDebug("Pop {token} from stack (function child)", tokenInFunction);
                 }
+
+                //the problem is that this does NOT allow expressions
+                ////all arguments behave as a single one, in order for the inorder to work as expected!`
+                //argumentTokens.Reverse();
+                //functionNode.Right = new Node<ListToString<Token>>(argumentTokens);
+                //_logger.LogDebug("Function arguments: {arguments} are stored as Left Node", argumentTokens.ToString());
 
                 if (argumentNodes.Count > 0)
                 {
@@ -71,7 +79,7 @@ public class Parser
                 for (int iArgument = 2; iArgument < tokensResult.FunctionsArgumentsCount[token]; iArgument++)
                 {
                     functionNode.Other!.Add(argumentNodes[iArgument]);
-                    _logger.LogWarning("Function argument child {argument} is stored as Other Node [{index}]", argumentNodes[iArgument].Text, iArgument-2);
+                    _logger.LogWarning("Function argument child {argument} is stored as Other Node [{index}]", argumentNodes[iArgument].Text, iArgument - 2);
 
                 }
 
@@ -120,7 +128,7 @@ public class Parser
         }
 
         //the last item on the postfix expression is the root node
-        Tree<Token> tree = new Tree<Token>() { Root = nodeDictionary[stack.Pop()] };
+        Tree tree = new Tree() { Root = nodeDictionary[stack.Pop()] };
         tree.NodeDictionary = nodeDictionary;
         return tree;
     }

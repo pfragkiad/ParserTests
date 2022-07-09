@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,8 +26,6 @@ public class Node<T> : NodeBase
             base.Text = _value?.ToString() ??"";
         }
     }
-
-    //public Node<T>? Left { get; set; }
-    //public Node<T>? Right { get; set; }
 }
+
 

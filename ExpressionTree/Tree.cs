@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace ParserTests.ExpressionTree;
 
-public class Tree<T>
+public class Tree
 {
-    public Node<T>? Root { get; set; }
-    public Dictionary<Token, Node<Token>> NodeDictionary { get; internal set; }
+    public NodeBase? Root { get; set; }
+
+    public Dictionary<Token, NodeBase> NodeDictionary { get; internal set; }
 
     public int GetHeight() => (Root?.GetHeight() - 1) ?? 0;
 
