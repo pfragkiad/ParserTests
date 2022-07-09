@@ -13,14 +13,13 @@ using ParserTests.ExpressionTree;
 //string expr = "2^3^4";
 //string expr  = "a+tan(bg)";
 //string expr = "a+tan(bg,ab)";
-//string expr = "a+tan(a1;a2;a3;a4)";  //οκ but expressions within function fail
+//string expr = "a+tan(a1,a2,a3,a4)";  //οκ but expressions within function fail
 //string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //ok but single expression only
-string expr = "a+sin(1)*tan(8+5,a+2^2*(34-h),98)"; //perfect
-
+//string expr = "a+sin(1)*tan(8+5,a+2^2*(34-h),98)"; //perfect
+string expr = "0.1*sin(a1,a2)";
 
 //TODO: Add support for unary operators
 //TODO: Add support for real calculations (postfix)
-//TODO: Add support for float literals.
 
 var parserApp = App.GetParserApp();
 //var tokenizer = parserApp.Services.GetTokenizer()!;
