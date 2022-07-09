@@ -25,4 +25,10 @@
     <ProjectReference Include="..\ParserLibrary\ParserLibrary.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="appsettings2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

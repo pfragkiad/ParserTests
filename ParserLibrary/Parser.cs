@@ -103,9 +103,9 @@ public class Parser
 
     public V Evaluate<V>(
         string s,
-        Func<string, V> literalParser,
-        Dictionary<string, V> variables,
-        Dictionary<string, Func<V, V, V>> operators,
+        Func<string, V> literalParser =null,
+        Dictionary<string, V> variables=null,
+        Dictionary<string, Func<V, V, V>> operators=null,
         Dictionary<string, Func<V, V>>? funcs1Arg = null,
         Dictionary<string, Func<V, V, V>>? funcs2Arg = null
         )

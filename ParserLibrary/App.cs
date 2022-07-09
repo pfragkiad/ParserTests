@@ -12,9 +12,14 @@ namespace ParserLibrary;
 
 public static class App
 {
-    public static IHost GetParserApp()
+    public static IHost GetParserApp(string configFile = "appsettings.json")
     {
         IHost app = Host.CreateDefaultBuilder()
+           .ConfigureAppConfiguration(builder =>
+           {
+               if (configFile != "appsettings.json")
+                   builder.AddJsonFile(configFile, true, false);
+           })
            .ConfigureServices((context, services) =>
             {
                 services
@@ -37,7 +42,7 @@ public static class App
         services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));
 
 
-    public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer,Tokenizer>();
+    public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer, Tokenizer>();
 
     public static ITokenizer? GetTokenizer(this IServiceProvider services) => services.GetService<ITokenizer>();
 
