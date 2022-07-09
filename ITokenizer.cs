@@ -2,6 +2,8 @@
 {
     public interface ITokenizer
     {
-        List<Token> Tokenize(string expression);
+        TokensFunctions GetInOrderTokensAndFunctions(string expression);
+
+        List<Token> GetPostfixTokens(List<Token> infixTokens);
     }
 }

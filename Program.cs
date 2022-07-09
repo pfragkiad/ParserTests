@@ -9,8 +9,11 @@ using ParserTests.ExpressionTree;
 
 //https://www.youtube.com/watch?v=PAceaOSnxQs
 //string expr = "K+L-M*N+(O^P)*W/U/V*T+Q";
-string expr = "a*b/c+e/f*g+k-x*y";
+//string expr = "a*b/c+e/f*g+k-x*y";
 //string expr = "2^3^4";
+//string expr  = "a+tan(bg)";
+//string expr = "a+tan(bg,ab)";
+string expr = "a+tan(bg,ab,ac)";
 
 var parserApp = App.GetParserApp();
 //var tokenizer = parserApp.Services.GetTokenizer()!;

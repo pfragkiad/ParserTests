@@ -21,7 +21,8 @@ public class Tokenizer : ITokenizer
         _options = options.Value;
     }
 
-    public List<Token> Tokenize(string expression)
+    //The second property contains the number of arguments needed by each corresponding function.
+    public TokensFunctions GetInOrderTokensAndFunctions(string expression)
     {
         //inspiration: https://gwerren.com/Blog/Posts/simpleCSharpTokenizerUsingRegex
 
@@ -47,6 +48,12 @@ public class Tokenizer : ITokenizer
         if (matches.Any())
             tokens.AddRange(matches.Select(m => new Token(Token.OpenParenthesisTokenType, m)));
 
+        //open parenthesis with identifier
+        string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
+        matches = Regex.Matches(expression, functionPattern);
+        if (matches.Any())
+            tokens.AddRange(matches.Select(m => new Token(Token.FunctionOpenParenthesisTokenType, m)));
+
         //close parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
         if (matches.Any())
@@ -63,6 +70,17 @@ public class Tokenizer : ITokenizer
         //sort by Match.Index (get "infix ordering")
         tokens.Sort();
 
+        //for each captured function we should remove one captured open parenthesis and one identifier! (the tokens must be sorted)
+        for (int i = tokens.Count - 2; i >= 1; i--)
+        {
+            if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
+            {
+                tokens.RemoveAt(i + 1); //this is the plain open parenthesis
+                tokens.RemoveAt(i - 1); //this is the plain identifier
+                i--; //current token index is i-1, so counter is readjusted
+            }
+        }
+
         //now we need to convert to postfix
         //https://youtu.be/PAceaOSnxQs
 
@@ -74,7 +92,153 @@ public class Tokenizer : ITokenizer
                 _logger.LogDebug("{token} ({type})", token.Match.Value, token.TokenType);
         }
 
-        return tokens;
+        Dictionary<Token, int> functionArgumentsCount = new();
+        foreach (Token token in tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType))
+        {
+            int nextParenthesisIndex = tokens.FindIndex(token.Index + 1, t => t.TokenType == Token.CloseParenthesisTokenType);
+            int argumentsCount = nextParenthesisIndex - token.Index - 1;
+            if (!functionArgumentsCount.ContainsKey(token))
+            {
+                functionArgumentsCount.Add(token, argumentsCount);
+
+                if (argumentsCount > 2)
+                    _logger.LogWarning("There are {count} > 2 arguments used by the function {function}!", argumentsCount,token.Value);
+
+            }
+            else //there is already a function defined, check that the arguments count is the same or throw an exception!
+            {
+                if (functionArgumentsCount[token] != argumentsCount)
+                {
+                    _logger.LogError("The number of arguments for the function {function} at position {position} should be {count}.",
+                        token.Value.TrimEnd('('), token.Index, functionArgumentsCount[token]);
+                    throw new InvalidOperationException($"The number of arguments for the function {token.Value.TrimEnd('(')} at position {token.Index} should be {functionArgumentsCount[token]}.");
+                }
+            }
+        }
+
+        return new TokensFunctions (tokens, functionArgumentsCount);
+    }
+
+    
+    //Infix to postfix 
+    //https://www.youtube.com/watch?v=PAceaOSnxQs
+    public List<Token> GetPostfixTokens(List<Token> infixTokens)
+    {
+        List<Token> postfixTokens = new();
+        Stack<Token> operatorStack = new();
+
+        void LogState() => _logger.LogDebug("OP STACK: {stack}, POSTFIX {postfix}",
+                    //reverse the operator stack so that the head is the last element
+                    operatorStack.Any() ? string.Join(" ", operatorStack.Reverse().Select(o => o.Value)) : "<empty>",
+                    postfixTokens.Any() ? string.Join(" ", postfixTokens.Select(o => o.Value)) : "<empty>");
+
+        var operators = _options.TokenPatterns.OperatorDictionary;
+
+        _logger.LogDebug("Retrieving postfix tokens...");
+        foreach (var token in infixTokens)
+        {
+            if (token.TokenType == Token.LiteralTokenType || token.TokenType == Token.IdentifierTokenType)
+            {
+                postfixTokens.Add(token);
+                _logger.LogDebug("Push to postfix expression -> {token}", token);
+                LogState();
+            }
+            else if (token.TokenType == Token.OpenParenthesisTokenType
+                || token.TokenType == Token.FunctionOpenParenthesisTokenType) //XTRA!
+            {
+                operatorStack.Push(token);
+                _logger.LogDebug("Push to stack (open parenthesis) -> {token}", token);
+                LogState();
+            }
+            else if (token.TokenType == Token.CloseParenthesisTokenType)
+            {
+                _logger.LogDebug("Pop stack until open parenthesis is found (close parenthesis) -> {token}", token);
+
+                //pop all operators until we find open parenthesis
+                do
+                {
+                    if (!operatorStack.Any())
+                    {
+                        _logger.LogError("Unmatched closed parenthesis. An open parenthesis should precede.");
+                        throw new InvalidOperationException($"Unmatched closed parenthesis (closed parenthesis at {token.Match.Index})");
+                    }
+                    var stackToken = operatorStack.Pop();
+                    if (stackToken.TokenType == Token.OpenParenthesisTokenType) break;
+                    postfixTokens.Add(stackToken);
+                    _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
+                    LogState();
+                    if (stackToken.TokenType == Token.FunctionOpenParenthesisTokenType) break;
+                } while (true);
+            }
+
+
+            else //operator
+            {
+                var currentOperator = operators[token.Value]!;
+                while (operatorStack.Any())
+                {
+                    var currentHead = operatorStack.Peek();
+                    if (currentHead.TokenType == Token.OpenParenthesisTokenType)
+                    {
+                        //this is equivalent to having an empty stack
+                        operatorStack.Push(token);
+                        _logger.LogDebug("Push to stack (after open parenthesis) -> {token}", token);
+                        LogState();
+                        goto NextToken;
+                    }
+
+                    var currentHeadOperator = operators[currentHead.Value]!;
+
+                    //for higher priority push to the stack!
+                    if (currentOperator.Priority > currentHeadOperator.Priority ||
+                       currentOperator.Priority == currentHeadOperator.Priority && !currentOperator.LeftToRight)
+                    {
+                        operatorStack.Push(token);
+                        _logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
+                        LogState();
+                        goto NextToken;
+                    }
+                    else
+                    {
+                        var stackToken = operatorStack.Pop();
+                        postfixTokens.Add(stackToken);
+
+                        //remove op from stack and put to postfix  
+                        _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
+                        LogState();
+                    }
+                }
+
+                //if the stack is empty just push the operator
+                operatorStack.Push(token);
+                _logger.LogDebug("Push to stack (empty stack) -> {token}", token);
+                LogState();
+            }
+        NextToken:;
+        }
+
+        //check the operator stack at the end
+        while (operatorStack.Any())
+        {
+            var stackToken = operatorStack.Pop();
+            if (stackToken.TokenType == Token.OpenParenthesisTokenType || 
+                stackToken.TokenType ==Token.FunctionOpenParenthesisTokenType)
+            {
+                _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
+                throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Match.Index})");
+            }
+            if (stackToken.TokenType == Token.FunctionOpenParenthesisTokenType) //XTRA
+            {
+                _logger.LogError("Unmatched function open parenthesis. A closed parenthesis should follow.");
+                throw new InvalidOperationException($"Unmatched function open parenthesis (open parenthesis at {stackToken.Match.Index})");
+            }
+
+            postfixTokens.Add(stackToken);
+            _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
+            LogState();
+
+        }
+        return postfixTokens;
     }
 
 }
