@@ -20,6 +20,8 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //string expr = "0.1*sin(a1,a2)+90";
 
 //TODO: Add support for unary operators
+//TODO: Add support for different literal data types
+
 
 var parserApp = App.GetParserApp();
 var parser = parserApp.Services.GetParser();
