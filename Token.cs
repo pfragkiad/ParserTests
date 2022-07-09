@@ -7,11 +7,18 @@ using System.Threading.Tasks;
 
 namespace ParserTests;
 
-public record Token(
-    string TokenType,
-    Match Match) : IComparable<Token>
-
+public class Token : IComparable<Token>
 {
+    public Token(string tokenType, Match match)
+    {
+        this.TokenType = tokenType;
+        Match = match;
+    }
+
+    public string TokenType { get; set; }
+    public Match Match { get; set; }
+
+
     public const string LiteralTokenType = "literal";
     public const string IdentifierTokenType = "identifier";
     public const string OperatorTokenType = "operator";
@@ -34,7 +41,7 @@ public record Token(
             Match.Index != other.Match.Index ?
             Match.Index - other.Match.Index :
             //we force string comparison if they have the same index
-            Match.Value.CompareTo(other.Match.Value);;
+            Match.Value.CompareTo(other.Match.Value); ;
     }
 }
 

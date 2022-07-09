@@ -78,12 +78,20 @@ public class Tokenizer : ITokenizer
         //for each captured function we should remove one captured open parenthesis and one identifier! (the tokens must be sorted)
         for (int i = tokens.Count - 2; i >= 1; i--)
         {
+            //if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
+            //{
+            //    tokens.RemoveAt(i + 1); //this is the plain open parenthesis
+            //    tokens.RemoveAt(i - 1); //this is the plain identifier
+            //    i--; //current token index is i-1, so counter is readjusted
+            //}
             if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
             {
                 tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-                tokens.RemoveAt(i - 1); //this is the plain identifier
+                tokens.RemoveAt(i); //remote this identifier and keep the plain one without the parenthesis
+                tokens[i - 1].TokenType = Token.FunctionOpenParenthesisTokenType; //this is the plain identifier
                 i--; //current token index is i-1, so counter is readjusted
             }
+
         }
 
         //now we need to convert to postfix
@@ -136,7 +144,7 @@ public class Tokenizer : ITokenizer
         return tokens;
     }
 
-    
+
     //Infix to postfix 
     //https://www.youtube.com/watch?v=PAceaOSnxQs
     public List<Token> GetPostfixTokens(List<Token> infixTokens)
@@ -196,7 +204,7 @@ public class Tokenizer : ITokenizer
                 {
                     var currentHead = operatorStack.Peek();
                     if (currentHead.TokenType == Token.OpenParenthesisTokenType ||
-                        currentHead.TokenType ==Token.FunctionOpenParenthesisTokenType )
+                        currentHead.TokenType == Token.FunctionOpenParenthesisTokenType)
                     {
                         //this is equivalent to having an empty stack
                         operatorStack.Push(token);
@@ -239,8 +247,8 @@ public class Tokenizer : ITokenizer
         while (operatorStack.Any())
         {
             var stackToken = operatorStack.Pop();
-            if (stackToken.TokenType == Token.OpenParenthesisTokenType || 
-                stackToken.TokenType ==Token.FunctionOpenParenthesisTokenType)
+            if (stackToken.TokenType == Token.OpenParenthesisTokenType ||
+                stackToken.TokenType == Token.FunctionOpenParenthesisTokenType)
             {
                 _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Match.Index})");
