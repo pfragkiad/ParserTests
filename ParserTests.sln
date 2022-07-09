@@ -5,7 +5,9 @@ VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ParserTests", "ParserTests\ParserTests.csproj", "{0A10BC12-86F5-445A-BD58-947063DC19B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserLibrary", "ParserLibrary\ParserLibrary.csproj", "{EBDA5ECB-45BA-4B39-91C7-A570E6162911}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ParserLibrary", "ParserLibrary\ParserLibrary.csproj", "{EBDA5ECB-45BA-4B39-91C7-A570E6162911}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserUnitTests", "ParserUnitTests\ParserUnitTests.csproj", "{F068A659-3810-4CC8-BBFA-69F5E87A9E44}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{EBDA5ECB-45BA-4B39-91C7-A570E6162911}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBDA5ECB-45BA-4B39-91C7-A570E6162911}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBDA5ECB-45BA-4B39-91C7-A570E6162911}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F068A659-3810-4CC8-BBFA-69F5E87A9E44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F068A659-3810-4CC8-BBFA-69F5E87A9E44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F068A659-3810-4CC8-BBFA-69F5E87A9E44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F068A659-3810-4CC8-BBFA-69F5E87A9E44}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

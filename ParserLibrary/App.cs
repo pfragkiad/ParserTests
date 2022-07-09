@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParserTests;
+namespace ParserLibrary;
 
 public static class App
 {

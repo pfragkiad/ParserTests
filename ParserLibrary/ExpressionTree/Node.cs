@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParserTests.ExpressionTree;
+namespace ParserLibrary.ExpressionTree;
 
 public class Node<T> : NodeBase
 {

@@ -1,9 +1,8 @@
-﻿namespace ParserTests
-{
-    public interface ITokenizer
-    {
-        List<Token> GetInOrderTokens(string expression);
+﻿namespace ParserLibrary;
 
-        List<Token> GetPostfixTokens(List<Token> infixTokens);
-    }
+public interface ITokenizer
+{
+    List<Token> GetInOrderTokens(string expression);
+
+    List<Token> GetPostfixTokens(List<Token> infixTokens);
 }
