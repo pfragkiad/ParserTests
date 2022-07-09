@@ -2,6 +2,7 @@
 using ParserTests;
 
 using ParserTests.ExpressionTree;
+using System.Diagnostics;
 
 
 
@@ -19,7 +20,6 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //string expr = "0.1*sin(a1,a2)+90";
 
 //TODO: Add support for unary operators
-//TODO: Add support for real calculations (postfix)
 
 var parserApp = App.GetParserApp();
 var parser = parserApp.Services.GetParser();
@@ -33,11 +33,35 @@ var parser = parserApp.Services.GetParser();
 //Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
 //Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 
-expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
+//expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
+//Console.WriteLine(parser.Evaluate<int>(
+//    expr,
+//    (s) => int.Parse(s),
+//    new Dictionary<string, int> {
+//        { "a", 8 },
+//        { "asd", 10 } },
+//    new Dictionary<string, Func<int, int, int>> {
+//        { "+",(v1,v2)=>v1+v2} , { "*", (v1, v2) => v1 * v2 },
+//        { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
+//    new Dictionary<string, Func<int, int>> {
+//        { "tan", (v) => 10 * v } ,
+//        { "sin", (v) => 2 * v }}
+//    ));
+
+expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
+parser.Parse(expr).Root.PrintWithDashes(0,0);
+
 Console.WriteLine(parser.Evaluate<int>(
     expr,
     (s) => int.Parse(s),
-    new Dictionary<string, int> { { "a", 8 }, { "asd", 10 } },
-    new Dictionary<string, Func<int, int, int>> { {"+",(v1,v2)=>v1+v2} , { "*", (v1, v2) => v1 * v2 }, { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
-    new Dictionary<string, Func<int, int>> { { "tan", (v) => 10 * v } , { "sin", (v) => 2 * v }}
+    new Dictionary<string, int> {
+        { "a", 8 },
+        { "asd", 10 } },
+    new Dictionary<string, Func<int, int, int>> {
+        { "+",(v1,v2)=>v1+v2} , { "*", (v1, v2) => v1 * v2 },
+        { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
+    new Dictionary<string, Func<int, int>> {
+        { "tan", (v) => 10 * v } },
+    new Dictionary<string, Func<int, int, int>> {
+        { "sin", (v1,v2) => v1+v2 }}
     ));
