@@ -7,9 +7,6 @@ using System.Threading.Tasks;
 
 namespace ParserLibrary;
 
-//TODO: Postfix unary tests.
-//TODO: Add unary matches, when they are different from binary operators.
-
 public enum TokenType
 {
     Literal,

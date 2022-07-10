@@ -173,7 +173,7 @@ public class UnitTestParser
     [InlineData("-pow(2,-2)", -0.25)]
     [InlineData("aDD3(-1,-2,-3)", -6.0)]
     [InlineData("-round(10.3513,1)", -10.4)]
-    [InlineData("-!!a%++2",-2*2*5*10+2)]
+    [InlineData("-!!a%*++2",(-2*2*5+2)*3+2)] //! doubles, % adds 2, * triples (all unary with same priority)
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();
@@ -199,7 +199,8 @@ public class UnitTestParser
             switch (operatorNode.Text)
             {
                 case "!": return operand * 2; //prefix custom
-                case "%": return operand * 10; //postfix custom
+                case "*": return operand * 3; //prefix custom
+                case "%": return operand + 2; //postfix custom
                 default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
             }
         }
