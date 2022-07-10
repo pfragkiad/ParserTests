@@ -12,7 +12,7 @@ namespace ParserLibrary;
 
 public static class App
 {
-    public static IHost GetParserApp(string configFile = "appsettings.json")
+    public static IHost GetParserApp<TParser>(string configFile = "appsettings.json") where TParser : Parser
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -25,7 +25,7 @@ public static class App
                 services
                     .ConfigureTokenizerOptions(context)
                     .AddTokenizer()
-                    .AddParser()
+                    .AddParser<TParser>()
             ;
             })
            .UseSerilog((context, configuration) =>
@@ -49,9 +49,11 @@ public static class App
     #endregion
 
     #region Parser
-    public static IServiceCollection AddParser(this IServiceCollection services) => services.AddSingleton<Parser>();
+    public static IServiceCollection AddParser<TParser>(this IServiceCollection services) where TParser : Parser
+             => services.AddSingleton<IParser, TParser>();
+    
 
-    public static Parser? GetParser(this IServiceProvider services) => services.GetService<Parser>();
+    public static IParser? GetParser(this IServiceProvider services) => services.GetService<IParser>();
 
     #endregion
 

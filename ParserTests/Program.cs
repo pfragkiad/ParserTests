@@ -23,7 +23,7 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //TODO: Add support for different literal data types
 
 
-var parserApp = App.GetParserApp();
+var parserApp = App.GetParserApp<Parser>();
 var parser = parserApp.Services.GetParser();
 
 //var tree = parser.Parse(expr);

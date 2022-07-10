@@ -12,7 +12,7 @@ public class UnitTestParser
     [Fact]
     public void TestConfigFile()
     {
-        var app = App.GetParserApp("appsettings2.json");
+        var app = App.GetParserApp<Parser>("appsettings2.json");
         var options = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
 
         Assert.Equal("2.0", options.Version);
@@ -22,7 +22,7 @@ public class UnitTestParser
     [Fact]
     public void TestFunctionWithExpression()
     {
-        var parserApp = App.GetParserApp();
+        var parserApp = App.GetParserApp<Parser>();
         var parser = parserApp.Services.GetParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
@@ -47,7 +47,7 @@ public class UnitTestParser
     [Fact]
     public void TestFunctionWith2Arguments()
     {
-        var parserApp = App.GetParserApp();
+        var parserApp = App.GetParserApp<Parser>();
         var parser = parserApp.Services.GetParser();
 
         string expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
@@ -74,7 +74,7 @@ public class UnitTestParser
     [Fact]
     public void TestSimpleIdentifierCase()
     {
-        var parserApp = App.GetParserApp();
+        var parserApp = App.GetParserApp<Parser>();
         var parser = parserApp.Services.GetParser();
 
         string expr = "a";
@@ -90,7 +90,7 @@ public class UnitTestParser
     [Fact]
     public void TestCompactFunctionCall()
     {
-        var parserApp = App.GetParserApp();
+        var parserApp = App.GetParserApp<Parser>();
         var parser = parserApp.Services.GetParser();
 
         string expr = "tan(8)";
@@ -101,6 +101,19 @@ public class UnitTestParser
             funcs1Arg: new Dictionary<string, Func<double, double>> { { "tan", (v) => 10.0 * v } });
 
         Assert.Equal(80, result);
+    }
+
+    [Fact]
+    public void TestCustomParser()
+    {
+        var app = App.GetParserApp<CustomParser>();
+        var parser = app.Services.GetParser();
+
+        string s = "5.0+sin(2,3.0)";
+
+        double result = (double)parser.EvaluateCustom(s);
+
+        Assert.Equal(5.0 + 2 * 3.0, result);
     }
 
 }
