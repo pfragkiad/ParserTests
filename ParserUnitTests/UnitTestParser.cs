@@ -163,8 +163,6 @@ public class UnitTestParser
     }
 
 
-
-
     [Theory]
     [InlineData("---5.0", -5.0)]
     [InlineData("(-5.0)", -5.0)]
@@ -174,12 +172,14 @@ public class UnitTestParser
     [InlineData("-add(-2,-4)*2+-abs(-2)", 10.0)]
     [InlineData("-pow(2,-2)", -0.25)]
     [InlineData("aDD3(-1,-2,-3)", -6.0)]
-    [InlineData("-round(10.3513,1)",-10.4)]
+    [InlineData("-round(10.3513,1)", -10.4)]
+    [InlineData("-!!a%++2",-2*2*5*10+2)]
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();
         var parser = app.Services.GetParser();
-        double result = (double)parser.Evaluate(s);
+        double result = (double)parser.Evaluate(s,
+            new Dictionary<string, object>{ { "a",5.0} });
         Assert.Equal(expected, result);
     }
 
@@ -187,6 +187,21 @@ public class UnitTestParser
     {
         public CustomFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
         {
+        }
+
+
+        protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+        {
+            double operand = (double)nodeValueDictionary[
+                (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
+                operatorNode.Right : operatorNode.Left) as Node<Token>];
+
+            switch (operatorNode.Text)
+            {
+                case "!": return operand * 2; //prefix custom
+                case "%": return operand * 10; //postfix custom
+                default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
+            }
         }
 
         protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)

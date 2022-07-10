@@ -331,7 +331,6 @@ public class Parser : IParser
 
         if (token.TokenType == TokenType.Operator)
         {
-
             //pop the 2 items on the current stack
             Token rightToken = stack.Pop(), leftToken = stack.Pop();
             operatorNode.Right = nodeDictionary[rightToken];
@@ -339,7 +338,7 @@ public class Parser : IParser
             _logger.LogDebug("Pop {rightToken} from stack (right child)", rightToken);
             _logger.LogDebug("Pop {leftToken} from stack (left child)", leftToken);
         }
-        else //unary operators
+        else // if(token.TokenType==TokenType.OperatorUnary)
         {
             Token childToken = stack.Pop();
             UnaryOperator op = _options.TokenPatterns.UnaryOperatorDictionary[token.Text];
@@ -353,7 +352,6 @@ public class Parser : IParser
                 operatorNode.Left = nodeDictionary[childToken];
                 _logger.LogDebug("Pop {leftToken} from stack (left child)", childToken);
             }
-
         }
 
         //remember the operatorNode

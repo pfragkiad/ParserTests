@@ -23,6 +23,7 @@ public class DefaultParser : Parser
         double operand = (double)nodeValueDictionary[
             (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
             operatorNode.Right : operatorNode.Left) as Node<Token>];
+
         switch (operatorNode.Text)
         {
             case "-": return -operand;

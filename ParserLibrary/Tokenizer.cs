@@ -102,8 +102,6 @@ public class Tokenizer : ITokenizer
         }
 
         //search for unary operators (assuming they are the same with binary operators)
-        //TODO: Search for non-common unary operators (check for postfix/prefix)
-
         var potentialUnaryOperators = tokens.Where(t =>
         t.TokenType == TokenType.Operator && _options.TokenPatterns.Unary.Any(u => u.Name == t.Text));
         foreach (var token in potentialUnaryOperators)
@@ -111,14 +109,32 @@ public class Tokenizer : ITokenizer
             int tokenIndex = tokens.IndexOf(token);
             var unary = _options.TokenPatterns.Unary.First(u => u.Name == token.Text);
 
-            //if the previous token is an operator then the latter is a unary!
-            if (tokenIndex == 0 ||
-                (tokens[tokenIndex - 1].TokenType == TokenType.Operator ||
-                tokens[tokenIndex - 1].TokenType == TokenType.OperatorUnary ||
-                tokens[tokenIndex - 1].TokenType == TokenType.OpenParenthesis ||
-                tokens[tokenIndex - 1].TokenType == TokenType.Function
-                ) && unary.Prefix)
-                token.TokenType = TokenType.OperatorUnary;
+            if (unary.Prefix)
+            {
+                //if the previous token is an operator then the latter is a unary!
+                TokenType? previousTokenType = tokenIndex > 0 ? tokens[tokenIndex - 1].TokenType : null;
+                if (tokenIndex == 0 ||
+                    previousTokenType == TokenType.Operator ||
+                    //the previous unary operator must not be prefix!
+                    previousTokenType == TokenType.OperatorUnary &&
+                        _options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex - 1].Text].Prefix ||
+                    previousTokenType == TokenType.OpenParenthesis ||
+                    previousTokenType == TokenType.Function)
+                    token.TokenType = TokenType.OperatorUnary;
+            }
+            else //unary.postfix (needs testing)
+            {
+                //if the previous token is an operator then the latter is a unary!
+                TokenType? nextTokenType = tokenIndex < tokens.Count - 1 ? tokens[tokenIndex + 1].TokenType : null;
+                if (tokenIndex == tokens.Count - 1 ||
+                    nextTokenType == TokenType.Operator ||
+                    //the previous unary operator must not be prefix!
+                    nextTokenType == TokenType.OperatorUnary &&
+                        !_options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex + 1].Text].Prefix ||
+                    nextTokenType == TokenType.ClosedParenthesis)
+                    token.TokenType = TokenType.OperatorUnary;
+
+            }
         }
 
         //now we need to convert to postfix
@@ -203,8 +219,11 @@ public class Tokenizer : ITokenizer
                 else if (token.TokenType == TokenType.OperatorUnary)
                     currentUnaryOperator = unary[token.Text!];
 
+                //if (currentUnaryOperator?.Name == "%") Debugger.Break();
+
                 while (operatorStack.Any())
                 {
+
                     Token currentHead = operatorStack.Peek();
                     if (currentHead.TokenType == TokenType.OpenParenthesis ||
                         currentHead.TokenType == TokenType.Function)
@@ -225,13 +244,12 @@ public class Tokenizer : ITokenizer
 
                     int? currentHeadPriority = currentHeadOperator?.Priority ?? currentHeadUnaryOperator?.Priority;
 
-
                     //for higher priority push to the stack!
                     if (currentOperator is not null
-                        && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
+                       && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
                        ||
                        currentUnaryOperator is not null
-                       && currentUnaryOperator.Priority >= currentHeadPriority)
+                       && (currentUnaryOperator.Priority > currentHeadPriority || currentUnaryOperator.Priority == currentHeadPriority && currentUnaryOperator.Prefix))
                     {
                         operatorStack.Push(token);
                         _logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
