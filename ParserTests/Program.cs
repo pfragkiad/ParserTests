@@ -42,13 +42,13 @@ var parser = app.Services.GetParser();
 expr = "21--(231)";
 expr = "-2";
 expr = "p------2";
-
 expr = "a+tan(8+5) + sin(321+asd*2^2)";
-var tokenizer = app.Services.GetTokenizer();
-//var tokens = tokenizer.GetInOrderTokens(expr);
-//var tree = parser.GetExpressionTree(expr);
-//tree.Print();
+expr = "!!sds+2";
+//var tokenizer = app.Services.GetTokenizer();
+//ar tokens = tokenizer.GetInOrderTokens(expr);
+var tree = parser.GetExpressionTree(expr);
+tree.Print();
 
 
 
-Console.WriteLine(App.Evaluate("5+sind(45*2)"));
+//Console.WriteLine(App.Evaluate("5+sind(45*2)"));

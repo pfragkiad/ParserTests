@@ -46,8 +46,9 @@ public class DefaultParser : Parser
         }
     }
 
-    const double TORAD = Math.PI / 180.0;
-    readonly HashSet<string> functionsWith2Arguments = new HashSet<string> { "pow" };
+    const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
+
+    readonly HashSet<string> functionsWith2Arguments = new HashSet<string> { "pow","round" };
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
@@ -64,15 +65,18 @@ public class DefaultParser : Parser
         switch (functionName)
         {
             case "abs": return Math.Abs(a1);
+            case "acos": return Math.Acos(a1);
+            case "acosd": return Math.Acos(a1)*TODEG;
             case "sin": return Math.Sin(a1);
             case "sind": return Math.Sin(a1 * TORAD);
             case "cos": return Math.Cos(a1);
             case "cosd": return Math.Cos(a1 * TORAD);
             case "pow": return Math.Pow(a1, a2);
+            case "round": return Math.Round(a1, (int)a2);
             case "sqr":
             case "sqrt": return Math.Sqrt(a1);
             case "tan": return Math.Tan(a1);
-            case "tand":  return Math.Tan(a1 * TORAD);
+            case "tand": return Math.Tan(a1 * TORAD);
         }
 
         return base.EvaluateFunction(functionNode, nodeValueDictionary);

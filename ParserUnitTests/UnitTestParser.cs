@@ -7,9 +7,6 @@ namespace ParserUnitTests;
 
 public class UnitTestParser
 {
-
-
-
     [Fact]
     public void TestFunctionWithExpression()
     {
@@ -177,7 +174,8 @@ public class UnitTestParser
     [InlineData("-add(-2,-4)*2+-abs(-2)", 10.0)]
     [InlineData("-pow(2,-2)", -0.25)]
     [InlineData("aDD3(-1,-2,-3)", -6.0)]
-    public void TestUnaryExpressions(string s, double expected)
+    [InlineData("-round(10.3513,1)",-10.4)]
+    public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();
         var parser = app.Services.GetParser();

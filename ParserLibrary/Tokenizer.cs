@@ -59,10 +59,18 @@ public class Tokenizer : ITokenizer
         if (matches.Any())
             tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
 
-        ////argument separators
-        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.ArgumentSeparator}");
-        //if (matches.Any())
-        //    tokens.AddRange(matches.Select(m => new Token(Token.ArgumentSeparatorTokenType, m)));
+        //match unary operators that do NOT coincide with binary operators
+        var uniqueUnary =
+            _options.TokenPatterns.Unary?.Where(u => !_options.TokenPatterns.OperatorDictionary.ContainsKey(u.Name));
+        if (uniqueUnary?.Any() ?? false)
+        {
+            foreach (var op in uniqueUnary)
+            {
+                matches = Regex.Matches(expression, $@"\{op.Name}");
+                if (matches.Any())
+                    tokens.AddRange(matches.Select(m => new Token(TokenType.OperatorUnary, m)));
+            }
+        }
 
         //operators
         foreach (var op in _options.TokenPatterns.Operators)
@@ -124,7 +132,7 @@ public class Tokenizer : ITokenizer
                 _logger.LogDebug("{token} ({type})", token.Match.Value, token.TokenType);
         }
 
-      
+
 
         return tokens;
     }
@@ -222,8 +230,8 @@ public class Tokenizer : ITokenizer
                     if (currentOperator is not null
                         && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
                        ||
-                       currentUnaryOperator is not null 
-                       && currentUnaryOperator.Priority >= currentHeadPriority  )
+                       currentUnaryOperator is not null
+                       && currentUnaryOperator.Priority >= currentHeadPriority)
                     {
                         operatorStack.Push(token);
                         _logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
