@@ -1,8 +1,3 @@
-
-
-using Microsoft.Extensions.Logging;
-using System.Globalization;
-
 namespace ParserUnitTests;
 
 public class UnitTestParser
@@ -173,7 +168,8 @@ public class UnitTestParser
     [InlineData("-pow(2,-2)", -0.25)]
     [InlineData("aDD3(-1,-2,-3)", -6.0)]
     [InlineData("-round(10.3513,1)", -10.4)]
-    [InlineData("-!!a%*++2",(-2*2*5+2)*3+2)] //! doubles, % adds 2, * triples (all unary with same priority)
+    //% in action has higher priority than *, and ! has higher than - [to sum up -> the closest to the operand has the highest priority]
+    [InlineData("-!!a%*++2",(-2*2*5+2)*3+2)] //! doubles, % adds 2, * triples (all unary with same priority) 
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();

@@ -1,12 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ParserUnitTests;
+﻿namespace ParserUnitTests;
 
 public class CustomIntParser : Parser
 {
@@ -14,8 +6,7 @@ public class CustomIntParser : Parser
         ILogger<Parser> logger, ITokenizer tokenizer,
         IOptions<TokenizerOptions> options) :
         base(logger, tokenizer, options)
-    {
-    }
+    {  }
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {

@@ -4,6 +4,7 @@ using ParserLibrary;
 using ParserLibrary.ExpressionTree;
 using System.Diagnostics;
 
+//TODO: ADD DOCUMENTATION AND PUBLISH IT!
 
 
 //string expr = "asdf+(2-5*a)* d1-3^2";

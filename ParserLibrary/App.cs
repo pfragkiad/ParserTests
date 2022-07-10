@@ -2,11 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ParserLibrary;
 
@@ -42,7 +37,7 @@ public static class App
     public static IParser? GetDefaultParser() => 
         GetParserApp<DefaultParser>().Services.GetParser();
 
-    public static double Evaluate(string s, Dictionary<string, object> variables = null) =>
+    public static double Evaluate(string s, Dictionary<string, object>? variables = null) =>
         (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);
 
     #endregion

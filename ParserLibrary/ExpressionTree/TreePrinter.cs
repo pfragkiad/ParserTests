@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ParserLibrary.ExpressionTree;
+﻿namespace ParserLibrary.ExpressionTree;
 
 //Adapted code from: https://stackoverflow.com/questions/36311991/c-sharp-display-a-binary-search-tree-in-console
 public static class TreePrinter
