@@ -37,18 +37,26 @@ public static class App
         return app;
     }
 
-    #region Tokenizer
+    #region Utility functions
+
+    public static IParser? GetDefaultParser() => 
+        GetParserApp<DefaultParser>().Services.GetParser();
+
+    public static double Evaluate(string s, Dictionary<string, object> variables = null) =>
+        (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);
+
+    #endregion
+
+
+    #region Tokenizer, Parser services extensions
+   
     public static IServiceCollection ConfigureTokenizerOptions(this IServiceCollection services, HostBuilderContext context) =>
         services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));
-
 
     public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer, Tokenizer>();
 
     public static ITokenizer? GetTokenizer(this IServiceProvider services) => services.GetService<ITokenizer>();
 
-    #endregion
-
-    #region Parser
     public static IServiceCollection AddParser<TParser>(this IServiceCollection services) where TParser : Parser
              => services.AddSingleton<IParser, TParser>();
     
