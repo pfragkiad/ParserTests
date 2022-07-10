@@ -18,6 +18,8 @@ public class TokenPatterns //NOT records here!
 
     public string ArgumentSeparator { get; set; } = ",";
 
+    public List<UnaryOperator>? Unary { get; set; }
+
     public List<Operator>? Operators { get; set; } = new List<Operator>();
 
     public Dictionary<string, Operator> OperatorDictionary { get => Operators.ToDictionary(op => op.Name, op => op); }

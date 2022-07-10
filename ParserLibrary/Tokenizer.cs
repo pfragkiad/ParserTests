@@ -91,7 +91,26 @@ public class Tokenizer : ITokenizer
                 tokens[i - 1].TokenType = Token.FunctionOpenParenthesisTokenType; //this is the plain identifier
                 i--; //current token index is i-1, so counter is readjusted
             }
+        }
 
+        //search for unary operators (assuming they are the same with binary operators)
+        //TODO: Search for non-common unary operators (check for postfix/prefix)
+
+        var potentialUnaryOperators = tokens.Where(t =>
+        t.TokenType == Token.OperatorTokenType && _options.TokenPatterns.Unary.Any(u => u.Name == t.Text));
+        foreach (var token in potentialUnaryOperators)
+        {
+            int tokenIndex = tokens.IndexOf(token);
+            var unary = _options.TokenPatterns.Unary.First(u => u.Name == token.Text);
+
+            //if the previous token is an operator then the latter is a unary!
+            if (tokenIndex == 0 ||
+                (tokens[tokenIndex - 1].TokenType == Token.OperatorTokenType ||
+                tokens[tokenIndex - 1].TokenType == Token.OperatorUnaryTokenType ||
+                tokens[tokenIndex - 1].TokenType == Token.OpenParenthesisTokenType ||
+                tokens[tokenIndex - 1].TokenType == Token.FunctionOpenParenthesisTokenType
+                ) && unary.Prefix)
+                token.TokenType = Token.OperatorUnaryTokenType;
         }
 
         //now we need to convert to postfix

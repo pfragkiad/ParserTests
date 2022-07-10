@@ -22,6 +22,8 @@ public class Token : IComparable<Token>
     public const string LiteralTokenType = "literal";
     public const string IdentifierTokenType = "identifier";
     public const string OperatorTokenType = "operator";
+    public const string OperatorUnaryTokenType = "operator unary";
+
     public const string OpenParenthesisTokenType = "open parenthesis";
     public const string FunctionOpenParenthesisTokenType = "function open parenthesis";
     public const string CloseParenthesisTokenType = "closed parenthesis";

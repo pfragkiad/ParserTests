@@ -16,3 +16,15 @@ public class Operator
 
     public bool LeftToRight { get; set; } = true;
 }
+
+public class UnaryOperator
+{
+#nullable disable
+    public string Name { get; set; }
+#nullable restore
+
+    public int? Priority { get; set; } = 0;
+
+    public bool Prefix { get; set; } = true;
+
+}
