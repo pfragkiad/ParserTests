@@ -7,27 +7,33 @@ using System.Threading.Tasks;
 
 namespace ParserLibrary;
 
+//TODO: Postfix unary tests.
+//TODO: Add unary matches, when they are different from binary operators.
+
+public enum TokenType
+{
+    Literal,
+    Identifier,
+    Operator,
+    OperatorUnary,
+    OpenParenthesis,
+    Function,
+    ClosedParenthesis,
+    ArgumentSeparator
+}
+
 public class Token : IComparable<Token>
 {
-    public Token(string tokenType, Match match)
+    public Token(TokenType tokenType, Match match)
     {
         this.TokenType = tokenType;
         Match = match;
     }
 
-    public string TokenType { get; set; }
+    //public string TokenType { get; set; }
+    
+    public TokenType TokenType { get; set;}
     public Match Match { get; set; }
-
-
-    public const string LiteralTokenType = "literal";
-    public const string IdentifierTokenType = "identifier";
-    public const string OperatorTokenType = "operator";
-    public const string OperatorUnaryTokenType = "operator unary";
-
-    public const string OpenParenthesisTokenType = "open parenthesis";
-    public const string FunctionOpenParenthesisTokenType = "function open parenthesis";
-    public const string CloseParenthesisTokenType = "closed parenthesis";
-    public const string ArgumentSeparatorTokenType = "argument separator";
 
     public string Text => Match.Value;
 

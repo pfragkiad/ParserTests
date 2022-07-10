@@ -42,7 +42,7 @@ public class Parser : IParser
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens) //these should be PostfixOrder tokens
         {
-            if (token.TokenType == Token.FunctionOpenParenthesisTokenType)
+            if (token.TokenType == TokenType.Function)
             {
                 Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (function node)", token);
@@ -57,7 +57,7 @@ public class Parser : IParser
                 continue;
             }
 
-            if (token.TokenType == Token.OperatorTokenType || token.TokenType == Token.OperatorUnaryTokenType)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
                 Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (operator node)", token);
@@ -115,7 +115,7 @@ public class Parser : IParser
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
         {
-            if (token.TokenType == Token.FunctionOpenParenthesisTokenType)
+            if (token.TokenType == TokenType.Function)
             {
                 Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
 
@@ -149,16 +149,16 @@ public class Parser : IParser
 
                 //XTRA
                 V value = default(V);
-                if (token.TokenType == Token.LiteralTokenType)
+                if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = literalParser(token.Text));
-                else if (token.TokenType == Token.IdentifierTokenType)
+                else if (token.TokenType == TokenType.Identifier)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
-            if (token.TokenType == Token.OperatorTokenType || token.TokenType == Token.OperatorUnaryTokenType)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
                 Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
 
@@ -257,7 +257,7 @@ public class Parser : IParser
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
         {
-            if (token.TokenType == Token.FunctionOpenParenthesisTokenType)
+            if (token.TokenType == TokenType.Function)
             {
                 Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
 
@@ -275,16 +275,16 @@ public class Parser : IParser
 
                 //XTRA CALCULATION HERE
                 object value = null;
-                if (token.TokenType == Token.LiteralTokenType)
+                if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
-                else if (token.TokenType == Token.IdentifierTokenType)
+                else if (token.TokenType == TokenType.Identifier)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
-            if (token.TokenType == Token.OperatorTokenType || token.TokenType == Token.OperatorUnaryTokenType)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
                 Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
 
@@ -292,7 +292,7 @@ public class Parser : IParser
                 if (token.Text != _options.TokenPatterns.ArgumentSeparator)
                 {
                     var result =
-                        token.TokenType == Token.OperatorTokenType ?
+                        token.TokenType == TokenType.Operator ?
                         EvaluateOperator(operatorNode, nodeValueDictionary) :
                         EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
                     nodeValueDictionary.Add(operatorNode, result);
@@ -329,7 +329,7 @@ public class Parser : IParser
         //else it is an operator (needs 2 items )
         Node<Token> operatorNode = new(token);
 
-        if (token.TokenType == Token.OperatorTokenType)
+        if (token.TokenType == TokenType.Operator)
         {
 
             //pop the 2 items on the current stack
@@ -383,9 +383,9 @@ public class Parser : IParser
     private bool ShouldPushToStack(Stack<Token> stack, Token token)
     {
         return stack.Count == 0 ||
-               stack.Count == 1 && token.TokenType == Token.OperatorTokenType ||
-               token.TokenType == Token.LiteralTokenType ||
-               token.TokenType == Token.IdentifierTokenType;
+               stack.Count == 1 && token.TokenType == TokenType.Operator ||
+               token.TokenType == TokenType.Literal ||
+               token.TokenType == TokenType.Identifier;
     }
 
     private Node<Token> PushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)

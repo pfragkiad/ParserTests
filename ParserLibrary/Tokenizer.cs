@@ -36,28 +36,28 @@ public class Tokenizer : ITokenizer
             Regex.Matches(expression, _options.TokenPatterns.Identifier) :
             Regex.Matches(expression, _options.TokenPatterns.Identifier, RegexOptions.IgnoreCase);
         if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.IdentifierTokenType, m)));
+            tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m)));
 
         //literals
         matches = Regex.Matches(expression, _options.TokenPatterns.Literal);
         if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.LiteralTokenType, m)));
+            tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
         //open parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
         if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.OpenParenthesisTokenType, m)));
+            tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
 
         //open parenthesis with identifier
         string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
         matches = Regex.Matches(expression, functionPattern);
         if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.FunctionOpenParenthesisTokenType, m)));
+            tokens.AddRange(matches.Select(m => new Token(TokenType.Function, m)));
 
         //close parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
         if (matches.Any())
-            tokens.AddRange(matches.Select(m => new Token(Token.CloseParenthesisTokenType, m)));
+            tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
 
         ////argument separators
         //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.ArgumentSeparator}");
@@ -69,7 +69,7 @@ public class Tokenizer : ITokenizer
         {
             matches = Regex.Matches(expression, $@"\{op.Name}");
             if (matches.Any())
-                tokens.AddRange(matches.Select(m => new Token(Token.OperatorTokenType, m)));
+                tokens.AddRange(matches.Select(m => new Token(TokenType.Operator, m)));
         }
 
         //sort by Match.Index (get "infix ordering")
@@ -84,11 +84,11 @@ public class Tokenizer : ITokenizer
             //    tokens.RemoveAt(i - 1); //this is the plain identifier
             //    i--; //current token index is i-1, so counter is readjusted
             //}
-            if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
+            if (tokens[i].TokenType == TokenType.Function)
             {
                 tokens.RemoveAt(i + 1); //this is the plain open parenthesis
                 tokens.RemoveAt(i); //remote this identifier and keep the plain one without the parenthesis
-                tokens[i - 1].TokenType = Token.FunctionOpenParenthesisTokenType; //this is the plain identifier
+                tokens[i - 1].TokenType = TokenType.Function; //this is the plain identifier
                 i--; //current token index is i-1, so counter is readjusted
             }
         }
@@ -97,7 +97,7 @@ public class Tokenizer : ITokenizer
         //TODO: Search for non-common unary operators (check for postfix/prefix)
 
         var potentialUnaryOperators = tokens.Where(t =>
-        t.TokenType == Token.OperatorTokenType && _options.TokenPatterns.Unary.Any(u => u.Name == t.Text));
+        t.TokenType == TokenType.Operator && _options.TokenPatterns.Unary.Any(u => u.Name == t.Text));
         foreach (var token in potentialUnaryOperators)
         {
             int tokenIndex = tokens.IndexOf(token);
@@ -105,12 +105,12 @@ public class Tokenizer : ITokenizer
 
             //if the previous token is an operator then the latter is a unary!
             if (tokenIndex == 0 ||
-                (tokens[tokenIndex - 1].TokenType == Token.OperatorTokenType ||
-                tokens[tokenIndex - 1].TokenType == Token.OperatorUnaryTokenType ||
-                tokens[tokenIndex - 1].TokenType == Token.OpenParenthesisTokenType ||
-                tokens[tokenIndex - 1].TokenType == Token.FunctionOpenParenthesisTokenType
+                (tokens[tokenIndex - 1].TokenType == TokenType.Operator ||
+                tokens[tokenIndex - 1].TokenType == TokenType.OperatorUnary ||
+                tokens[tokenIndex - 1].TokenType == TokenType.OpenParenthesis ||
+                tokens[tokenIndex - 1].TokenType == TokenType.Function
                 ) && unary.Prefix)
-                token.TokenType = Token.OperatorUnaryTokenType;
+                token.TokenType = TokenType.OperatorUnary;
         }
 
         //now we need to convert to postfix
@@ -150,20 +150,20 @@ public class Tokenizer : ITokenizer
         {
             //if(token.Text == "asd") Debugger.Break();
 
-            if (token.TokenType == Token.LiteralTokenType || token.TokenType == Token.IdentifierTokenType)
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 postfixTokens.Add(token);
                 _logger.LogDebug("Push to postfix expression -> {token}", token);
                 LogState();
             }
-            else if (token.TokenType == Token.OpenParenthesisTokenType
-                || token.TokenType == Token.FunctionOpenParenthesisTokenType) //XTRA!
+            else if (token.TokenType == TokenType.OpenParenthesis
+                || token.TokenType == TokenType.Function) //XTRA!
             {
                 operatorStack.Push(token);
                 _logger.LogDebug("Push to stack (open parenthesis) -> {token}", token);
                 LogState();
             }
-            else if (token.TokenType == Token.CloseParenthesisTokenType)
+            else if (token.TokenType == TokenType.ClosedParenthesis)
             {
                 _logger.LogDebug("Pop stack until open parenthesis is found (close parenthesis) -> {token}", token);
 
@@ -176,11 +176,11 @@ public class Tokenizer : ITokenizer
                         throw new InvalidOperationException($"Unmatched closed parenthesis (closed parenthesis at {token.Match.Index})");
                     }
                     var stackToken = operatorStack.Pop();
-                    if (stackToken.TokenType == Token.OpenParenthesisTokenType) break;
+                    if (stackToken.TokenType == TokenType.OpenParenthesis) break;
                     postfixTokens.Add(stackToken);
                     _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
                     LogState();
-                    if (stackToken.TokenType == Token.FunctionOpenParenthesisTokenType) break;
+                    if (stackToken.TokenType == TokenType.Function) break;
                 } while (true);
             }
 
@@ -190,16 +190,16 @@ public class Tokenizer : ITokenizer
                 Operator? currentOperator = null;
                 UnaryOperator? currentUnaryOperator = null;
 
-                if (token.TokenType == Token.OperatorTokenType)
+                if (token.TokenType == TokenType.Operator)
                     currentOperator = operators[token.Text]!;
-                else if (token.TokenType == Token.OperatorUnaryTokenType)
+                else if (token.TokenType == TokenType.OperatorUnary)
                     currentUnaryOperator = unary[token.Text!];
 
                 while (operatorStack.Any())
                 {
                     Token currentHead = operatorStack.Peek();
-                    if (currentHead.TokenType == Token.OpenParenthesisTokenType ||
-                        currentHead.TokenType == Token.FunctionOpenParenthesisTokenType)
+                    if (currentHead.TokenType == TokenType.OpenParenthesis ||
+                        currentHead.TokenType == TokenType.Function)
                     {
                         //this is equivalent to having an empty stack
                         operatorStack.Push(token);
@@ -210,9 +210,9 @@ public class Tokenizer : ITokenizer
 
                     Operator? currentHeadOperator = null;
                     UnaryOperator? currentHeadUnaryOperator = null;
-                    if (currentHead.TokenType == Token.OperatorTokenType)
+                    if (currentHead.TokenType == TokenType.Operator)
                         currentHeadOperator = operators[currentHead.Text]!;
-                    else if (currentHead.TokenType == Token.OperatorUnaryTokenType)
+                    else if (currentHead.TokenType == TokenType.OperatorUnary)
                         currentHeadUnaryOperator = unary[currentHead.Text!];
 
                     int? currentHeadPriority = currentHeadOperator?.Priority ?? currentHeadUnaryOperator?.Priority;
@@ -254,13 +254,13 @@ public class Tokenizer : ITokenizer
         while (operatorStack.Any())
         {
             var stackToken = operatorStack.Pop();
-            if (stackToken.TokenType == Token.OpenParenthesisTokenType ||
-                stackToken.TokenType == Token.FunctionOpenParenthesisTokenType)
+            if (stackToken.TokenType == TokenType.OpenParenthesis ||
+                stackToken.TokenType == TokenType.Function)
             {
                 _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Match.Index})");
             }
-            if (stackToken.TokenType == Token.FunctionOpenParenthesisTokenType) //XTRA
+            if (stackToken.TokenType == TokenType.Function) //XTRA
             {
                 _logger.LogError("Unmatched function open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched function open parenthesis (open parenthesis at {stackToken.Match.Index})");
