@@ -176,7 +176,7 @@ public class UnitTestParser
     [InlineData("-add(-2,-4)", 6.0)]
     [InlineData("-add(-2,-4)*2+-abs(-2)", 10.0)]
     [InlineData("-pow(2,-2)", -0.25)]
-    [InlineData("add3(-1,-2,-3)", -6.0)]
+    [InlineData("aDD3(-1,-2,-3)", -6.0)]
     public void TestUnaryExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();
@@ -193,7 +193,7 @@ public class UnitTestParser
 
         protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
         {
-            switch (functionNode.Text)
+            switch (functionNode.Text.ToLower())
             {
                 case "add":
                     {

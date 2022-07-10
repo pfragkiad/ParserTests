@@ -49,4 +49,7 @@ var tokenizer = app.Services.GetTokenizer();
 var tree = parser.GetExpressionTree(expr);
 tree.Print();
 
-Debugger.Break();
+
+
+var parser2 = App.GetParserApp<DefaultParser>().Services.GetParser();
+Console.WriteLine(parser2.Evaluate("5+sind(45*2)"));

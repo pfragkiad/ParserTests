@@ -13,9 +13,9 @@ namespace ParserLibrary;
 public class DefaultParser : Parser
 {
     public DefaultParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
-    {    }
+    { }
 
-    protected override object EvaluateLiteral(string s) => 
+    protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
     protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
@@ -46,22 +46,33 @@ public class DefaultParser : Parser
         }
     }
 
+    const double TORAD = Math.PI / 180.0;
+    readonly HashSet<string> functionsWith2Arguments = new HashSet<string> { "pow" };
+
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-
-        switch (functionNode.Text)
+        double a1 = 0.0, a2 = 0.0; //up to 2 arguments
+        string functionName = functionNode.Text.ToLower();
+        if (!functionsWith2Arguments.Contains(functionName))
+            a1 = (double)nodeValueDictionary[functionNode.Right as Node<Token>];
+        else //functionsWith2Arguments
         {
-            case "abs":
-                {
-                    double right = (double)nodeValueDictionary[functionNode.Right as Node<Token>];
-                    return Math.Abs(right);
-                }
-            case "pow":
-                {
-                    double left = (double)nodeValueDictionary[functionNode.Right.Left as Node<Token>];
-                    double right = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
-                    return Math.Pow(left, right);
-                }
+            a1 = (double)nodeValueDictionary[functionNode.Right.Left as Node<Token>];
+            a2 = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
+        }
+
+        switch (functionName)
+        {
+            case "abs": return Math.Abs(a1);
+            case "sin": return Math.Sin(a1);
+            case "sind": return Math.Sin(a1 * TORAD);
+            case "cos": return Math.Cos(a1);
+            case "cosd": return Math.Cos(a1 * TORAD);
+            case "pow": return Math.Pow(a1, a2);
+            case "sqr":
+            case "sqrt": return Math.Sqrt(a1);
+            case "tan": return Math.Tan(a1);
+            case "tand":  return Math.Tan(a1 * TORAD);
         }
 
         return base.EvaluateFunction(functionNode, nodeValueDictionary);
