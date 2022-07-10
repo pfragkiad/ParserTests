@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace ParserUnitTests;
 
-public class CustomParser : Parser
+public class CustomIntParser : Parser
 {
-    public CustomParser(
+    public CustomIntParser(
         ILogger<Parser> logger, ITokenizer tokenizer,
         IOptions<TokenizerOptions> options) :
         base(logger, tokenizer, options)

@@ -23,8 +23,8 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //TODO: Add support for different literal data types
 
 
-var parserApp = App.GetParserApp<Parser>();
-var parser = parserApp.Services.GetParser();
+var app = App.GetParserApp<Parser>();
+var parser = app.Services.GetParser();
 
 //var tree = parser.Parse(expr);
 //tree.Root.PrintWithDashes();
@@ -36,6 +36,17 @@ var parser = parserApp.Services.GetParser();
 //Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 
 //expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
-expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
+//expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
+//parser.Parse(expr).Root.PrintWithDashes(0,0);
 
-parser.Parse(expr).Root.PrintWithDashes(0,0);
+expr = "21--(231)";
+expr = "-2";
+expr = "p------2";
+
+expr = "a+tan(8+5) + sin(321+asd*2^2)";
+var tokenizer = app.Services.GetTokenizer();
+//var tokens = tokenizer.GetInOrderTokens(expr);
+var tree = parser.GetExpressionTree(expr);
+tree.Print();
+
+Debugger.Break();

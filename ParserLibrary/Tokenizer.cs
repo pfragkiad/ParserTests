@@ -124,41 +124,7 @@ public class Tokenizer : ITokenizer
                 _logger.LogDebug("{token} ({type})", token.Match.Value, token.TokenType);
         }
 
-        //SHOULD BE REMOVED-------------------------------------------------------
-        //Dictionary<Token, int> functionArgumentsCount = new();
-        //var functionTokens = tokens.Where(t => t.TokenType == Token.FunctionOpenParenthesisTokenType).ToList();
-        //foreach (Token token in functionTokens)
-        //{
-        //    int tokenIndex = tokens.IndexOf(token);
-        //    int nextParenthesisIndex = tokens.FindIndex(tokenIndex, t => t.TokenType == Token.CloseParenthesisTokenType);
-
-        //    int argumentsCount = 0;
-        //    if (nextParenthesisIndex == token.Index + 1)
-        //        argumentsCount = 0;
-        //    else
-        //    {
-        //        argumentsCount = 1 + 
-        //            tokens.Where(t=>
-        //            t.Index<nextParenthesisIndex && t.Index>token.Index && t.TokenType==Token.ArgumentSeparatorTokenType)?.Count() ??0;
-        //    }
-
-        //    if (!functionArgumentsCount.ContainsKey(token))
-        //    {
-        //        functionArgumentsCount.Add(token, argumentsCount);
-
-        //        if (argumentsCount > 2)
-        //            _logger.LogWarning("There are {count} > 2 arguments used by the function {function}!", argumentsCount,token.Text);
-        //    }
-        //    else //there is already a function defined, check that the arguments count is the same or throw an exception!
-        //    {
-        //        if (functionArgumentsCount[token] != argumentsCount)
-        //        {
-        //            _logger.LogError("The number of arguments for the function {function} at position {position} should be {count}.",
-        //                token.Text.TrimEnd('('), token.Index, functionArgumentsCount[token]);
-        //            throw new InvalidOperationException($"The number of arguments for the function {token.Text.TrimEnd('(')} at position {token.Index} should be {functionArgumentsCount[token]}.");
-        //        }
-        //    }
-        //}
+      
 
         return tokens;
     }
@@ -177,10 +143,13 @@ public class Tokenizer : ITokenizer
                     postfixTokens.Any() ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
 
         var operators = _options.TokenPatterns.OperatorDictionary;
+        var unary = _options.TokenPatterns.UnaryOperatorDictionary;
 
         _logger.LogDebug("Retrieving postfix tokens...");
         foreach (var token in infixTokens)
         {
+            //if(token.Text == "asd") Debugger.Break();
+
             if (token.TokenType == Token.LiteralTokenType || token.TokenType == Token.IdentifierTokenType)
             {
                 postfixTokens.Add(token);
@@ -215,13 +184,20 @@ public class Tokenizer : ITokenizer
                 } while (true);
             }
 
-
-            else //operator
+            else  //operator or unary operator
             {
-                var currentOperator = operators[token.Text]!;
+
+                Operator? currentOperator = null;
+                UnaryOperator? currentUnaryOperator = null;
+
+                if (token.TokenType == Token.OperatorTokenType)
+                    currentOperator = operators[token.Text]!;
+                else if (token.TokenType == Token.OperatorUnaryTokenType)
+                    currentUnaryOperator = unary[token.Text!];
+
                 while (operatorStack.Any())
                 {
-                    var currentHead = operatorStack.Peek();
+                    Token currentHead = operatorStack.Peek();
                     if (currentHead.TokenType == Token.OpenParenthesisTokenType ||
                         currentHead.TokenType == Token.FunctionOpenParenthesisTokenType)
                     {
@@ -232,26 +208,36 @@ public class Tokenizer : ITokenizer
                         goto NextToken;
                     }
 
-                    var currentHeadOperator = operators[currentHead.Text]!;
+                    Operator? currentHeadOperator = null;
+                    UnaryOperator? currentHeadUnaryOperator = null;
+                    if (currentHead.TokenType == Token.OperatorTokenType)
+                        currentHeadOperator = operators[currentHead.Text]!;
+                    else if (currentHead.TokenType == Token.OperatorUnaryTokenType)
+                        currentHeadUnaryOperator = unary[currentHead.Text!];
+
+                    int? currentHeadPriority = currentHeadOperator?.Priority ?? currentHeadUnaryOperator?.Priority;
+
 
                     //for higher priority push to the stack!
-                    if (currentOperator.Priority > currentHeadOperator.Priority ||
-                       currentOperator.Priority == currentHeadOperator.Priority && !currentOperator.LeftToRight)
+                    if (currentOperator is not null
+                        && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
+                       ||
+                       currentUnaryOperator is not null 
+                       && currentUnaryOperator.Priority >= currentHeadPriority  )
                     {
                         operatorStack.Push(token);
                         _logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
                         LogState();
                         goto NextToken;
                     }
-                    else
-                    {
-                        var stackToken = operatorStack.Pop();
-                        postfixTokens.Add(stackToken);
 
-                        //remove op from stack and put to postfix  
-                        _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
-                        LogState();
-                    }
+                    var stackToken = operatorStack.Pop();
+                    postfixTokens.Add(stackToken);
+
+                    //remove op from stack and put to postfix  
+                    _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
+                    LogState();
+
                 }
 
                 //if the stack is empty just push the operator
@@ -259,6 +245,8 @@ public class Tokenizer : ITokenizer
                 _logger.LogDebug("Push to stack (empty stack) -> {token}", token);
                 LogState();
             }
+
+
         NextToken:;
         }
 

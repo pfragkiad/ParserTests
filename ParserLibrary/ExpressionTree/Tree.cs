@@ -16,6 +16,13 @@ public class Tree<T>
 
     public int Count { get => NodeDictionary.Count; }
 
+    public void Print(int topMargin = 2, int leftMargin = 2, bool withSlashes = false)
+    {
+        if (withSlashes)
+            Root.PrintWithSlashes(topMargin: topMargin, leftMargin: leftMargin);
+        else Root.PrintWithDashes(topMargin: topMargin, leftMargin: leftMargin);
+    }
+
     public int CountLeafNodes
     {
         get => NodeDictionary.

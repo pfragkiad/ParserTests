@@ -24,4 +24,6 @@ public class TokenPatterns //NOT records here!
 
     public Dictionary<string, Operator> OperatorDictionary { get => Operators.ToDictionary(op => op.Name, op => op); }
 
+    public Dictionary<string, UnaryOperator> UnaryOperatorDictionary { get => Unary.ToDictionary(op => op.Name, op => op); }
+
 }
