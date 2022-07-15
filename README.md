@@ -55,10 +55,17 @@ private class SimpleFunctionParser : DefaultParser
         return functionNode.Text.ToLower() switch
         {
             "add3" => a[0] + 2 * a[1] + 3 * a[2],
+            //for all other functions use the base class stuff (DefaultParser)
             _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
         };
     }
 }
+```
+
+Let's use our first customized `Parser`:
+```C#
+var parser = App.GetCustomParser<SimpleFunctionParser>();
+double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0)
 ```
 
 ## _more examples to follow..._
