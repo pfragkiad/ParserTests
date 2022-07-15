@@ -19,7 +19,7 @@ Console.WriteLine(result);  //5
 double result2 = (double)App.Evaluate("-a + 500 * b + 2^3", new() { { "a", 5 }, { "b", 1 } });
 Console.WriteLine(result2); //503
 ```
-The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which later can be overriden in order to use a custom Parser.
+The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which can be later overriden in order to use a custom Parser.
 
 ```C#
 //The example below uses explicitly the DefaultParser.
