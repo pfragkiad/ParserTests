@@ -37,7 +37,7 @@ double result3 = (double)App.Evaluate("cosd(phi)^2+sind(phi)^2", new() { { "phi"
 Console.WriteLine(result3); //  1.0000000000000002
 ```
 
-###Adding new functions to the `DefaultParser`
+### Adding new functions to the `DefaultParser`
 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```:
 
