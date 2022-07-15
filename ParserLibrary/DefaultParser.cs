@@ -49,9 +49,6 @@ public class DefaultParser : Parser
     }
 
 
-
-
-
     protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         //double left = Convert.ToDouble(nodeValueDictionary[operatorNode.Left as Node<Token>]);
@@ -82,16 +79,36 @@ public class DefaultParser : Parser
             case "abs": return Math.Abs(a[0]);
             case "acos": return Math.Acos(a[0]);
             case "acosd": return Math.Acos(a[0]) * TODEG;
-            case "sin": return Math.Sin(a[0]);
-            case "sind": return Math.Sin(a[0] * TORAD);
+            case "acosh": return Math.Acosh(a[0]);
+            case "asin": return Math.Asin(a[0]);
+            case "asind": return Math.Asin(a[0]) * TODEG;
+            case "asinh": return Math.Asinh(a[0]);
+            case "atan": return Math.Atan(a[0]);
+            case "atand": return Math.Atan(a[0]) * TODEG;
+            case "atan2": return Math.Atan2(a[0], a[1]); // y/x
+            case "atan2d": return Math.Atan2(a[0], a[1]) * TODEG; // y/x
+            case "atanh": return Math.Atan(a[0]);
             case "cos": return Math.Cos(a[0]);
             case "cosd": return Math.Cos(a[0] * TORAD);
+            case "cosh": return Math.Cosh(a[0]);
+            case "exp": return Math.Exp(a[0]);
+            case "log":
+            case "ln": return Math.Log(a[0]);
+            case "log10": return Math.Log10(a[0]);
+            case "log2": return Math.Log2(a[0]);
+            case "logn": return Math.Log(a[0]) / Math.Log(a[1]);
+            case "max": return Math.Max(a[0], a[1]);
+            case "min": return Math.Min(a[0], a[1]);
             case "pow": return Math.Pow(a[0], a[1]);
             case "round": return Math.Round(a[0], (int)a[1]);
+            case "sin": return Math.Sin(a[0]);
+            case "sind": return Math.Sin(a[0] * TORAD);
+            case "sinh": return Math.Sinh(a[0]);
             case "sqr":
             case "sqrt": return Math.Sqrt(a[0]);
             case "tan": return Math.Tan(a[0]);
             case "tand": return Math.Tan(a[0] * TORAD);
+            case "tanh": return Math.Tanh(a[0]);
         }
 
         return base.EvaluateFunction(functionNode, nodeValueDictionary);

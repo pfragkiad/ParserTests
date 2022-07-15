@@ -41,7 +41,7 @@ expr = "21--(231)";
 expr = "-2";
 expr = "p------2";
 expr = "a+tan(8+5) + sin(321+asd*2^2)";
-expr = "-!!sds%*++2*6";
+//expr = "-!!sds%*++2*6";
 
 //expr = "-5.0+4.0";
 var tokenizer = app.Services.GetTokenizer();
