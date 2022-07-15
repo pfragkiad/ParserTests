@@ -38,10 +38,7 @@ public class UnitTestParser
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
         int result = (int)parser.Evaluate(expr,
-            new Dictionary<string, object> {
-               { "a", 8 },
-              { "asd",10 } }
-            );
+            new() { { "a", 8 }, { "asd", 10 } });
 
         Assert.Equal<int>(860, result);
     }
@@ -58,8 +55,11 @@ public class UnitTestParser
 
         protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
         {
-            int left = (int)nodeValueDictionary[operatorNode.Left as Node<Token>];
-            int right = (int)nodeValueDictionary[operatorNode.Right as Node<Token>];
+            //int left = (int)nodeValueDictionary[operatorNode.Left as Node<Token>];
+            //int right = (int)nodeValueDictionary[operatorNode.Right as Node<Token>];
+
+            var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+            int left = (int)operands.LeftOperand, right = (int)operands.RightOperand;
             switch (operatorNode.Text)
             {
                 case "+": return left + right;
@@ -71,11 +71,12 @@ public class UnitTestParser
 
         protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
         {
-            int right = (int)nodeValueDictionary[functionNode.Right as Node<Token>];
+            //int right = (int)nodeValueDictionary[functionNode.Right as Node<Token>];
+            int arg = (int)functionNode.GetFunctionArgument(nodeValueDictionary);
             switch (functionNode.Text)
             {
-                case "tan": return 10 * right;
-                case "sin": return 2 * right;
+                case "tan": return 10 * arg;
+                case "sin": return 2 * arg;
                 default: throw new InvalidOperationException($"Unknown function ({functionNode.Text})!");
 
             }
@@ -162,21 +163,22 @@ public class UnitTestParser
     [InlineData("---5.0", -5.0)]
     [InlineData("(-5.0)", -5.0)]
     [InlineData("-5.0+4.0", -1.0)]
-    [InlineData("-add(2,4)", -6.0)]
-    [InlineData("-add(-2,-4)", 6.0)]
-    [InlineData("-add(-2,-4)*2+-abs(-2)", 10.0)]
+    [InlineData("-add(2,4)", -(2+2*4))]
+    [InlineData("-add(-2,-4)", -(-2-4*2))]
+    [InlineData("-add(-2,-4)*2+-abs(-2)", -(-2 - 4 * 2)*2-2)]
     [InlineData("-pow(2,-2)", -0.25)]
-    [InlineData("aDD3(-1,-2,-3)", -6.0)]
+    [InlineData("aDD3(-1,-2,-3)", -1-2*2-3*3)]
     [InlineData("-round(10.3513,1)", -10.4)]
     //% in action has higher priority than *, and ! has higher than - [to sum up -> the closest to the operand has the highest priority]
-    [InlineData("-!!a%*++2",(-2*2*5+2)*3+2)] //! doubles, % adds 2, * triples (all unary with same priority) 
+    [InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<CustomFunctionParser>();
         var parser = app.Services.GetParser();
         double result = (double)parser.Evaluate(s,
-            new Dictionary<string, object>{ { "a",5.0} });
+            new Dictionary<string, object> { { "a", 5.0 } });
         Assert.Equal(expected, result);
+
     }
 
     private class CustomFunctionParser : DefaultParser
@@ -188,9 +190,7 @@ public class UnitTestParser
 
         protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
         {
-            double operand = (double)nodeValueDictionary[
-                (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
-                operatorNode.Right : operatorNode.Left) as Node<Token>];
+            double operand = GetDoubleUnaryOperand(operatorNode, nodeValueDictionary);
 
             switch (operatorNode.Text)
             {
@@ -203,22 +203,24 @@ public class UnitTestParser
 
         protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
         {
+            double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+
             switch (functionNode.Text.ToLower())
             {
                 case "add":
                     {
                         //right node is the argument separator
-                        double a1 = (double)nodeValueDictionary[functionNode.Right.Left as Node<Token>];
-                        double a2 = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
-                        return a1 + a2;
+                        //double a1 = (double)nodeValueDictionary[functionNode.Right.Left as Node<Token>];
+                        //double a2 = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
+                        return a[0] + 2 * a[1];
                     }
                 case "add3":
                     {
                         //right node is the argument separator
-                        double a3 = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
-                        double a2 = (double)nodeValueDictionary[functionNode.Right.Left.Right as Node<Token>];
-                        double a1 = (double)nodeValueDictionary[functionNode.Right.Left.Left as Node<Token>];
-                        return a1 + a2 + a3;
+                        //double a1 = (double)nodeValueDictionary[functionNode.Right.Left.Left as Node<Token>];
+                        //double a2 = (double)nodeValueDictionary[functionNode.Right.Left.Right as Node<Token>];
+                        //double a3 = (double)nodeValueDictionary[functionNode.Right.Right as Node<Token>];
+                        return a[0] + 2 * a[1] + 3 * a[2];
                     }
                 default:
                     return base.EvaluateFunction(functionNode, nodeValueDictionary);

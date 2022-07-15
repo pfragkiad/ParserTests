@@ -11,6 +11,8 @@ public class Parser : IParser
         _logger = logger;
         _tokenizer = tokenizer;
         _options = options.Value;
+
+        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
     }
 
     public Tree<Token> GetExpressionTree(string s)

@@ -9,7 +9,12 @@ public class Tokenizer : ITokenizer
     {
         _logger = logger;
         _options = options.Value;
+
+        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
+
     }
+
+
 
     //The second property contains the number of arguments needed by each corresponding function.
     public List<Token> GetInOrderTokens(string expression)

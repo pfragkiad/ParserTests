@@ -7,6 +7,9 @@ namespace ParserLibrary;
 
 public static class App
 {
+    //TODO: AddTokenizer, AddParser, ConfigureTokenizerOptions capability show
+    //TODO: Serilog control via appsettings.json
+
     public static IHost GetParserApp<TParser>(string configFile = "appsettings.json") where TParser : Parser
     {
         IHost app = Host.CreateDefaultBuilder()
@@ -32,10 +35,12 @@ public static class App
         return app;
     }
 
+  
+
     #region Utility functions
 
-    public static IParser? GetDefaultParser() => 
-        GetParserApp<DefaultParser>().Services.GetParser();
+    public static IParser? GetDefaultParser(string configFile = "appsettings.json") => 
+        GetParserApp<DefaultParser>(configFile).Services.GetParser();
 
     public static double Evaluate(string s, Dictionary<string, object>? variables = null) =>
         (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);

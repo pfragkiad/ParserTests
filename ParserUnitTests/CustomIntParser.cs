@@ -16,11 +16,12 @@ public class CustomIntParser : Parser
         {
             case "sin":
                 {
-                    var separatorNode = functionNode.Right;
-                    //get 2 operands first as integer, second as double
-                    int v1 = (int)nodeValueDictionary[(Node<Token>)separatorNode.Left];
-                    double v2 = (double)nodeValueDictionary[(Node<Token>)separatorNode.Right];
-                    return v1 * v2;
+                    //var separatorNode = functionNode.Right;
+                    ////get 2 operands first as integer, second as double
+                    //int v1 = (int)nodeValueDictionary[(Node<Token>)separatorNode.Left];
+                    //double v2 = (double)nodeValueDictionary[(Node<Token>)separatorNode.Right];
+                    var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
+                    return (int)a[0] * (double)a[1];
                 }
             default: return null;
         }
@@ -41,14 +42,15 @@ public class CustomIntParser : Parser
         {
             case "+":
                 {
-                    object v1 = nodeValueDictionary[(Node<Token>)operatorNode.Left];
-                    object v2 = nodeValueDictionary[(Node<Token>)operatorNode.Right];
+                    //object v1 = nodeValueDictionary[(Node<Token>)operatorNode.Left];
+                    //object v2 = nodeValueDictionary[(Node<Token>)operatorNode.Right];
+                    var v = operatorNode.GetBinaryArguments(nodeValueDictionary);
                     
-                    if (v1 is int && v2 is int) return (int)v1 + (int)v2;
-                    if (v1 is double && v2 is double) return (double)v1 + (double)v2;
-                    return null;
+                    if (v.LeftOperand is int && v.RightOperand is int) return (int)v.LeftOperand + (int)v.RightOperand;
+                    if (v.LeftOperand is double && v.RightOperand is double) return (double)v.LeftOperand + (double)v.RightOperand;
+                    break;
                 }
-            default: return null;
         }
+        return null;
     }
 }
