@@ -12,15 +12,18 @@ There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them
 ## Examples
 ```C#
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
-string s = "-5.0+2*a";
-double result = (double)App.Evaluate(s, new() { { "a", 5.0 } });
+double result = (double)App.Evaluate( "-5.0+2*a", new() { { "a", 5.0 } });
+Console.WriteLine(result);  //5
+
+//2 variables example (spaces are obviously ignored)
+double result2 = (double)App.Evaluate("-a + 500 * b + 2^3", new() { { "a", 5 }, { "b", 1 } });
+Console.WriteLine(result2); //503
 ```
-The above is the same with the example below: the second way uses explicitly the ```DefaultParser```, which later can be overriden in order to use a custom Parser.
+The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which later can be overriden in order to use a custom Parser.
 
 ```C#
 //The example below uses explicitly the DefaultParser.
-string s= "-5.0+2*a";
 var app = App.GetParserApp<DefaultParser>();
 var parser = app.Services.GetParser();
-double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } });
+double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
 ```
