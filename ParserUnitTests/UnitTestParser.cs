@@ -228,4 +228,32 @@ public class UnitTestParser
 
         }
     }
+
+    [Fact]
+    public void TestSimpleFunctionParser()
+    {
+        var parser = App.GetParserApp<SimpleFunctionParser>();
+    }
+
+
+    private class SimpleFunctionParser : DefaultParser
+    {
+        public SimpleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+        {
+        }
+
+        protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+        {
+            double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+
+            return functionNode.Text.ToLower() switch
+            {
+                "add3" => a[0] + 2 * a[1] + 3 * a[2],
+                //for all other functions use the base class stuff (DefaultParser)
+                _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+            };
+        }
+    }
+
+
 }

@@ -39,6 +39,10 @@ public static class App
 
     #region Utility functions
 
+    public static IParser GetCustomParser<TParser>(string configFile = "appsettings.json") where TParser : Parser =>
+        GetParserApp<TParser>(configFile).Services.GetParser();
+
+
     public static IParser? GetDefaultParser(string configFile = "appsettings.json") => 
         GetParserApp<DefaultParser>(configFile).Services.GetParser();
 

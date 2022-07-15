@@ -24,5 +24,7 @@ using ParserLibrary;
 //double result3 = (double)App.Evaluate("cosd(phi)^2+sind(phi)^2", new() { { "phi", 45 } });
 //Console.WriteLine(result3);
 
-var tree = App.GetDefaultParser().GetExpressionTree("f(a1,a2,a3,a4)");
-tree.Print();
+//var tree = App.GetDefaultParser().GetExpressionTree("f(a1,a2,a3,a4)");
+//tree.Print();
+
+
