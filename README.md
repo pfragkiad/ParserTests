@@ -52,13 +52,11 @@ private class SimpleFunctionParser : DefaultParser
     {
         double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
 
-        switch (functionNode.Text.ToLower())
+        return functionNode.Text.ToLower() switch
         {
-            case "add3":
-                    return a[0] + 2 * a[1] + 3 * a[2];
-            default:
-                return base.EvaluateFunction(functionNode, nodeValueDictionary);
-        }
+            "add3" => a[0] + 2 * a[1] + 3 * a[2],
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+        };
     }
 }
 ```
