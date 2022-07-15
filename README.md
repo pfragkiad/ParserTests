@@ -39,7 +39,7 @@ Console.WriteLine(result3); //  1.0000000000000002
 
 ### Adding new functions to the `DefaultParser`
 
-That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```:
+That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
 ```C#
 private class SimpleFunctionParser : DefaultParser
