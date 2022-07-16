@@ -94,7 +94,48 @@ public class Item
 }
 ```
 
-A custom parser that uses custom types should derive from the `Parser` class. Because the `Parser` class does not assume any type in advance, we should override the ``EvaluateLiteral`` function which is used to parse the integer numbers in the string.
+A custom parser that uses custom types should derive from the ```Parser``` class. Because the ```Parser``` class does not assume any type in advance, we should override the ```EvaluateLiteral``` function which is used to parse the integer numbers in the string, In the following example we define the '+' operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so is easier to write its implementation:
+
+```cs
+public class CustomTypeParser : Parser
+{
+    public CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    { }
+
+
+    //we assume that literals are integer numbers only
+    protected override object EvaluateLiteral(string s) => int.Parse(s);
+
+    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+        //we assume the + operator
+        if (operatorNode.Text == "+")
+        {
+            //we manage all combinations of Item/Item, Item/int, int/Item combinations here
+            if (LeftOperand is Item && RightOperand is Item)
+                return (Item)LeftOperand + (Item)RightOperand;
+
+            return LeftOperand is Item ?  (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+        }
+
+        return base.EvaluateOperator(operatorNode, nodeValueDictionary);
+    }
+
+    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        var a = functionNode.GetFunctionArguments(nodeValueDictionary);
+
+        return functionNode.Text switch
+        {
+            "add" => (Item)a[0] + (int)a[1],
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+        };
+    }
+
+}
+```
 
 ## _more examples to follow..._
 
