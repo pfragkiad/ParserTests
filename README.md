@@ -156,40 +156,38 @@ Console.WriteLine(result); // foo bar 12
 
 The `DefaultParser` class for the moment accepts the following ready to use functions:
 
--abs(x): Absolute value
--acos(x): Inverse cosine (in radians)
--acosd(x): Inverse cosine (in degrees)
--acosh(x): Inverse hyperbolic cosine
--asin(x): Inverse sine (in radians)
--asind(x): Inverse sine (in degrees)
--asinh(x): Inverse hyperbolic sine
--atan(x): Inverse tangent (in radians)
--atand(x): Inverse tangent (in degrees)
--atan2(y,x): Inverse tangent (in radians)
--atan2d(y,x): Inverse tangent (in degrees)
--atanh(x): Inverse hyperbolic tangent
--cbrt(x): Cube root
--cos(x): Cosine (x in radians)
--cosd(x): Cosine (x in degrees)
--cosh(x): Hyperbolic cosine
--exp(x): Exponential function (e^x)
--log(x) / ln(x): Natural logarithm
--log10(x): Base 10 logarithm
--log2(x): Base 2 logarithm
--logn(x,n): Base n logarithm
--max(x,y): Maximum
--min(x,y): Minimum
--pow(x,y): Power function (x^y)
--round(x,y): Round to y decimal digits
--sin(x): Sine (x in radians)
--sind(x): Sine (x in degrees)
--sinh(x): Hyperbolic sine
--sqr(x) / sqrt(x): Square root
--tan(x): Tangent (x in radians)
--tand(x): Tangent (x in degrees)
--tanh(x): Hyperbolic tangent
-
-
+- abs(x): Absolute value
+- acos(x): Inverse cosine (in radians)
+- acosd(x): Inverse cosine (in degrees)
+- acosh(x): Inverse hyperbolic cosine
+- asin(x): Inverse sine (in radians)
+- asind(x): Inverse sine (in degrees)
+- asinh(x): Inverse hyperbolic sine
+- atan(x): Inverse tangent (in radians)
+- atand(x): Inverse tangent (in degrees)
+- atan2(y,x): Inverse tangent (in radians)
+- atan2d(y,x): Inverse tangent (in degrees)
+- atanh(x): Inverse hyperbolic tangent
+- cbrt(x): Cube root
+- cos(x): Cosine (x in radians)
+- cosd(x): Cosine (x in degrees)
+- cosh(x): Hyperbolic cosine
+- exp(x): Exponential function (e^x)
+- log(x) / ln(x): Natural logarithm
+- log10(x): Base 10 logarithm
+- log2(x): Base 2 logarithm
+- logn(x,n): Base n logarithm
+- max(x,y): Maximum
+- min(x,y): Minimum
+- pow(x,y): Power function (x^y)
+- round(x,y): Round to y decimal digits
+- sin(x): Sine (x in radians)
+- sind(x): Sine (x in degrees)
+- sinh(x): Hyperbolic sine
+- sqr(x) / sqrt(x): Square root
+- tan(x): Tangent (x in radians)
+- tand(x): Tangent (x in degrees)
+- tanh(x): Hyperbolic tangent  
 
 
 
