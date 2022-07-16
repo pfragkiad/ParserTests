@@ -1,12 +1,12 @@
-﻿namespace ParserUnitTests;
+﻿namespace ParserUnitTests.Parsers;
 
-public class CustomIntParser : Parser
+public class MixedIntDoubleParser : Parser
 {
-    public CustomIntParser(
+    public MixedIntDoubleParser(
         ILogger<Parser> logger, ITokenizer tokenizer,
         IOptions<TokenizerOptions> options) :
         base(logger, tokenizer, options)
-    {  }
+    { }
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
@@ -45,7 +45,7 @@ public class CustomIntParser : Parser
                     //object v1 = nodeValueDictionary[(Node<Token>)operatorNode.Left];
                     //object v2 = nodeValueDictionary[(Node<Token>)operatorNode.Right];
                     var v = operatorNode.GetBinaryArguments(nodeValueDictionary);
-                    
+
                     if (v.LeftOperand is int && v.RightOperand is int) return (int)v.LeftOperand + (int)v.RightOperand;
                     if (v.LeftOperand is double && v.RightOperand is double) return (double)v.LeftOperand + (double)v.RightOperand;
                     break;
