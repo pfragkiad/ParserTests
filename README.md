@@ -150,13 +150,14 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-### _more examples to follow..._
+### _more examples and documentation to follow **soon**..._
 
 ## The `DefaultParser` Parser
 
+All Parsers use parenthesis pairs (`(`, `)`) to override opertors priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
 The `DefaultParser` class for the moment accepts the followig operators:
-- `+` : plus sign and plus
-- `-` : negative sign and minus
+- `+` : plus sign (unary) and plus (binary)
+- `-` : negative sign (unary) and minus (binary)
 - `*` : multiplication
 - `/` : division
 - `^` : power
