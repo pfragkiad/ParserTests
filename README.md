@@ -8,10 +8,10 @@ The only way, was to build an Expression builder that could allow custom types. 
 The library is based on dependency injection concepts and can be highly customized. 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incremental adding functionality.
 
-
 ## Examples
 
 ### Using the DefaultParser
+
 ```cs
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
 double result = (double)App.Evaluate( "-5.0+2*a", new() { { "a", 5.0 } });
@@ -21,6 +21,7 @@ Console.WriteLine(result);  //5
 double result2 = (double)App.Evaluate("-a + 500 * b + 2^3", new() { { "a", 5 }, { "b", 1 } });
 Console.WriteLine(result2); //503
 ```
+
 The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which can be later overriden in order to use a custom Parser.
 
 ```cs
@@ -63,6 +64,7 @@ private class SimpleFunctionParser : DefaultParser
 ```
 
 Let's use our first customized `Parser`:
+
 ```cs
 var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0)
@@ -93,7 +95,6 @@ public class Item
 
 }
 ```
-
 A custom parser that uses custom types should derive from the ```Parser``` class. Because the ```Parser``` class does not assume any type in advance, we should override the ```EvaluateLiteral``` function which is used to parse the integer numbers in the string, In the following example we define the '+' operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so is easier to write its implementation:
 
 ```cs
