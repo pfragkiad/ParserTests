@@ -138,7 +138,7 @@ public class CustomTypeParser : Parser
 }
 ```
 
-That was the hard job now let's use the `CustomTypeParser`:
+Now we can use the `CustomTypeParser` for parsing our custom expression:
 
 ```cs
 var parser = App.GetCustomParser<CustomTypeParser>();
