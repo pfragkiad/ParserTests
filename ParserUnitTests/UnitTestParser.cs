@@ -1,4 +1,5 @@
 using ParserUnitTests.Parsers;
+using System.Diagnostics;
 
 namespace ParserUnitTests;
 
@@ -55,7 +56,6 @@ public class UnitTestParser
 
     }
 
-
     [Fact]
     public void TestSimpleFunctionParser()
     {
@@ -64,6 +64,19 @@ public class UnitTestParser
             new() { { "g", 3 } }); // will return 8 + 5 + 2 * 3 + 3 * 3.0
 
         Assert.Equal(8 + 5 + 2 * 3 + 3 * 3.0, result);
+    }
+
+    [Fact]
+    public void TestCustomTypeParser()
+    {
+        var parser = App.GetCustomParser<CustomTypeParser>();
+        Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+            new() {
+              {"a", new Item { Name="foo"}  },
+              {"b", new Item { Name="bar"}  }
+            });
+
+        Assert.Equal("foo bar 9", result.ToString());
     }
 
 
