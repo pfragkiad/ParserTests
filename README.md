@@ -67,7 +67,7 @@ Let's use our first customized `Parser`:
 
 ```cs
 var parser = App.GetCustomParser<SimpleFunctionParser>();
-double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0)
+double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
 
 ### Using custom types
@@ -136,6 +136,18 @@ public class CustomTypeParser : Parser
     }
 
 }
+```
+
+That was the hard job now let's use the `CustomTypeParser`:
+
+```cs
+var parser = App.GetCustomParser<CustomTypeParser>();
+Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+    new() {
+{"a", new Item { Name="foo"}  },
+{"b", new Item { Name="bar"}  }
+    });
+Console.WriteLine(result); // foo bar 9
 ```
 
 ## _more examples to follow..._
