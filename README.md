@@ -181,7 +181,7 @@ and the following functions:
 - `cosd(x)`: Cosine (x in degrees)
 - `cosh(x)`: Hyperbolic cosine
 - `exp(x)`: Exponential function (e^x)
-- `log(x)` / ln(x): Natural logarithm
+- `log(x)` / `ln(x)`: Natural logarithm
 - `log10(x)`: Base 10 logarithm
 - `log2(x)`: Base 2 logarithm
 - `logn(x,n)`: Base n logarithm
