@@ -68,6 +68,32 @@ var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0)
 ```
 
+### Using custom types
+
+Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
+
+```cs
+public class Item
+{
+    public string Name { get; set; }
+
+    public int Value { get; set; } = 0;
+
+    //we define a custom operator for the type to simplify the evaluateoperator example later
+    //this is not 100% needed, but it keeps the code in the CustomTypeParser simpler
+    public static Item operator +(int v1, Item v2) =>
+        new Item { Name = v2.Name , Value = v2.Value + v1 };
+    public static Item operator +(Item v2, int v1) =>
+        new Item { Name = v2.Name, Value = v2.Value + v1 };
+
+    public static Item operator +(Item v1, Item v2) =>
+        new Item { Name = $"{v1.Name} {v2.Name}", Value = v2.Value + v1.Value };
+
+    public override string ToString() => $"{Name} {Value}";
+
+}
+```
+
 ## _more examples to follow..._
 
 
