@@ -21,7 +21,7 @@ string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //string expr = "0.1*sin(a1,a2)+90";
 
 
-var app = App.GetParserApp<DefaultParser>();
+var app = App.GetParserApp<DefaultParser>("appsettings3.json");
 var parser = app.Services.GetParser();
 
 //var tree = parser.Parse(expr);
@@ -47,12 +47,12 @@ expr = "a+tan(8+5) + sin(321+asd*2^2)";
 var tokenizer = app.Services.GetTokenizer();
 //ar tokens = tokenizer.GetInOrderTokens(expr);
 var tree = parser.GetExpressionTree(expr);
-tree.Print();
 Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
 Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
 Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 //Console.WriteLine(parser.Evaluate(expr));
 
+tree.Print(withSlashes:true) ;
 
 
 //Console.WriteLine(App.Evaluate("5+sind(45*2)"));

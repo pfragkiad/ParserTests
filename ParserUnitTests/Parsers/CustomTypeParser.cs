@@ -14,6 +14,7 @@ public class Item
     public int Value { get; set; } = 0;
 
     //we define a custom operator for the type to simplify the evaluateoperator example later
+    //this is not 100% needed, but it keeps the code in the CustomTypeParser simpler
     public static Item operator +(int v1, Item v2) =>
         new Item { Name = v2.Name , Value = v2.Value + v1 };
     public static Item operator +(Item v2, int v1) =>

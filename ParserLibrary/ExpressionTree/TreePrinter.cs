@@ -15,7 +15,12 @@ public static class TreePrinter
 
     public static void PrintWithDashes(this NodeBase root, int topMargin = 2, int leftMargin = 2)
     {
-        if (root == null) return;
+        if (root == null) return ;
+
+        ////this is needed to redirect output to a string
+        //var sw = new StringWriter();
+        //Console.SetOut(sw);
+
         int rootTop = Console.CursorTop + topMargin;
         var last = new List<NodeInfo>();
         var next = root;
@@ -66,6 +71,14 @@ public static class TreePrinter
             }
         }
         Console.SetCursorPosition(0, rootTop + 2 * last.Count - 1);
+
+        //string result = sw.ToString();
+        //// Recover the standard output stream so that a
+        //// completion message can be displayed.
+        //var standardOutput = new StreamWriter(Console.OpenStandardOutput());
+        //standardOutput.AutoFlush = true;
+        //Console.SetOut(standardOutput);
+        //return result;
     }
 
     private static void Print(NodeInfo item, int top)
@@ -100,10 +113,13 @@ public static class TreePrinter
         Console.BackgroundColor = color;
     }
 
-
     public static void PrintWithSlashes(this NodeBase root, int spacing = 1, int topMargin = 2, int leftMargin = 2)
     {
         if (root == null) return;
+
+        //var sw = new StringWriter();
+        //Console.SetOut(sw);
+
         int rootTop = Console.CursorTop + topMargin;
         var last = new List<NodeInfo>();
         var next = root;
@@ -165,6 +181,14 @@ public static class TreePrinter
             }
         }
         Console.SetCursorPosition(0, rootTop + 2 * last.Count - 1);
+
+        //string result = sw.ToString();
+        //// Recover the standard output stream so that a
+        //// completion message can be displayed.
+        //var standardOutput = new StreamWriter(Console.OpenStandardOutput());
+        //standardOutput.AutoFlush = true;
+        //Console.SetOut(standardOutput);
+        //return result;
     }
 
     private static void Print2(string s, int top, int left, int right = -1)

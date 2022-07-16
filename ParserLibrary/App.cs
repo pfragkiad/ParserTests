@@ -28,8 +28,9 @@ public static class App
             })
            .UseSerilog((context, configuration) =>
            {
-               configuration.MinimumLevel.Debug();
-               configuration.WriteTo.Console();
+               configuration.ReadFrom.Configuration(context.Configuration);
+               //configuration.MinimumLevel.Debug();
+               //configuration.WriteTo.Console();
            })
            .Build();
         return app;

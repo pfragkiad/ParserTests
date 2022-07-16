@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -6,13 +6,18 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Company>Pavlos Fragkiadoulakis</Company>
-    <Description>Parser Library that can be customized for multiple data types, functions with multple arguments, postfix and prefix multiple operators etc.
-Documentation and examples are pending.</Description>
-    <Version>1.0.5</Version>
+    <Description>Parser Library that can be customized for multiple data types (double, vector, matrices, chords (!) or whatever you want). Functions can be defined with multple arguments, postfix and prefix multiple operators etc.
+Documentation and examples are being added currently. See README.</Description>
+    <Version>1.0.6</Version>
     <Authors>Pavlos Fragkiadoulakis</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>(c) 2022 Paulus Stuff</Copyright>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
+
+	<ItemGroup>
+		<None Include="LICENSE.txt" Pack="true" PackagePath=""/>
+	</ItemGroup>
 
   <ItemGroup>
     <None Remove="appsettings3.json" />

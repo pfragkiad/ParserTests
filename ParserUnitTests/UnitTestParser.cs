@@ -72,11 +72,11 @@ public class UnitTestParser
         var parser = App.GetCustomParser<CustomTypeParser>();
         Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
             new() {
-              {"a", new Item { Name="foo"}  },
-              {"b", new Item { Name="bar"}  }
+                {"a", new Item { Name="foo", Value = 3}  },
+                {"b", new Item { Name="bar"}  }
             });
 
-        Assert.Equal("foo bar 9", result.ToString());
+        Assert.Equal("foo bar 12", result.ToString());
     }
 
 
