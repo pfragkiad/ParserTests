@@ -94,6 +94,8 @@ public class Item
 }
 ```
 
+A custom parser that uses custom types should derive from the `Parser` class. Because the `Parser` class does not assume any type in advance, we should override the ``EvaluateLiteral`` function which is used to parse the integer numbers in the string.
+
 ## _more examples to follow..._
 
 
