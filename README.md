@@ -12,7 +12,7 @@ There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them
 ## Examples
 
 ### Using the DefaultParser
-```C#
+```cs
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
 double result = (double)App.Evaluate( "-5.0+2*a", new() { { "a", 5.0 } });
 Console.WriteLine(result);  //5
@@ -23,7 +23,7 @@ Console.WriteLine(result2); //503
 ```
 The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which can be later overriden in order to use a custom Parser.
 
-```C#
+```cs
 //The example below uses explicitly the DefaultParser.
 var app = App.GetParserApp<DefaultParser>();
 var parser = app.Services.GetParser();
@@ -32,7 +32,7 @@ double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
 
 Let's use some functions already defined in the `DefaultParser`
 
-```C#
+```cs
 double result3 = (double)App.Evaluate("cosd(phi)^2+sind(phi)^2", new() { { "phi", 45 } });
 Console.WriteLine(result3); //  1.0000000000000002
 ```
@@ -41,7 +41,7 @@ Console.WriteLine(result3); //  1.0000000000000002
 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
-```C#
+```cs
 private class SimpleFunctionParser : DefaultParser
 {
     public SimpleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
@@ -63,7 +63,7 @@ private class SimpleFunctionParser : DefaultParser
 ```
 
 Let's use our first customized `Parser`:
-```C#
+```cs
 var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0)
 ```
