@@ -154,7 +154,14 @@ Console.WriteLine(result); // foo bar 12
 
 ## The `DefaultParser` Parser
 
-The `DefaultParser` class for the moment accepts the following ready to use functions:
+The `DefaultParser` class for the moment accepts the followig operators:
+- + : plus sign and plus
+- - : negative sign and minus
+- * : multiplication
+- / : division
+- ^ : power
+
+and the following functions:
 
 - abs(x): Absolute value
 - acos(x): Inverse cosine (in radians)
