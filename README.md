@@ -45,7 +45,7 @@ double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
 Let's use some functions already defined in the `DefaultParser`
 
 ```cs
-double result3 = (double)App.Evaluate("cosd(phi)^2+sind(phi)^2", new() { { "phi", 45 } });
+double result3 = (double)App.Evaluate("cosd(ph)^2+sind(ph)^2", new() { { "ph", 45 } });
 Console.WriteLine(result3); //  1.0000000000000002
 ```
 
