@@ -300,7 +300,7 @@ var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
 Note, that in both cases above, the `appsettings.json` is also read (if found). The `parsersettings.json` file has higher priority, in case there are some conflicting options.
 
-# Parsers functionality
+# Parsers
 
 All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the operators priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
 
