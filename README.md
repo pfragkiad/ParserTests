@@ -327,9 +327,9 @@ protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<
 {
     var a = functionNode.GetFunctionArguments(nodeValueDictionary);
 
-    //ADDED: use the CaseSensitive property from the options in the configuration files
-    return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
     //return functionNode.Text switch
+    //MODIFIED: use the CaseSensitive property from the options in the configuration files
+    return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
     {
         "add" => (Item)a[0] + (int)a[1],
         _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
