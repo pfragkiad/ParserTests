@@ -12,7 +12,7 @@ The library is based on modern programming tools and can be highly customized. I
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
 - Support for custom functions with arbitrary number of arguments. Each argument may be a custom type.
 
-*The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃*
+*The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃.*
 
 The library is built with modern tools:
 - .NET 6.0
