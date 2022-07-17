@@ -183,7 +183,7 @@ public class CustomTypeParser : Parser
     {
         (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        //we assume the + operator
+        //we assume the + operator is supported 
         if (operatorNode.Text == "+")
         {
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
