@@ -21,7 +21,7 @@ There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them
 
 # Examples
 
-## Using the DefaultParser
+## `DefaultParser` examples
 
 ```cs
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
@@ -54,7 +54,7 @@ Console.WriteLine(result3); //  1.0000000000000002
 Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
 ```
 
-## Adding new functions to the `DefaultParser`
+## `DefaultParser` examples #2 (custom functions)
 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
@@ -85,6 +85,9 @@ Let's use our first customized `Parser`:
 var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
+
+## `ComplexParser` examples
+
 Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. In fact, the application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see an example (`Complex` belongs to the `System.Numerics` namespace):
 
 ```cs
@@ -97,12 +100,12 @@ Console.WriteLine(result); // (-0.5384615384615385, 0.6923076923076924)
 Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
 Console.WriteLine(result2); //same result
 
-//and something more "complex" (the complex number is returned in the form: (real, imaginary) 
+//and something more "complex": note that the complex number is returned as a string in the form (real, imaginary) 
 Console.WriteLine(cparser.Evaluate("cos((1+i)/(8+i))")); //(0.9961783779071353, -0.014892390041785901)
 Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.0149)
 ```
 
-## Using custom types
+## Custom Types examples
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
