@@ -236,7 +236,7 @@ public class Parser : IParser
         return Evaluate(postfixTokens, variables);
     }
 
-    public object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    public virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         _logger.LogDebug("Evaluating...");
 

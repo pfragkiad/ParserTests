@@ -16,13 +16,14 @@ using System.Diagnostics;
 //string expr  = "a+tan(bg)";
 //string expr = "a+tan(bg,ab)";
 //string expr = "a+tan(a1,a2,a3,a4)"; 
-string expr = "a+tan(8+5) + sin(321+asd*2^2)";
 //string expr = "a+sin(1)*tan(8+5,a+2^2*(34-h),98)";
 //string expr = "0.1*sin(a1,a2)+90";
 
 
-var app = App.GetParserApp<DefaultParser>("appsettings3.json");
+var app = App.GetParserApp<DefaultParser>("parsersettings.json");
 var parser = app.Services.GetParser();
+//or to immediately get the parser
+var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
 //var tree = parser.Parse(expr);
 //tree.Root.PrintWithDashes();
@@ -37,10 +38,10 @@ var parser = app.Services.GetParser();
 //expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
 //parser.Parse(expr).Root.PrintWithDashes(0,0);
 
-expr = "21--(231)";
+string expr = "21--(231)";
 expr = "-2";
 expr = "p------2";
-expr = "a+tan(8+5) + sin(321+asd*2^2)";
+expr = "a+tan(8+5) + sin(321+afsd*2^2)";
 //expr = "-!!sds%*++2*6";
 
 //expr = "-5.0+4.0";
@@ -52,7 +53,10 @@ Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderN
 Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 //Console.WriteLine(parser.Evaluate(expr));
 
-tree.Print(withSlashes:true) ;
+tree.Print(withSlashes:false) ;
+
+//TODO: SHOW EXAMPLE WITHOUT SERILOG (show examples using _loggger).
+//TODO: SHOW TREE
 
 
-//Console.WriteLine(App.Evaluate("5+sind(45*2)"));
+Console.WriteLine(App.Evaluate("5+cos(pi)+ln(e)"));

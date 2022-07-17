@@ -1,21 +1,21 @@
 ﻿namespace ParserLibrary.ExpressionTree;
 
 //Adapted code from: https://stackoverflow.com/questions/36311991/c-sharp-display-a-binary-search-tree-in-console
-public static class TreePrinter
+public static class NodeBasePrintExtensions
 {
     private class NodeInfo
     {
         public NodeBase Node;
         public string Text;
         public int StartPos;
-        public int Size { get { return Text.Length; } }
-        public int EndPos { get { return StartPos + Size; } set { StartPos = value - Size; } }
+        public int Size => Text.Length;
+        public int EndPos { get => StartPos + Size;  set { StartPos = value - Size; } }
         public NodeInfo Parent, Left, Right;
     }
 
     public static void PrintWithDashes(this NodeBase root, int topMargin = 2, int leftMargin = 2)
     {
-        if (root == null) return ;
+        if (root is null) return ;
 
         ////this is needed to redirect output to a string
         //var sw = new StringWriter();
@@ -106,16 +106,16 @@ public static class TreePrinter
         while (Console.CursorLeft < right) Console.Write(s);
     }
 
-    private static void SwapColors()
-    {
-        var color = Console.ForegroundColor;
-        Console.ForegroundColor = Console.BackgroundColor;
-        Console.BackgroundColor = color;
-    }
+    //private static void SwapColors()
+    //{
+    //    var color = Console.ForegroundColor;
+    //    Console.ForegroundColor = Console.BackgroundColor;
+    //    Console.BackgroundColor = color;
+    //}
 
     public static void PrintWithSlashes(this NodeBase root, int spacing = 1, int topMargin = 2, int leftMargin = 2)
     {
-        if (root == null) return;
+        if (root is null) return;
 
         //var sw = new StringWriter();
         //Console.SetOut(sw);

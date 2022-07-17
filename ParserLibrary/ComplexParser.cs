@@ -1,27 +1,11 @@
 ﻿namespace ParserLibrary;
 
-public class DefaultParser : Parser
+using System.Numerics;
+
+public class ComplexParser : Parser
 {
-    public DefaultParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
-
-    /// <summary>
-    /// Overriding the Evaluate function is great for adding custom "constant" literals.
-    /// </summary>
-    /// <param name="postfixTokens"></param>
-    /// <param name="variables"></param>
-    /// <returns></returns>
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
-    {
-        if (variables is null)
-            variables = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
-        if (!variables.ContainsKey("pi")) variables.Add("pi", Math.PI);
-        if (!variables.ContainsKey("e")) variables.Add("e", Math.E);
-        if (!variables.ContainsKey("phi")) variables.Add("phi", (Math.Sqrt(5.0) + 1.0) / 2.0);
-
-        return base.Evaluate(postfixTokens, variables);
-    }
 
     protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
@@ -61,7 +45,6 @@ public class DefaultParser : Parser
             case "-": return -operand;
             case "+": return operand;
             default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-
 
         }
     }

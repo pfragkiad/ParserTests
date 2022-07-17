@@ -36,7 +36,7 @@ public static class App
         return app;
     }
 
-  
+
 
     #region Utility functions
 
@@ -44,17 +44,19 @@ public static class App
         GetParserApp<TParser>(configFile).Services.GetParser();
 
 
-    public static IParser? GetDefaultParser(string configFile = "appsettings.json") => 
+    public static IParser? GetDefaultParser(string configFile = "appsettings.json") =>
         GetParserApp<DefaultParser>(configFile).Services.GetParser();
 
-    public static double Evaluate(string s, Dictionary<string, object>? variables = null) =>
-        (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);
+    public static double Evaluate(string s, Dictionary<string, object>? variables = null)
+    {
+        return (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);
+    }
 
     #endregion
 
 
     #region Tokenizer, Parser services extensions
-   
+
     public static IServiceCollection ConfigureTokenizerOptions(this IServiceCollection services, HostBuilderContext context) =>
         services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));
 
@@ -64,7 +66,7 @@ public static class App
 
     public static IServiceCollection AddParser<TParser>(this IServiceCollection services) where TParser : Parser
              => services.AddSingleton<IParser, TParser>();
-    
+
 
     public static IParser? GetParser(this IServiceProvider services) => services.GetService<IParser>();
 

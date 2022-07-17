@@ -11,8 +11,6 @@
     ]
   },
 
-
-
   "tokenizer": {
     "version": "1.0",
     "caseSensitive": false,

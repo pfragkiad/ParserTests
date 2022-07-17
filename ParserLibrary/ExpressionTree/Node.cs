@@ -20,7 +20,7 @@ public class Node<T> : NodeBase
         }
     }
 
-    public object GetUnaryArgument<T>(bool isPrefix, Dictionary<Node<T>, object> nodeValueDictionary)
+    public object GetUnaryArgument(bool isPrefix, Dictionary<Node<T>, object> nodeValueDictionary)
     {
         return nodeValueDictionary[
             (isPrefix ? Right : Left) as Node<T>];
