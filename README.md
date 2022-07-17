@@ -149,7 +149,7 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     });
 Console.WriteLine(result); // foo bar 12
 ```
-### _more examples and documentation to follow **soon**..._
+### _more examples to follow **soon**..._
 
 ## The `appsettings.json` configuration file
 
@@ -260,6 +260,8 @@ The `appsettings.json` file should exist in the same folder with the executable,
 ```
 
 
+
+
 ## The `DefaultParser` Parser
 
 All Parsers use parenthesis pairs (`(`, `)`) to override opertors priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
@@ -304,6 +306,8 @@ and the following functions:
 - `tan(x)`: Tangent (x in radians)
 - `tand(x)`: Tangent (x in degrees)
 - `tanh(x)`: Hyperbolic tangent 
+
+### _more documentation to follow **soon**..._
 
 
 
