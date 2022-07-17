@@ -11,8 +11,12 @@ public class Vector3Parser : Parser
     {
         if (variables is null) variables = new();
 
-        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
-        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
+        if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
+        if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
+
+        if (!variables.ContainsKey("ux")) variables.Add("ux", Vector3.UnitX);
+        if (!variables.ContainsKey("uy")) variables.Add("uy", Vector3.UnitY);
+        if (!variables.ContainsKey("uz")) variables.Add("uz", Vector3.UnitZ);
 
         return base.Evaluate(postfixTokens, variables);
     }
@@ -26,33 +30,35 @@ public class Vector3Parser : Parser
     public static Vector3 DoubleToVector3(object arg)
         => new Vector3(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
 
+
+    public static bool IsNumeric(object arg) =>
+           arg is double || arg is int || arg is float;
+
+    public static Vector3 GetVector3(object arg) =>
+            IsNumeric(arg) ? DoubleToVector3(arg) : (Vector3)arg;
+
     public Vector3 GetVector3UnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         var arg = operatorNode.GetUnaryArgument(
              _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
              nodeValueDictionary);
 
-        if (arg is double || arg is int || arg is float) return DoubleToVector3(arg);
-        else return (Vector3)arg;
+        return GetVector3(arg);
     }
 
     public (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        return (Left: operands.LeftOperand is double || operands.LeftOperand is int ?
-            DoubleToVector3(operands.LeftOperand) : (Vector3)operands.LeftOperand,
-                 Right: operands.RightOperand is double || operands.RightOperand is int ?
-             DoubleToVector3(operands.RightOperand) : (Vector3)operands.RightOperand);
+        return (Left: GetVector3(operands.LeftOperand),
+                 Right: GetVector3(operands.RightOperand));
     }
 
     public Vector3[] GetVector3FunctionArguments(int count, Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(count, nodeValueDictionary).Select(arg =>
-     {
-         if (arg is double || arg is int || arg is float) return DoubleToVector3(arg);
-         else return (Vector3)arg;
-     }).ToArray();
+        return functionNode
+            .GetFunctionArguments(count, nodeValueDictionary)
+            .Select(arg => GetVector3(arg)).ToArray();
     }
 
     #endregion
@@ -82,6 +88,7 @@ public class Vector3Parser : Parser
             "*" => left * right,
             "/" => left / right,
             "^" => Vector3.Cross(left, right),
+            "@" => Vector3.Dot(left, right),
             _ => base.EvaluateOperator(operatorNode, nodeValueDictionary)
         };
     }
@@ -110,6 +117,8 @@ public class Vector3Parser : Parser
             case "dist": return Vector3.Distance(a[0], a[1]);
             case "dist2": return Vector3.DistanceSquared(a[0], a[1]);
             case "lerp": return Vector3.Lerp(a[0], a[1], a[2].X);
+            case "length": return a[0].Length();
+            case "length2": return a[0].LengthSquared();
             case "norm": return Vector3.Normalize(a[0]);
             case "sqr":
             case "sqrt": return Vector3.SquareRoot(a[0]);

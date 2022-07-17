@@ -31,10 +31,38 @@ using System.Numerics;
 //tree.Print();
 
 
-Complex c1 = new Complex(1,1);
+Complex c1 = new Complex(1, 1);
 Console.WriteLine(Complex.Cos(c1));
 
 var cparser = App.GetCustomParser<ComplexParser>();
 Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)"));
+
+
+Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
+
+
+var vparser = App.GetCustomParser<Vector3Parser>();
+
+Vector3 v1 = new Vector3(1, 4, 2),
+    v2 = new Vector3(2, -2, 0);
+
+Console.WriteLine(vparser.Evaluate("!(v1+3*v2)", //! means normalize vector
+   new() { { "v1", v1 }, { "v2", v2 } })); //<0,92717266. -0,26490647. 0,26490647>
+
+Console.WriteLine(vparser.Evaluate("10 + 3 * v1^v2", // ^ means cross product
+   new() { { "v1", v1 }, { "v2", v2 } })); //<22. 22. -20>
+
+
+Console.WriteLine(vparser.Evaluate("v1@v2", // @ means dot product
+   new() { { "v1", v1 }, { "v2", v2 } })); //-6
+
+Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combination of vectors)
+   new() { { "v1", v1 }, { "v2", v2 } })); //<1,5. 1. 1>
+
+Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
+
+
+
+
 
 
