@@ -12,6 +12,8 @@ The library is based on modern programming tools and can be highly customized. I
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
 - Support for custom functions with arbitrary number of arguments. Each argument may be a custom type.
 
+*The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃*
+
 The library is built with modern tools:
 - .NET 6.0
 - Use of .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more). All derived Parsers are typically singletons.
