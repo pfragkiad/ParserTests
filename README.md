@@ -6,7 +6,10 @@ I wanted to write my "custom terminal" that used interactive commands with expre
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start.
 
 The library is based on modern programming tools and can be highly customized. Its basic features are:
-- Default support for double arithmetic (via `DefaultParser`), complex arithmetic (via `ComplexParser`).
+- Default support for:
+  - Double arithmetic via the `DefaultParser`
+  - Complex arithmetic via the `ComplexParser`
+  - Vector arithmetic via `Vector3Parser`
 - Logger customization (typically via the `appsettings.json` ).
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
@@ -112,7 +115,25 @@ Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.
 
 Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
+## `Vector3Parser` examples
 
+`Vector3Parser` is the correspondent parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
+
+```cs
+var vparser = App.GetCustomParser<Vector3Parser>();
+
+Console.WriteLine(vparser.Evaluate("!(v1+3*v2)", //! means normalize vector
+   new() {
+       { "v1", new Vector3(1, 4, 2) },
+       { "v2", new Vector3(2, -2,0) }
+   })); //<0,92717266. -0,26490647. 0,26490647>
+
+Console.WriteLine(vparser.Evaluate("10 + 3 * v1^v2", // ^ means cross product
+   new() {
+       { "v1", new Vector3(1, 4, 2) },
+       { "v2", new Vector3(2, -2,0) }
+   })); //<22. 22. -20>
+```
 ## Custom Types examples
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
@@ -224,7 +245,7 @@ Operators with higher `priority` have higher precedence for the calculations. Th
     ]
   },
 
-  "tokenizer": {
+  "tokenizer":  {
     "version": "1.0",
     "caseSensitive": false,
     "tokenPatterns": {
@@ -286,6 +307,10 @@ Operators with higher `priority` have higher precedence for the calculations. Th
           "name": "^",
           "priority": 4,
           "lefttoright": false
+        },
+        {
+          "name": "@",
+          "priority": 4
         }
       ]
     }
@@ -392,11 +417,11 @@ All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the 
 ## `DefaultParser`
 
 The `DefaultParser` class for the moment accepts the followig operators:
-- `+` : plus sign (unary) and plus (binary)
-- `-` : negative sign (unary) and minus (binary)
-- `*` : multiplication
-- `/` : division
-- `^` : power
+- `+`: plus sign (unary) and plus (binary)
+- `-`: negative sign (unary) and minus (binary)
+- `*`: multiplication
+- `/`: division
+- `^`: power
 
 and the following functions:
 
@@ -441,11 +466,11 @@ The following constants are also defined _unless_ the same names are overriden b
 ## `ComplexParser`
 
 The `ComplexParser` class for the moment accepts the followig operators:
-- `+` : plus sign (unary) and plus (binary)
-- `-` : negative sign (unary) and minus (binary)
-- `*` : multiplication
-- `/` : division
-- `^` : power
+- `+`: plus sign (unary) and plus (binary)
+- `-`: negative sign (unary) and minus (binary)
+- `*`: multiplication
+- `/`: division
+- `^`: power
 
 and the following functions:
 
@@ -475,9 +500,41 @@ and the following functions:
 - `tanh(z)`: Hyperbolic tangent 
 
 The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
-- `i` , `j` : the imaginary unit (see [imaginary unit](https://en.wikipedia.org/wiki/Imaginary_unit))
-- `pi` : the number π (see [π](https://en.wikipedia.org/wiki/Pi))
-- `e` : the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
+- `i` , `j`: the imaginary unit (see [imaginary unit](https://en.wikipedia.org/wiki/Imaginary_unit))
+- `pi`: the number π (see [π](https://en.wikipedia.org/wiki/Pi))
+- `e`: the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
+
+## `VectorParser`
+
+The `Vector3Parser` class for the moment accepts the followig operators:
+- `+`: plus sign (unary) and plus (binary)
+- `-`: negative sign (unary) and minus (binary)
+- `*`: multiplication (element-wise)
+- `/`: division (element-wise)
+- `^`: cross product (e.g. v1 ^ v2)
+- `@`: dot vector (e.g. v1 @ v2)
+- `!`: normalize vector (e.g. !v1)
+
+and the following functions:
+
+- `abs(v)`: Absolute value
+- `cross(v1,v2)`: Cross product (same result with `^`)
+- `dot(v1,v2)`: Dot product (same result with `@`)
+- `dist(v1,v2)`: Distance
+- `dist2(v1,v2)`: Distance squared
+- `lerp(v1,v2,f)`: Linear combination of v1, v2
+- `length(v)`: Vector length
+- `length2(v)`: Vector length squared
+- `norm(v)`: Normalize (same result with `!`)
+- `sqr(v)` / `sqrt(v)`: Square root
+- `round(v,f)`: Round to f decimal digits
+
+The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
+- `pi`: the number π (see [π](https://en.wikipedia.org/wiki/Pi))
+- `e`: the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
+- `ux`: the unit vector X
+- `uy`: the unit vector Y
+- `uz`: the unit vector Z 
 
 ### _more documentation to follow **soon**..._
 
