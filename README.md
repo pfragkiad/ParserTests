@@ -369,14 +369,14 @@ and the following functions:
 - `cos(x)`: Cosine (x in radians)
 - `cosd(x)`: Cosine (x in degrees)
 - `cosh(x)`: Hyperbolic cosine
-- `exp(x)`: Exponential function (e<sup>x</sup>)
+- `exp(x)`: Exponential function (e^x)
 - `log(x)` / `ln(x)`: Natural logarithm
 - `log10(x)`: Base 10 logarithm
 - `log2(x)`: Base 2 logarithm
 - `logn(x,n)`: Base n logarithm
 - `max(x,y)`: Maximum
 - `min(x,y)`: Minimum
-- `pow(x,y)`: Power function (x<sup>y</sup>)
+- `pow(x,y)`: Power function (x^y)
 - `round(x,y)`: Round to y decimal digits
 - `sin(x)`: Sine (x in radians)
 - `sind(x)`: Sine (x in degrees)
