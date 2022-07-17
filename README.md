@@ -149,8 +149,100 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     });
 Console.WriteLine(result); // foo bar 12
 ```
-
 ### _more examples and documentation to follow **soon**..._
+
+## The `appsettings.json` configuration file
+
+The `appsettings.json` configuration file is crucial, when the user wants to have precise control over the tokenizer and the logger as well.
+The library is configured to use Serilog for debugging and informational purposes. The Serilog section ([Serilog](https://github.com/serilog/serilog-settings-configuration) for more) typically can be configured to output to the Console and/or to an external file. In order to show less messages in the case below, we can use `"Information"` instead of `"Debug"` for the `Console` output. The logger can be accessed via the `_logger` field in every `Parser` subclass, so we can output debug/informational/critical messages to the screen/to a file in a controlled manner. The `_logger` field is of type `ILogger`, so Serilog is not the only type of logger that can be used (although it is recommended).
+The tokenizer options include the following properties:
+ - `caseSensitive` : if false, then the tokenizer/parser should be case insensitive
+ - `tokenPatterns` : this includes the regular expression patterns for the identifiers (used to identify variable and function names as tokens) and the literals (used to identify all literal -typically numeric- values).
+
+
+```json
+{
+  "Serilog": {
+    "MinimumLevel": "Debug",
+    "WriteTo": [
+      {
+        "Name": "Console",
+        "Args": {
+          "restrictedToMinimumLevel": "Debug"
+        }
+      }
+    ]
+  },
+
+  "tokenizer": {
+    "version": "1.0",
+    "caseSensitive": false,
+    "tokenPatterns": {
+      "identifier": "[A-Za-z_]\\w*",
+      "literal": "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
+      "openParenthesis": "(",
+      "closeParenthesis": ")",
+      "argumentSeparator": ",",
+
+      "unary": [
+        {
+          "name": "-",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "+",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "!",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "%",
+          "priority": 3,
+          "prefix": false
+        },
+        {
+          "name": "*",
+          "priority": 3,
+          "prefix": false
+        }
+      ],
+      "operators": [
+        {
+          "name": ",",
+          "priority": 0
+        },
+        {
+          "name": "+",
+          "priority": 1
+        },
+        {
+          "name": "-",
+          "priority": 1
+        },
+        {
+          "name": "*",
+          "priority": 2
+        },
+        {
+          "name": "/",
+          "priority": 2
+        },
+        {
+          "name": "^",
+          "priority": 4,
+          "lefttoright": false
+        }
+      ]
+    }
+  }
+}
+
+```
 
 ## The `DefaultParser` Parser
 
