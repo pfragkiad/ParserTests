@@ -1,12 +1,17 @@
 # ParserLibrary
 _No Other Expression Parser, Ever_
 
-### How it began
+### About / How it began
 I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chord**, or even **vectors* and **matrices** and some other to represent numbers.
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start. Let's speed up with the some examples.
 
 The library is based on modern dependency injection concepts and can be highly customized. 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incremental adding functionality.
+
+Built with modern tools:
+- .NET 6.0
+- Built with .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more)
+- Support for custom loggers (Serilog is implemented by default)
 
 ## Examples
 
