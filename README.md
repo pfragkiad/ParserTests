@@ -109,6 +109,8 @@ Console.WriteLine(result2); //same result
 //and something more "complex", using nested functions: note that the complex number is returned as a string in the form (real, imaginary) 
 Console.WriteLine(cparser.Evaluate("cos((1+i)/(8+i))")); //(0.9961783779071353, -0.014892390041785901)
 Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.0149)
+
+Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
 
 ## Custom Types examples
