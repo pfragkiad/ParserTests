@@ -59,4 +59,4 @@ tree.Print(withSlashes:false) ;
 //TODO: SHOW TREE
 
 
-Console.WriteLine(App.Evaluate("5+cos(pi)+ln(e)"));
+Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
