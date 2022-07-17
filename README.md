@@ -10,11 +10,11 @@ The library is based on modern programming tools and can be highly customized. I
 - Logger customization (typically via the `appsettings.json` ).
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
-- Support for custom function with an arbitrary number of arguments. Each one of these may be a custom type.
+- Support for custom functions with arbitrary number of arguments. Each one of these may be a custom type.
 
 Built with modern tools:
 - .NET 6.0
-- Use of .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more)
+- Use of .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more). All derived Parsers are typically singletons.
 - Support for custom loggers (Serilog is implemented by default)
 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incrementally added functionality.
