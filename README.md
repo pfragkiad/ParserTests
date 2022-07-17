@@ -104,7 +104,7 @@ Console.WriteLine(result); // (-0.5384615384615385, 0.6923076923076924)
 Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
 Console.WriteLine(result2); //same result
 
-//and something more "complex": note that the complex number is returned as a string in the form (real, imaginary) 
+//and something more "complex", using nested functions: note that the complex number is returned as a string in the form (real, imaginary) 
 Console.WriteLine(cparser.Evaluate("cos((1+i)/(8+i))")); //(0.9961783779071353, -0.014892390041785901)
 Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.0149)
 ```
