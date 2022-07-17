@@ -3,7 +3,7 @@ _No Other Expression Parser, Ever_
 
 ### About / How it began
 I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chords**, or even **vectors** and **matrices** and some other to represent numbers.
-The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start. Let's speed up with the some examples.
+The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start.
 
 The library is based on modern programming tools and can be highly customized. Its basic features:
 - Default support for double arithmetic (via `DefaultParser`), complex arithmetic (via `ComplexParser`).
