@@ -126,7 +126,7 @@ Vector3 v1 = new Vector3(1, 4, 2),
     v2 = new Vector3(2, -2, 0);
 
 Console.WriteLine(vparser.Evaluate("!(v1+3*v2)", //! means normalize vector
-   new() { { "v1", v1 }, { "v2", v2 } })); //<0,92717266. -0,26490647. 0,26490647>
+   new() { { "v1", v1 }, { "v2", v2 } })); //<0.92717266. -0.26490647. 0.26490647>
 
 Console.WriteLine(vparser.Evaluate("10 + 3 * v1^v2", // ^ means cross product
    new() { { "v1", v1 }, { "v2", v2 } })); //<22. 22. -20>
@@ -136,7 +136,7 @@ Console.WriteLine(vparser.Evaluate("v1@v2", // @ means dot product
    new() { { "v1", v1 }, { "v2", v2 } })); //-6
 
 Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combination of vectors)
-   new() { { "v1", v1 }, { "v2", v2 } })); //<1,5. 1. 1>
+   new() { { "v1", v1 }, { "v2", v2 } })); //<1.5, 1. 1>
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
