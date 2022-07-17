@@ -67,7 +67,7 @@ private class SimpleFunctionParser : DefaultParser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(count: 3, functionNode, nodeValueDictionary);
 
         return functionNode.Text.ToLower() switch
         {
@@ -96,6 +96,10 @@ Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
 Console.WriteLine(result); // (-0.5384615384615385, 0.6923076923076924)
 Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
 Console.WriteLine(result2); //same result
+
+//and something more "complex" (the complex number is returned in the form: (real, imaginary) 
+Console.WriteLine(cparser.Evaluate("cos((1+i)/(8+i))")); //(0.9961783779071353, -0.014892390041785901)
+Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.0149)
 ```
 
 ## Using custom types
@@ -154,7 +158,7 @@ public class CustomTypeParser : Parser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var a = functionNode.GetFunctionArguments(nodeValueDictionary);
+        var a = functionNode.GetFunctionArguments(count: 2, nodeValueDictionary);
 
         return functionNode.Text switch
         {
@@ -325,7 +329,7 @@ protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<
 
 protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
 {
-    var a = functionNode.GetFunctionArguments(nodeValueDictionary);
+    var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
 
     //return functionNode.Text switch
     //MODIFIED: use the CaseSensitive property from the options in the configuration files
