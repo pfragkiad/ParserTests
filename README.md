@@ -259,7 +259,7 @@ The `appsettings.json` file should exist in the same folder with the executable,
 </ItemGroup>
 ```
 
-Note that we are not bound to use the specific name for the configuration file. For example, we want to keep the `appsettings.json` file for the logger configuration, and have another file `parsersettings.json` for the tokenizer (which should be also in the same directory with the executable). In order to define the `parsersettings.json` file, we define it as an argument when retrieving the `IHost` or immediately the `IParser` via the following calls:
+Note that we are not bound to use the specific name for the configuration file. For example, we want to keep the `appsettings.json` file for the logger configuration, and have another file `parsersettings.json` for the tokenizer (which should be also in the same directory with the executable). In order to define the `parsersettings.json` file, we define it as an argument when retrieving the `IHost` app object, or immediately the `IParser` parser object via the following calls:
 
 ```cs
 var app = App.GetParserApp<DefaultParser>("parsersettings.json");
