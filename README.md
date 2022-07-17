@@ -6,7 +6,7 @@ I wanted to write my "custom terminal" that used interactive commands with expre
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start. Let's speed up with the some examples.
 
 The library is based on modern programming tools and can be highly customized. Its basic features:
-- Default support for double arithmetic (via `DefaultParser`)
+- Default support for double arithmetic (via `DefaultParser`), complex arithmetic (via `ComplexParser`).
 - Logger customization (typically via the `appsettings.json` ).
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
@@ -84,6 +84,18 @@ Let's use our first customized `Parser`:
 ```cs
 var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
+```
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. In fact, the application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see an example (`Complex` belongs to the `System.Numerics` namespace):
+
+```cs
+using System.Numerics; //needed if we want to further use the result
+...
+var cparser = App.GetCustomParser<ComplexParser>();
+//unless we override the i or j variables, both are considered to correspond to the imaginary unit
+Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)"); 
+Console.WriteLine(result); // (-0.5384615384615385, 0.6923076923076924)
+Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
+Console.WriteLine(result2); //same result
 ```
 
 ### Using custom types
@@ -288,9 +300,12 @@ var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
 Note, that in both cases above, the `appsettings.json` is also read (if found). The `parsersettings.json` file has higher priority, in case there are some conflicting options.
 
-## The `DefaultParser` Parser
+# Parsers
 
 All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the operators priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
+
+## The `DefaultParser`
+
 The `DefaultParser` class for the moment accepts the followig operators:
 - `+` : plus sign (unary) and plus (binary)
 - `-` : negative sign (unary) and minus (binary)
@@ -339,6 +354,46 @@ The following constants are also defined _unless_ the same names are overriden b
 - `phi` : The golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
 
 
+## The `ComplexParser`
+
+The `ComplexParser` class for the moment accepts the followig operators:
+- `+` : plus sign (unary) and plus (binary)
+- `-` : negative sign (unary) and minus (binary)
+- `*` : multiplication
+- `/` : division
+- `^` : power
+
+and the following functions:
+
+- `abs(z)`: Absolute value
+- `acos(z)`: Inverse cosine (in radians)
+- `acosd(z)`: Inverse cosine (in degrees)
+- `asin(z)`: Inverse sine (in radians)
+- `asind(z)`: Inverse sine (in degrees)
+- `atan(z)`: Inverse tangent (in radians)
+- `atand(z)`: Inverse tangent (in degrees)
+- `cos(z)`: Cosine (z in radians)
+- `cosd(z)`: Cosine (z in degrees)
+- `cosh(z)`: Hyperbolic cosine
+- `exp(z)`: Exponential function (e^z)
+- `log(z)` / `ln(z)`: Natural logarithm
+- `log10(z)`: Base 10 logarithm
+- `log2(z)`: Base 2 logarithm
+- `logn(z,n)`: Base n logarithm
+- `pow(z,y)`: Power function (z^y)
+- `round(z,y)`: Round to y decimal digits
+- `sin(z)`: Sine (z in radians)
+- `sind(z)`: Sine (z in degrees)
+- `sinh(z)`: Hyperbolic sine
+- `sqr(z)` / `sqrt(z)`: Square root
+- `tan(z)`: Tangent (z in radians)
+- `tand(z)`: Tangent (z in degrees)
+- `tanh(z)`: Hyperbolic tangent 
+
+The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary when calling the `Evaluate` function:
+- `i` , `j` : The Imaginary Unit (see [imaginary unit]([https://en.wikipedia.org/wiki/Pi](https://en.wikipedia.org/wiki/Imaginary_unit)))
+- `pi` : The number π (see [π](https://en.wikipedia.org/wiki/Pi))
+- `e` : Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
 ### _more documentation to follow **soon**..._
 
 
