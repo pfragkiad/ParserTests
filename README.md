@@ -386,7 +386,7 @@ and the following functions:
 - `tand(x)`: Tangent (x in degrees)
 - `tanh(x)`: Hyperbolic tangent 
 
-The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary when calling the `Evaluate` function:
+The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
 - `pi` : the number π (see [π](https://en.wikipedia.org/wiki/Pi))
 - `e` : the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
 - `phi` : the golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
@@ -428,7 +428,7 @@ and the following functions:
 - `tand(z)`: Tangent (z in degrees)
 - `tanh(z)`: Hyperbolic tangent 
 
-The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary when calling the `Evaluate` function:
+The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
 - `i` , `j` : the imaginary unit (see [imaginary unit](https://en.wikipedia.org/wiki/Imaginary_unit))
 - `pi` : the number π (see [π](https://en.wikipedia.org/wiki/Pi))
 - `e` : the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
