@@ -10,7 +10,7 @@ The library is based on modern programming tools and can be highly customized. I
 - Logger customization (typically via the `appsettings.json` ).
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
-- Support for custom functions with arbitrary number of arguments. Each one of these may be a custom type.
+- Support for custom functions with arbitrary number of arguments. Each argument may be a custom type.
 
 Built with modern tools:
 - .NET 6.0
