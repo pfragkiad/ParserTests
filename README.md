@@ -10,7 +10,7 @@ There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them
 
 Built with modern tools:
 - .NET 6.0
-- Built with .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more)
+- Use of .NET Generic Host (i.e Dependency Inversion/Injection principles, Logging, Configuration) (see [NET Generic Host](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-6.0) for more)
 - Support for custom loggers (Serilog is implemented by default)
 
 ## Examples
