@@ -312,7 +312,7 @@ protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<
     if (operatorNode.Text == "+")
     {
         //ADDED:
-        _logger.LogDebug("Adding with + operator ${left} and ${right}",LeftOperand,RightOperand);
+        _logger.LogDebug("Adding with + operator {left} and {right}", LeftOperand, RightOperand);
 
         if (LeftOperand is Item && RightOperand is Item)
             return (Item)LeftOperand + (Item)RightOperand;
@@ -329,7 +329,7 @@ protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<
 
     //return functionNode.Text switch
     //MODIFIED: use the CaseSensitive property from the options in the configuration files
-    return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+    return _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower() switch
     {
         "add" => (Item)a[0] + (int)a[1],
         _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
