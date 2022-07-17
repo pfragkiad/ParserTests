@@ -19,9 +19,9 @@ Built with modern tools:
 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incrementally added functionality.
 
-## Examples
+# Examples
 
-### Using the DefaultParser
+## Using the DefaultParser
 
 ```cs
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
@@ -54,7 +54,7 @@ Console.WriteLine(result3); //  1.0000000000000002
 Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
 ```
 
-### Adding new functions to the `DefaultParser`
+## Adding new functions to the `DefaultParser`
 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
@@ -98,7 +98,7 @@ Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Comp
 Console.WriteLine(result2); //same result
 ```
 
-### Using custom types
+## Using custom types
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
@@ -177,7 +177,9 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     });
 Console.WriteLine(result); // foo bar 12
 ```
-### _more examples to follow **soon**..._
+## _more examples to follow **soon**..._
+
+# Customizing ParserLibrary
 
 ## The `appsettings.json` configuration file
 
@@ -394,6 +396,7 @@ The following constants are also defined _unless_ the same names are overriden b
 - `i` , `j` : The Imaginary Unit (see [imaginary unit]([https://en.wikipedia.org/wiki/Pi](https://en.wikipedia.org/wiki/Imaginary_unit)))
 - `pi` : The number π (see [π](https://en.wikipedia.org/wiki/Pi))
 - `e` : Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
+
 ### _more documentation to follow **soon**..._
 
 
