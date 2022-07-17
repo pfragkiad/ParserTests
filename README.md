@@ -274,7 +274,7 @@ Note, that in both cases above, the `appsettings.json` is also read (if found). 
 
 ## The `DefaultParser` Parser
 
-All Parsers use parenthesis pairs (`(`, `)`) to override opertors priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
+All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the operators priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
 The `DefaultParser` class for the moment accepts the followig operators:
 - `+` : plus sign (unary) and plus (binary)
 - `-` : negative sign (unary) and minus (binary)
