@@ -304,9 +304,10 @@ Note, that in both cases above, the `appsettings.json` is also read (if found). 
 
 # Parsers
 
+Every `Parser` subclass adapts to the `IParser` interface and typically every `Parser` derives from the `Parser` base class.
 All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the operators priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
 
-## The `DefaultParser`
+## `DefaultParser`
 
 The `DefaultParser` class for the moment accepts the followig operators:
 - `+` : plus sign (unary) and plus (binary)
@@ -356,7 +357,7 @@ The following constants are also defined _unless_ the same names are overriden b
 - `phi` : The golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
 
 
-## The `ComplexParser`
+## `ComplexParser`
 
 The `ComplexParser` class for the moment accepts the followig operators:
 - `+` : plus sign (unary) and plus (binary)
