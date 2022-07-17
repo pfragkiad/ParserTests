@@ -94,9 +94,13 @@ Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. In 
 using System.Numerics; //needed if we want to further use the result
 ...
 var cparser = App.GetCustomParser<ComplexParser>();
+
 //unless we override the i or j variables, both are considered to correspond to the imaginary unit
+//NOTE: because i is used as a variable (internally), the syntax for the imaginary part should be 3*i, NOT 3i
 Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)"); 
 Console.WriteLine(result); // (-0.5384615384615385, 0.6923076923076924)
+
+//another one with a variable (should give the same result) 
 Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
 Console.WriteLine(result2); //same result
 
