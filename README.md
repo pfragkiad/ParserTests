@@ -337,17 +337,19 @@ protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<
 }
 ```
 
-If the user wants to extend his own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method (the `ParserLibrary` namespace should be used within the file). This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
+If the user wants to extend his own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method. This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
 ```cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using ParserLibrary;
 ...
  IHostBuilder builder = Host.CreateDefaultBuilder()
    ...
    .ConfigureServices((context, services) =>
     {
         services
-        .AddParserLibrary<TParser>(context) //extension method
+        //NOTE: TParser should be one of the derived parsers such as DefaultParser
+        .AddParserLibrary<TParser>(context) //extension method. 
         ...
         ;
     })
