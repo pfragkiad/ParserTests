@@ -58,10 +58,6 @@ public class ComplexParser : Parser
 
     protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        //double operand = Convert.ToDouble(nodeValueDictionary[
-        //    (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
-        //    operatorNode.Right : operatorNode.Left) as Node<Token>]);
-
         Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
 
         switch (operatorNode.Text)
@@ -69,15 +65,12 @@ public class ComplexParser : Parser
             case "-": return -operand;
             case "+": return operand;
             default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-
         }
     }
 
 
     protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        //double left = Convert.ToDouble(nodeValueDictionary[operatorNode.Left as Node<Token>]);
-        //double right = Convert.ToDouble(nodeValueDictionary[operatorNode.Right as Node<Token>]);
         (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
 
         switch (operatorNode.Text)

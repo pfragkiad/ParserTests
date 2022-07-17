@@ -36,3 +36,5 @@ Console.WriteLine(Complex.Cos(c1));
 
 var cparser = App.GetCustomParser<ComplexParser>();
 Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)"));
+
+
