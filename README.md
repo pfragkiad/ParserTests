@@ -181,7 +181,7 @@ Console.WriteLine(result); // foo bar 12
 
 # Customizing ParserLibrary
 
-## The `appsettings.json` configuration file
+## `appsettings.json` configuration file
 
 The `appsettings.json` configuration file is crucial, when the user wants to have precise control over the tokenizer and the logger as well.
 The library is configured to use Serilog for debugging and informational purposes. The Serilog section (see [Serilog configuration](https://github.com/serilog/serilog-settings-configuration) for more) typically can be configured to output to the Console and/or to an external file. In order to show less messages in the case below, we can use `"Information"` instead of `"Debug"` for the `Console` output. The logger can be accessed via the `_logger` field in every `Parser` subclass, so we can output debug/informational/critical messages to the screen/to a file in a controlled manner. The `_logger` field is of type `ILogger`, so Serilog is not the only type of logger that can be used (although it is recommended).
