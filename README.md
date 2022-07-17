@@ -337,6 +337,36 @@ protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<
 }
 ```
 
+If the user wants to extend his own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method (the `ParserLibrary` namespace should be used within the file). This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
+```cs
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+...
+ IHostBuilder builder = Host.CreateDefaultBuilder()
+   ...
+   .ConfigureServices((context, services) =>
+    {
+        services
+        .AddParserLibrary<TParser>(context) //extension method
+        ...
+        ;
+    })
+    ...
+var app = builder.Build();
+...
+
+var parser1 = app.Services.GetService<IParser>(); 
+//or
+var parser2 = app.Services.GetParser(); //extension method
+
+//sample calls if we want to retrieve instances of Tokenizer and TokenizerOptions outside a subclassed Parser
+var tokenizer1 = app.Services.GetService<ITokenizer>();
+//or
+var tokenizer2 = app.Services.GetTokenizer(); //extension method
+
+var tokenizerOptions = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
+```
+
 # Parsers
 
 Every `Parser` subclass adapts to the `IParser` interface and typically every `Parser` derives from the `Parser` base class.
@@ -390,7 +420,6 @@ The following constants are also defined _unless_ the same names are overriden b
 - `pi` : the number π (see [π](https://en.wikipedia.org/wiki/Pi))
 - `e` : the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
 - `phi` : the golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
-
 
 ## `ComplexParser`
 
