@@ -337,7 +337,7 @@ protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<
 }
 ```
 
-If the user wants to extend his own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method. This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
+If you want to extend your own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method. This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
 ```cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
