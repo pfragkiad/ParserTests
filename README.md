@@ -49,6 +49,11 @@ double result3 = (double)App.Evaluate("cosd(phi)^2+sind(phi)^2", new() { { "phi"
 Console.WriteLine(result3); //  1.0000000000000002
 ```
 
+...and some constants used in the `DefaultParser`
+```cs
+Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
+```
+
 ### Adding new functions to the `DefaultParser`
 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
@@ -327,6 +332,12 @@ and the following functions:
 - `tan(x)`: Tangent (x in radians)
 - `tand(x)`: Tangent (x in degrees)
 - `tanh(x)`: Hyperbolic tangent 
+
+The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary when calling the `Evaluate` function:
+- `pi` : The number π (see [π](https://en.wikipedia.org/wiki/Pi))
+- `e` : Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
+- `phi` : The golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
+
 
 ### _more documentation to follow **soon**..._
 
