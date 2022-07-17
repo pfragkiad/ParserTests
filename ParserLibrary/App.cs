@@ -21,10 +21,7 @@ public static class App
            .ConfigureServices((context, services) =>
             {
                 services
-                    .ConfigureTokenizerOptions(context)
-                    .AddTokenizer()
-                    .AddParser<TParser>()
-            ;
+                .AddParserLibrary<TParser>(context);
             })
            .UseSerilog((context, configuration) =>
            {
@@ -39,6 +36,7 @@ public static class App
 
 
     #region Utility functions
+
 
     public static IParser GetCustomParser<TParser>(string configFile = "appsettings.json") where TParser : Parser =>
         GetParserApp<TParser>(configFile).Services.GetParser();
@@ -56,6 +54,13 @@ public static class App
 
 
     #region Tokenizer, Parser services extensions
+    public static IServiceCollection AddParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context) where TParser : Parser
+    {
+       return  services
+                   .ConfigureTokenizerOptions(context)
+                   .AddTokenizer()
+                   .AddParser<TParser>();
+    }
 
     public static IServiceCollection ConfigureTokenizerOptions(this IServiceCollection services, HostBuilderContext context) =>
         services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));

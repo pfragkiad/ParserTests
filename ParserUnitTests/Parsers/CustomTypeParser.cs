@@ -29,9 +29,9 @@ public class Item
 
 public class CustomTypeParser : Parser
 {
-    public CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) :
+        base(logger, tokenizer, options)
     { }
-
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
@@ -40,9 +40,12 @@ public class CustomTypeParser : Parser
     {
         (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        //we assume the + operator
         if (operatorNode.Text == "+")
         {
+            //ADDED:
+            _logger.LogDebug("Adding with + operator ${left} and ${right}",LeftOperand,RightOperand);
+
+
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
             if (LeftOperand is Item && RightOperand is Item)
                 return (Item)LeftOperand + (Item)RightOperand;
@@ -57,7 +60,9 @@ public class CustomTypeParser : Parser
     {
         var a = functionNode.GetFunctionArguments(nodeValueDictionary);
 
-        return functionNode.Text switch
+        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
+        //return functionNode.Text switch
+        return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
         {
             "add" => (Item)a[0] + (int)a[1],
             _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
