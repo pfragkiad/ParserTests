@@ -162,7 +162,7 @@ The tokenizer options include the following properties:
    - `literal` : regular expresssion to identify all literal -typically numeric- values
    - `openParenthesis`, `closeParenthesis`, `argumentSeparator` : the characters which correspond to the parenthesis pair and the argument separator
    - `unary` : the unary array defines all unary operators. The priority of unary operator priority is in general higher than the binary operators
-   - `operators` : the operators array defines all binary operators. All binary operators are left-to-right by default except if specified otherwise (just like the exponent operator (`'^'`)
+   - `operators` : the operators array defines all binary operators. All binary operators are left-to-right by default except if specified otherwise (just like the exponent operator `'^'`)
 Operators with higher `priority` have higher precedence for the calculations. The priority is overriden as always via the use of parentheses, which are identified as defined above.
 
 ```json
