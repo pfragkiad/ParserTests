@@ -154,11 +154,16 @@ Console.WriteLine(result); // foo bar 12
 ## The `appsettings.json` configuration file
 
 The `appsettings.json` configuration file is crucial, when the user wants to have precise control over the tokenizer and the logger as well.
-The library is configured to use Serilog for debugging and informational purposes. The Serilog section ([Serilog](https://github.com/serilog/serilog-settings-configuration) for more) typically can be configured to output to the Console and/or to an external file. In order to show less messages in the case below, we can use `"Information"` instead of `"Debug"` for the `Console` output. The logger can be accessed via the `_logger` field in every `Parser` subclass, so we can output debug/informational/critical messages to the screen/to a file in a controlled manner. The `_logger` field is of type `ILogger`, so Serilog is not the only type of logger that can be used (although it is recommended).
+The library is configured to use Serilog for debugging and informational purposes. The Serilog section (see [Serilog configuration](https://github.com/serilog/serilog-settings-configuration) for more) typically can be configured to output to the Console and/or to an external file. In order to show less messages in the case below, we can use `"Information"` instead of `"Debug"` for the `Console` output. The logger can be accessed via the `_logger` field in every `Parser` subclass, so we can output debug/informational/critical messages to the screen/to a file in a controlled manner. The `_logger` field is of type `ILogger`, so Serilog is not the only type of logger that can be used (although it is recommended).
 The tokenizer options include the following properties:
  - `caseSensitive` : if false, then the tokenizer/parser should be case insensitive
- - `tokenPatterns` : this includes the regular expression patterns for the identifiers (used to identify variable and function names as tokens) and the literals (used to identify all literal -typically numeric- values).
-
+ - `tokenPatterns` : this includes the regular expression patterns or simple string characters for identifying any token
+   - `identifier` : regular expression to identify variable and function names as tokens
+   - `literal` : regular expresssion to identify all literal -typically numeric- values
+   - `openParenthesis`, `closeParenthesis`, `argumentSeparator` : the characters which correspond to the parenthesis pair and the argument separator
+   - `unary` : the unary array defines all unary operators. The priority of unary operator priority is in general higher than the binary operators
+   - `operators` : the operators array defines all binary operators. All binary operators are left-to-right by default except if specified otherwise (just like the exponent operator (`'^'`)
+Operators with higher `priority` have higher precedence for the calculations. The priority is overriden as always via the use of parentheses, which are identified as defined above.
 
 ```json
 {
