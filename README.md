@@ -249,6 +249,17 @@ Operators with higher `priority` have higher precedence for the calculations. Th
 
 ```
 
+The `appsettings.json` file should exist in the same folder with the executable, so be sure that the file is set to be copied to the output directory. For example, inside the project file the following should be included.
+
+```xml
+<ItemGroup>
+    <EmbeddedResource Include="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+</ItemGroup>
+```
+
+
 ## The `DefaultParser` Parser
 
 All Parsers use parenthesis pairs (`(`, `)`) to override opertors priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
