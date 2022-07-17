@@ -120,6 +120,8 @@ Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is 
 `Vector3Parser` is the correspondent parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
 
 ```cs
+using System.Numerics; //needed if we want to further use the result
+...
 var vparser = App.GetCustomParser<Vector3Parser>();
 
 Vector3 v1 = new Vector3(1, 4, 2),
