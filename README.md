@@ -249,7 +249,7 @@ Operators with higher `priority` have higher precedence for the calculations. Th
 
 ```
 
-The `appsettings.json` file should exist in the same folder with the executable, so be sure that the file is set to be copied to the output directory. For example, inside the project file the following should be included.
+The `appsettings.json` file should exist in the same folder with the executable, so be sure that the file is set to be copied to the output directory. For example, inside the project file, the following block should be included:
 
 ```xml
 <ItemGroup>
@@ -259,8 +259,16 @@ The `appsettings.json` file should exist in the same folder with the executable,
 </ItemGroup>
 ```
 
+Note that we are not bound to use the specific name for the configuration file. For example, we want to keep the `appsettings.json` file for the logger configuration, and have another file `parsersettings.json` for the tokenizer (which should be also in the same directory with the executable). In order to define the `parsersettings.json` file, we define it as an argument when retrieving the `IHost` or immediately the `IParser` via the following calls:
 
+```cs
+var app = App.GetParserApp<DefaultParser>("parsersettings.json");
+var parser = app.Services.GetParser();
 
+//or to immediately get the parser
+
+var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
+```
 
 ## The `DefaultParser` Parser
 
