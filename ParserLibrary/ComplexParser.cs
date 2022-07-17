@@ -7,27 +7,51 @@ public class ComplexParser : Parser
     public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
+    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    {
+        if (variables is null) variables = new();
+
+        if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
+        if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
+        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI,0));
+        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E,0));
+
+        return base.Evaluate(postfixTokens, variables);
+    }
+
     protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
 
     #region Auxiliary functions to get operands
 
-    public double GetDoubleUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-        => Convert.ToDouble(
-            operatorNode.GetUnaryArgument(
-            _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-            nodeValueDictionary));
-    public (double Left, double Right) GetDoubleBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public Complex GetComplexUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        return (Left: Convert.ToDouble(operands.LeftOperand),
-                 Right: Convert.ToDouble(operands.RightOperand));
+        var arg = operatorNode.GetUnaryArgument(
+             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
+             nodeValueDictionary);
+
+        if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
+        else return (Complex)arg;
     }
 
-    public double[] GetDoubleFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public (Complex Left, Complex Right) GetComplexBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(nodeValueDictionary).Select(a => Convert.ToDouble(a)).ToArray();
+        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+        return (Left: operands.LeftOperand is double || operands.LeftOperand is int ?
+            new Complex(Convert.ToDouble(operands.LeftOperand), 0) : (Complex)operands.LeftOperand,
+                 Right: operands.RightOperand is double || operands.RightOperand is int ?
+            new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
+    }
+
+    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        return functionNode.GetFunctionArguments(nodeValueDictionary).Select(arg =>
+     {
+         if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
+         else return (Complex)arg;
+     }).ToArray();
     }
 
     #endregion
@@ -38,7 +62,7 @@ public class ComplexParser : Parser
         //    (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
         //    operatorNode.Right : operatorNode.Left) as Node<Token>]);
 
-        double operand = GetDoubleUnaryOperand(operatorNode, nodeValueDictionary);
+        Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
 
         switch (operatorNode.Text)
         {
@@ -54,7 +78,7 @@ public class ComplexParser : Parser
     {
         //double left = Convert.ToDouble(nodeValueDictionary[operatorNode.Left as Node<Token>]);
         //double right = Convert.ToDouble(nodeValueDictionary[operatorNode.Right as Node<Token>]);
-        (double left, double right) = GetDoubleBinaryOperands(operatorNode, nodeValueDictionary);
+        (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
 
         switch (operatorNode.Text)
         {
@@ -62,7 +86,7 @@ public class ComplexParser : Parser
             case "-": return left - right;
             case "*": return left * right;
             case "/": return left / right;
-            case "^": return Math.Pow(left, right);
+            case "^": return Complex.Pow(left, right);
             default: return base.EvaluateOperator(operatorNode, nodeValueDictionary);
 
         }
@@ -72,45 +96,37 @@ public class ComplexParser : Parser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
         string functionName = functionNode.Text.ToLower();
 
         switch (functionName)
         {
-            case "abs": return Math.Abs(a[0]);
-            case "acos": return Math.Acos(a[0]);
-            case "acosd": return Math.Acos(a[0]) * TODEG;
-            case "acosh": return Math.Acosh(a[0]);
-            case "asin": return Math.Asin(a[0]);
-            case "asind": return Math.Asin(a[0]) * TODEG;
-            case "asinh": return Math.Asinh(a[0]);
-            case "atan": return Math.Atan(a[0]);
-            case "atand": return Math.Atan(a[0]) * TODEG;
-            case "atan2": return Math.Atan2(a[0], a[1]); // y/x
-            case "atan2d": return Math.Atan2(a[0], a[1]) * TODEG; // y/x
-            case "atanh": return Math.Atan(a[0]);
-            case "cbrt": return Math.Cbrt(a[0]);
-            case "cos": return Math.Cos(a[0]);
-            case "cosd": return Math.Cos(a[0] * TORAD);
-            case "cosh": return Math.Cosh(a[0]);
-            case "exp": return Math.Exp(a[0]);
+            case "abs": return Complex.Abs(a[0]);
+            case "acos": return Complex.Acos(a[0]);
+            case "acosd": return Complex.Acos(a[0]) * TODEG;
+            case "asin": return Complex.Asin(a[0]);
+            case "asind": return Complex.Asin(a[0]) * TODEG;
+            case "atan": return Complex.Atan(a[0]);
+            case "atand": return Complex.Atan(a[0]) * TODEG;
+            case "cos": return Complex.Cos(a[0]);
+            case "cosd": return Complex.Cos(a[0] * TORAD);
+            case "cosh": return Complex.Cosh(a[0]);
+            case "exp": return Complex.Exp(a[0]);
             case "log":
-            case "ln": return Math.Log(a[0]);
-            case "log10": return Math.Log10(a[0]);
-            case "log2": return Math.Log2(a[0]);
-            case "logn": return Math.Log(a[0]) / Math.Log(a[1]);
-            case "max": return Math.Max(a[0], a[1]);
-            case "min": return Math.Min(a[0], a[1]);
-            case "pow": return Math.Pow(a[0], a[1]);
-            case "round": return Math.Round(a[0], (int)a[1]);
-            case "sin": return Math.Sin(a[0]);
-            case "sind": return Math.Sin(a[0] * TORAD);
-            case "sinh": return Math.Sinh(a[0]);
+            case "ln": return Complex.Log(a[0]);
+            case "log10": return Complex.Log10(a[0]);
+            case "log2": return Complex.Log(a[0]) / Complex.Log(2);
+            case "logn": return Complex.Log(a[0]) / Complex.Log(a[1]);
+            case "pow": return Complex.Pow(a[0], a[1]);
+            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[1].Imaginary, (int)a[1].Real));
+            case "sin": return Complex.Sin(a[0]);
+            case "sind": return Complex.Sin(a[0] * TORAD);
+            case "sinh": return Complex.Sinh(a[0]);
             case "sqr":
-            case "sqrt": return Math.Sqrt(a[0]);
-            case "tan": return Math.Tan(a[0]);
-            case "tand": return Math.Tan(a[0] * TORAD);
-            case "tanh": return Math.Tanh(a[0]);
+            case "sqrt": return Complex.Sqrt(a[0]);
+            case "tan": return Complex.Tan(a[0]);
+            case "tand": return Complex.Tan(a[0] * TORAD);
+            case "tanh": return Complex.Tanh(a[0]);
         }
 
         return base.EvaluateFunction(functionNode, nodeValueDictionary);

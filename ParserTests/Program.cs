@@ -3,6 +3,9 @@ using ParserLibrary;
 
 using ParserLibrary.ExpressionTree;
 using System.Diagnostics;
+using System.Numerics;
+
+
 
 //TODO: ADD DOCUMENTATION AND PUBLISH IT!
 
@@ -59,4 +62,11 @@ tree.Print(withSlashes:false) ;
 //TODO: SHOW TREE
 
 
-Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
+//Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
+
+var cparser = App.GetCustomParser<ComplexParser>();
+Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
+Console.WriteLine(result);
+Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
+Console.WriteLine(result2);
+

@@ -105,7 +105,7 @@ public class DefaultParser : Parser
             case "atand": return Math.Atan(a[0]) * TODEG;
             case "atan2": return Math.Atan2(a[0], a[1]); // y/x
             case "atan2d": return Math.Atan2(a[0], a[1]) * TODEG; // y/x
-            case "atanh": return Math.Atan(a[0]);
+            case "atanh": return Math.Atanh(a[0]);
             case "cbrt": return Math.Cbrt(a[0]);
             case "cos": return Math.Cos(a[0]);
             case "cosd": return Math.Cos(a[0] * TORAD);
