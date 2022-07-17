@@ -41,26 +41,28 @@ public class Node<T> : NodeBase
     /// Return the function arguments assuming that the node is a valid "function node".
     /// </summary>
     /// <returns></returns>
-    public int GetFunctionArgumentsCount() 
+    public int GetFunctionArgumentsCount(string argumentSeparator) 
     {
         if (Left is null && Right is null) return 0;
 
         if (Left is not null) throw new InvalidOperationException($"The function node '{Text}' cannot contain a non-null Left child node.");
+     
+        int iArguments = 1;
+        if (Right.Text != argumentSeparator) return 1;
 
         //here Right is not null
-        int iArguments = 1;
-        var leftFarNode = Right.Left;
-        while (leftFarNode != null)
+        var leftNode = Right.Left;
+        while (leftNode != null)
         {
-            iArguments++;
-            leftFarNode = leftFarNode.Left;
+            if (leftNode.Text == argumentSeparator) iArguments++;
+            leftNode = leftNode.Left;
         }
         return iArguments;
     }
-
-    public object[] GetFunctionArguments(Dictionary<Node<T>, object> nodeValueDictionary)
+    //SOS: the function is currently buggy
+    private object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
     {
-        int argumentsCount = GetFunctionArgumentsCount();
+        int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
         return GetFunctionArguments(argumentsCount, nodeValueDictionary);
     }
 

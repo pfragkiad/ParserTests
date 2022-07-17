@@ -1,4 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ParserLibrary;
 
 using ParserLibrary.ExpressionTree;
@@ -69,4 +71,7 @@ Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
 Console.WriteLine(result);
 Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
 Console.WriteLine(result2);
+
+
+var tokenizerOptions = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
 

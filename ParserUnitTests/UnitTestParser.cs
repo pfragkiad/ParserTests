@@ -1,5 +1,6 @@
 using ParserUnitTests.Parsers;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace ParserUnitTests;
 
@@ -59,7 +60,7 @@ public class UnitTestParser
     [Fact]
     public void TestSimpleFunctionParser()
     {
-        var parser = App.GetCustomParser<SingleFunctionParser>();
+        var parser = App.GetCustomParser<SimpleFunctionParser>();
         double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
             new() { { "g", 3 } }); // will return 8 + 5 + 2 * 3 + 3 * 3.0
 
@@ -79,6 +80,18 @@ public class UnitTestParser
         Assert.Equal("foo bar 12", result.ToString());
     }
 
+    [Fact]
+    public void TestComplexParser()
+    {
+        Complex c1 = new Complex(1, 1);
 
+        var cparser = App.GetCustomParser<ComplexParser>();
+        var result = (Complex)cparser.Evaluate("cos(1+i)");
+
+        Assert.Equal<Complex>(Complex.Cos(new Complex(1, 1)), result);
+
+        result = (Complex)cparser.Evaluate("cos( (1+i)/(8+9))");
+        Assert.Equal<Complex>(Complex.Cos(new Complex(1, 1) / (8 + 9)), result);
+    }
 
 }

@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace ParserUnitTests.Parsers;
 
-public class SingleFunctionParser : DefaultParser
+public class SimpleFunctionParser : DefaultParser
 {
-    public SingleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public SimpleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     {
     }
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(count: 3, functionNode, nodeValueDictionary);
 
         return functionNode.Text.ToLower() switch
         {

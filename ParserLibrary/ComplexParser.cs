@@ -45,9 +45,9 @@ public class ComplexParser : Parser
             new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
     }
 
-    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public Complex[] GetComplexFunctionArguments(int count, Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(nodeValueDictionary).Select(arg =>
+        return functionNode.GetFunctionArguments(count,nodeValueDictionary).Select(arg =>
      {
          if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
          else return (Complex)arg;
@@ -82,7 +82,7 @@ public class ComplexParser : Parser
 
         switch (operatorNode.Text)
         {
-            case "+": return left + right;
+            case "+": return Complex.Add(left, right);
             case "-": return left - right;
             case "*": return left * right;
             case "/": return left / right;
@@ -94,10 +94,14 @@ public class ComplexParser : Parser
 
     protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
+    HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
         string functionName = functionNode.Text.ToLower();
+       
+        Complex[] a =  GetComplexFunctionArguments(
+            count:  funcsWith2Args.Contains(functionName) ? 2 : 1,
+            functionNode, nodeValueDictionary);
 
         switch (functionName)
         {
@@ -118,7 +122,7 @@ public class ComplexParser : Parser
             case "log2": return Complex.Log(a[0]) / Complex.Log(2);
             case "logn": return Complex.Log(a[0]) / Complex.Log(a[1]);
             case "pow": return Complex.Pow(a[0], a[1]);
-            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[1].Imaginary, (int)a[1].Real));
+            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real));
             case "sin": return Complex.Sin(a[0]);
             case "sind": return Complex.Sin(a[0] * TORAD);
             case "sinh": return Complex.Sinh(a[0]);

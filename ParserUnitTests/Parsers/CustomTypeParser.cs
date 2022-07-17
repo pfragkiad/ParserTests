@@ -58,7 +58,7 @@ public class CustomTypeParser : Parser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var a = functionNode.GetFunctionArguments(nodeValueDictionary);
+        var a = functionNode.GetFunctionArguments(2,nodeValueDictionary);
 
         //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
         //return functionNode.Text switch

@@ -28,9 +28,12 @@ public class FunctionsOperandsParser : DefaultParser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+        string functionName = functionNode.Text.ToLower();
+        double[] a = GetDoubleFunctionArguments(
+            count: functionName =="add" ? 2 : 3,
+            functionNode, nodeValueDictionary);
 
-        return functionNode.Text.ToLower() switch
+        return functionName switch
         {
             "add" => a[0] + 2 * a[1],
             "add3" => a[0] + 2 * a[1] + 3 * a[2],

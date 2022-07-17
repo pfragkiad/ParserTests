@@ -2,6 +2,9 @@
 using ParserLibrary;
 
 
+using System.Numerics;
+
+
 //https://www.nuget.org/packages/ParserLibrary/1.0.0#readme-body-tab
 //var parser = App.GetParserApp<DefaultParser>("appsettings.json").Services.GetService<IParser>();
 //var tree = parser.GetExpressionTree("-j+8.0-(+f(x,y*200/21-dad^8))");
@@ -28,3 +31,8 @@ using ParserLibrary;
 //tree.Print();
 
 
+Complex c1 = new Complex(1,1);
+Console.WriteLine(Complex.Cos(c1));
+
+var cparser = App.GetCustomParser<ComplexParser>();
+Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)"));

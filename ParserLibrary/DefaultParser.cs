@@ -41,9 +41,9 @@ public class DefaultParser : Parser
                  Right: Convert.ToDouble(operands.RightOperand));
     }
 
-    public double[] GetDoubleFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public double[] GetDoubleFunctionArguments(int count, Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(nodeValueDictionary).Select(a => Convert.ToDouble(a)).ToArray();
+        return functionNode.GetFunctionArguments(count ,nodeValueDictionary).Select(a => Convert.ToDouble(a)).ToArray();
     }
 
     #endregion
@@ -87,10 +87,15 @@ public class DefaultParser : Parser
 
     protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
+    HashSet<string> funcsWith2Args = new() { "atan2","atan2d", "logn","max","min","pow","round"};
+
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
         string functionName = functionNode.Text.ToLower();
+       
+        double[] a = GetDoubleFunctionArguments(
+            count:funcsWith2Args.Contains(functionName) ? 2 : 1,
+            functionNode, nodeValueDictionary);
 
         switch (functionName)
         {
