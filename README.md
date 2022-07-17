@@ -1,6 +1,4 @@
 # ParserLibrary
-_No Other Expression Parser, Ever_
-
 > Parse Everything, Work with Every Custom Type
 
 ### About / How it began
