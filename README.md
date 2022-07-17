@@ -6,7 +6,7 @@ I wanted to write my "custom terminal" that used interactive commands with expre
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start. Let's speed up with the some examples.
 
 The library is based on modern dependency injection concepts and can be highly customized. 
-There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incremental adding functionality.
+There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incrementally added functionality.
 
 Built with modern tools:
 - .NET 6.0
