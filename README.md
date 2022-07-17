@@ -302,6 +302,43 @@ var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
 Note, that in both cases above, the `appsettings.json` is also read (if found). The `parsersettings.json` file has higher priority, in case there are some conflicting options.
 
+An example of using the internal fields `_options` of type `TokenizerOptions` and `_logger` of type `ILogger` can be shown below, by modifying the `CustomTypeParser` slightly modifying the example above:
+```cs
+...
+protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+{
+    (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+    if (operatorNode.Text == "+")
+    {
+        //ADDED:
+        _logger.LogDebug("Adding with + operator ${left} and ${right}",LeftOperand,RightOperand);
+
+
+        //we manage all combinations of Item/Item, Item/int, int/Item combinations here
+        if (LeftOperand is Item && RightOperand is Item)
+            return (Item)LeftOperand + (Item)RightOperand;
+
+        return LeftOperand is Item ?  (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+    }
+
+    return base.EvaluateOperator(operatorNode, nodeValueDictionary);
+}
+
+protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+{
+    var a = functionNode.GetFunctionArguments(nodeValueDictionary);
+
+    //ADDED: use the CaseSensitive property from the options in the configuration files
+    return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+    //return functionNode.Text switch
+    {
+        "add" => (Item)a[0] + (int)a[1],
+        _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+    };
+}
+```
+
 # Parsers
 
 Every `Parser` subclass adapts to the `IParser` interface and typically every `Parser` derives from the `Parser` base class.
