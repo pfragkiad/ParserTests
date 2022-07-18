@@ -1,5 +1,5 @@
 # ParserLibrary
-_Parse Everything, Build Expressions with custom Types, not just plain numbers!_
+_No Other Expression Parser, Ever_
 
 ### About
 I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chords**, or even **vectors** and **matrices** and some other to represent numbers.
