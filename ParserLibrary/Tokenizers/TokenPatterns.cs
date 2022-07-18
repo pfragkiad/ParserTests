@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary;
+﻿namespace ParserLibrary.Tokenizers;
 
 public class TokenPatterns //NOT records here!
 {

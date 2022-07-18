@@ -1,5 +1,6 @@
-﻿namespace ParserLibrary;
+﻿namespace ParserLibrary.Parsers;
 
+using ParserLibrary.Tokenizers;
 using System.Numerics;
 
 public class ComplexParser : Parser
@@ -13,8 +14,8 @@ public class ComplexParser : Parser
 
         if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
         if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
-        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI,0));
-        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E,0));
+        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
+        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
 
         return base.Evaluate(postfixTokens, variables);
     }
@@ -45,9 +46,11 @@ public class ComplexParser : Parser
             new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
     }
 
-    public Complex[] GetComplexFunctionArguments(int count, Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(count,nodeValueDictionary).Select(arg =>
+        return functionNode.GetFunctionArguments(
+            _options.TokenPatterns.ArgumentSeparator,
+            nodeValueDictionary).Select(arg =>
      {
          if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
          else return (Complex)arg;
@@ -87,14 +90,13 @@ public class ComplexParser : Parser
 
     protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
-    HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
+    //HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
+
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         string functionName = functionNode.Text.ToLower();
-       
-        Complex[] a =  GetComplexFunctionArguments(
-            count:  funcsWith2Args.Contains(functionName) ? 2 : 1,
-            functionNode, nodeValueDictionary);
+
+        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
 
         switch (functionName)
         {

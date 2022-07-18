@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary;
+﻿using ParserLibrary.Tokenizers;
+
+namespace ParserLibrary.Parsers;
 
 public class Parser : IParser
 {
@@ -112,7 +114,7 @@ public class Parser : IParser
                 Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
-                V functionResult = default(V);
+                V functionResult = default;
 
                 if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
                 {
@@ -140,7 +142,7 @@ public class Parser : IParser
                 var tokenNode = PushToStack(stack, nodeDictionary, token);
 
                 //XTRA
-                V value = default(V);
+                V value = default;
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = literalParser(token.Text));
                 else if (token.TokenType == TokenType.Identifier)

@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary.ExpressionTree;
+﻿using ParserLibrary.Tokenizers;
+
+namespace ParserLibrary.ExpressionTree;
 
 public class Tree<T>
 {

@@ -1,6 +1,7 @@
 ﻿using ParserLibrary.ExpressionTree;
+using ParserLibrary.Tokenizers;
 
-namespace ParserLibrary;
+namespace ParserLibrary.Parsers;
 
 public interface IParser
 {

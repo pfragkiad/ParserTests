@@ -1,5 +1,6 @@
-﻿namespace ParserLibrary;
+﻿namespace ParserLibrary.Parsers;
 
+using ParserLibrary.Tokenizers;
 using System.Numerics;
 
 public class Vector3Parser : Parser
@@ -54,10 +55,10 @@ public class Vector3Parser : Parser
                  Right: GetVector3(operands.RightOperand));
     }
 
-    public Vector3[] GetVector3FunctionArguments(int count, Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public Vector3[] GetVector3FunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         return functionNode
-            .GetFunctionArguments(count, nodeValueDictionary)
+            .GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary)
             .Select(arg => GetVector3(arg)).ToArray();
     }
 
@@ -97,16 +98,16 @@ public class Vector3Parser : Parser
 
     HashSet<string> funcsWith3Args = new() { "lerp" };
 
-    HashSet<string> funcsWith2Args = new() { "cross", "dot", "round" };
+    //HashSet<string> funcsWith2Args = new() { "cross", "dot", "round" };
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         string functionName = functionNode.Text.ToLower();
 
         Vector3[] a = GetVector3FunctionArguments(
-            count:
-            funcsWith2Args.Contains(functionName) ? 2 :
-            funcsWith3Args.Contains(functionName) ? 3 :
-            1,
+            //count:
+            //funcsWith2Args.Contains(functionName) ? 2 :
+            //funcsWith3Args.Contains(functionName) ? 3 :
+            //1,
             functionNode, nodeValueDictionary);
 
         switch (functionName)

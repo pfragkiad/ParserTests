@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary;
+﻿namespace ParserLibrary.Tokenizers;
 
 public enum TokenType
 {
@@ -16,13 +16,13 @@ public class Token : IComparable<Token>
 {
     public Token(TokenType tokenType, Match match)
     {
-        this.TokenType = tokenType;
+        TokenType = tokenType;
         Match = match;
     }
 
     //public string TokenType { get; set; }
-    
-    public TokenType TokenType { get; set;}
+
+    public TokenType TokenType { get; set; }
     public Match Match { get; set; }
 
     public string Text => Match.Value;

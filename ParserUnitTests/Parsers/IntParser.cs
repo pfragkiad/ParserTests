@@ -1,4 +1,7 @@
 ﻿
+using ParserLibrary.Parsers;
+using ParserLibrary.Tokenizers;
+
 namespace ParserUnitTests.Parsers;
 
 
@@ -8,9 +11,8 @@ public class IntParser : Parser
     { }
 
     protected override object EvaluateLiteral(string s)
-    {
-        return int.Parse(s);
-    }
+        => int.Parse(s);
+
 
     protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
@@ -19,25 +21,26 @@ public class IntParser : Parser
 
         var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
         int left = (int)operands.LeftOperand, right = (int)operands.RightOperand;
-        switch (operatorNode.Text)
+
+        return operatorNode.Text switch
         {
-            case "+": return left + right;
-            case "*": return left * right;
-            case "^": return (int)Math.Pow(left, right);
-            default: throw new InvalidOperationException($"Unknown operator ({operatorNode.Text})!");
-        }
+            "+" => left + right,
+            "*" => left * right,
+            "^" => (int)Math.Pow(left, right),
+            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary)
+        };
     }
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         //int right = (int)nodeValueDictionary[functionNode.Right as Node<Token>];
         int arg = (int)functionNode.GetFunctionArgument(nodeValueDictionary);
-        switch (functionNode.Text)
-        {
-            case "tan": return 10 * arg;
-            case "sin": return 2 * arg;
-            default: throw new InvalidOperationException($"Unknown function ({functionNode.Text})!");
 
-        }
+        return functionNode.Text.ToLower() switch
+        {
+            "tan" => 10 * arg,
+            "sin" => 2 * arg,
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+        };
     }
 }

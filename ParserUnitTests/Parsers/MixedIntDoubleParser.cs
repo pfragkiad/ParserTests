@@ -1,4 +1,7 @@
-﻿namespace ParserUnitTests.Parsers;
+﻿using ParserLibrary.Parsers;
+using ParserLibrary.Tokenizers;
+
+namespace ParserUnitTests.Parsers;
 
 public class MixedIntDoubleParser : Parser
 {

@@ -1,4 +1,7 @@
-﻿namespace ParserUnitTests;
+﻿using ParserLibrary.Parsers;
+using ParserLibrary.Tokenizers;
+
+namespace ParserUnitTests;
 
 public class UnitTestConfig
 {

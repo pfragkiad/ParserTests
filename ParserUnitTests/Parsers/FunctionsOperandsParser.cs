@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ParserLibrary.Parsers;
+using ParserLibrary.Tokenizers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,9 +31,7 @@ public class FunctionsOperandsParser : DefaultParser
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         string functionName = functionNode.Text.ToLower();
-        double[] a = GetDoubleFunctionArguments(
-            count: functionName =="add" ? 2 : 3,
-            functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
 
         return functionName switch
         {

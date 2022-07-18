@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ParserLibrary.Parsers;
+using ParserLibrary.Tokenizers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +16,7 @@ public class SimpleFunctionParser : DefaultParser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(count: 3, functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments( functionNode, nodeValueDictionary);
 
         return functionNode.Text.ToLower() switch
         {

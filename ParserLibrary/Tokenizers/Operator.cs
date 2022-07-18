@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary;
+﻿namespace ParserLibrary.Tokenizers;
 
 public class Operator
 {
