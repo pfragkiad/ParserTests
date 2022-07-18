@@ -62,6 +62,16 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 
 
+var tree = App
+    .GetDefaultParser()
+    .GetExpressionTree("cos(sin(a+b, 3+4) +1,+2, set(5,6,7+8,9)+1, sda(sin(2+2,2),sin(s,s,s)) , sin(s,s,s,s)*sin(asd,212,2123,212))");
+tree.Print();
+
+//get the cos node
+var cosNode = tree.NodeDictionary.Where(e => e.Key.Text == "cos").FirstOrDefault().Value;
+Console.WriteLine(cosNode.GetFunctionArgumentsCount(","));
+
+
 
 
 

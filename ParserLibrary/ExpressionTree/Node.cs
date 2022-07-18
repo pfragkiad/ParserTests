@@ -47,8 +47,10 @@ public class Node<T> : NodeBase
 
         if (Left is not null) throw new InvalidOperationException($"The function node '{Text}' cannot contain a non-null Left child node.");
      
-        int iArguments = 1;
         if (Right.Text != argumentSeparator) return 1;
+        
+        //an argument separator exists, so we have at least 2 arguments
+        int iArguments = 2;
 
         //here Right is not null
         var leftNode = Right.Left;
@@ -59,8 +61,8 @@ public class Node<T> : NodeBase
         }
         return iArguments;
     }
-    //SOS: the function is currently buggy
-    private object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
+
+    public object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
     {
         int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
         return GetFunctionArguments(argumentsCount, nodeValueDictionary);
