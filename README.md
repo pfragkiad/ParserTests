@@ -72,7 +72,7 @@ private class SimpleFunctionParser : DefaultParser
 
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        double[] a = GetDoubleFunctionArguments(count: 3, functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
 
         return functionNode.Text.ToLower() switch
         {
