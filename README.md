@@ -1,7 +1,7 @@
 # ParserLibrary
 _No Other Expression Parser, Ever_
 
-### About / How it began
+### About
 I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chords**, or even **vectors** and **matrices** and some other to represent numbers.
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start.
 
@@ -9,7 +9,7 @@ The library is based on modern programming tools and can be highly customized. I
 - Default support for:
   - Double arithmetic via the `DefaultParser`
   - Complex arithmetic via the `ComplexParser`
-  - Vector arithmetic via `Vector3Parser`
+  - Vector arithmetic via the `Vector3Parser`
 - Logger customization (typically via the `appsettings.json` ).
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
@@ -47,14 +47,14 @@ var parser = app.Services.GetParser();
 double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
 ```
 
-Let's use some functions already defined in the `DefaultParser`
+Let's use some functions already defined in the `DefaultParser`:
 
 ```cs
 double result3 = (double)App.Evaluate("cosd(ph)^2+sind(ph)^2", new() { { "ph", 45 } });
 Console.WriteLine(result3); //  1.0000000000000002
 ```
 
-...and some constants used in the `DefaultParser`
+...and some constants used in the `DefaultParser`:
 ```cs
 Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
 ```
@@ -117,16 +117,18 @@ Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is 
 ```
 ## `Vector3Parser` examples
 
-`Vector3Parser` is the correspondent parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
+`Vector3Parser` is the corresponding parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
 
 ```cs
+using System.Numerics; //needed if we want to further use the result
+...
 var vparser = App.GetCustomParser<Vector3Parser>();
 
 Vector3 v1 = new Vector3(1, 4, 2),
     v2 = new Vector3(2, -2, 0);
 
 Console.WriteLine(vparser.Evaluate("!(v1+3*v2)", //! means normalize vector
-   new() { { "v1", v1 }, { "v2", v2 } })); //<0,92717266. -0,26490647. 0,26490647>
+   new() { { "v1", v1 }, { "v2", v2 } })); //<0.92717266. -0.26490647. 0.26490647>
 
 Console.WriteLine(vparser.Evaluate("10 + 3 * v1^v2", // ^ means cross product
    new() { { "v1", v1 }, { "v2", v2 } })); //<22. 22. -20>
@@ -136,7 +138,7 @@ Console.WriteLine(vparser.Evaluate("v1@v2", // @ means dot product
    new() { { "v1", v1 }, { "v2", v2 } })); //-6
 
 Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combination of vectors)
-   new() { { "v1", v1 }, { "v2", v2 } })); //<1,5. 1. 1>
+   new() { { "v1", v1 }, { "v2", v2 } })); //<1.5, 1. 1>
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
@@ -181,7 +183,7 @@ public class CustomTypeParser : Parser
     {
         (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        //we assume the + operator
+        //we assume that the + operator is supported 
         if (operatorNode.Text == "+")
         {
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
