@@ -91,9 +91,161 @@ var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
 
-## `ComplexParser` examples
+## Custom parser examples #1:  `ComplexParser`
 
-Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. In fact, the application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see an example (`Complex` belongs to the `System.Numerics` namespace):
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic.
+The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
+
+Any `Parser` that uses custom types should inherit the `Parser` base class. 
+Each custom parser should override the methods:
+* `Evaluate`: if there is at least one "constant" such as `pi`, which should be defined by default.
+* `EvaluateUnaryOperator` : if at least one unary operator
+* `EvaluateLiteral`: if there is at least one literal value such as `0.421`. In most cases a simple parse function can be called for a `double` or `int`.
+* `EvaluateOperator`: if there is at least one binary operator
+* `EvaluateFunction`: if there is at least one function.
+
+It is best to understand how to override these functions in the example of the `ComplexParser` implementation below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetUnaryArgument`, `GetFunctionArguments`).
+
+Let's see the implementation of the `ComplexParser` to make things clearer:
+
+```cs
+using System.Numerics;
+
+namespace ParserLibrary.Parsers;
+
+public class ComplexParser : Parser
+{
+    public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    { }
+
+    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    {
+        if (variables is null) variables = new();
+
+        //we define "constants" if they are not already defined
+        if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
+        if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
+        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
+        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
+
+        return base.Evaluate(postfixTokens, variables);
+    }
+
+    protected override object EvaluateLiteral(string s) =>
+        double.Parse(s, CultureInfo.InvariantCulture);
+
+
+    #region Auxiliary functions to get operands
+
+    public Complex GetComplexUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        var arg = operatorNode.GetUnaryArgument(
+             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
+             nodeValueDictionary);
+
+        if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
+        else return (Complex)arg;
+    }
+
+    public (Complex Left, Complex Right) GetComplexBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+        return (Left: operands.LeftOperand is double || operands.LeftOperand is int ?
+            new Complex(Convert.ToDouble(operands.LeftOperand), 0) : (Complex)operands.LeftOperand,
+                 Right: operands.RightOperand is double || operands.RightOperand is int ?
+            new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
+    }
+
+    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        return functionNode.GetFunctionArguments(
+            _options.TokenPatterns.ArgumentSeparator,
+            nodeValueDictionary).Select(arg =>
+     {
+         if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
+         else return (Complex)arg;
+     }).ToArray();
+    }
+
+    #endregion
+
+    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
+
+        switch (operatorNode.Text)
+        {
+            case "-": return -operand;
+            case "+": return operand;
+            default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
+        }
+    }
+
+
+    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
+
+        switch (operatorNode.Text)
+        {
+            case "+": return Complex.Add(left, right);
+            case "-": return left - right;
+            case "*": return left * right;
+            case "/": return left / right;
+            case "^": return Complex.Pow(left, right);
+            default: return base.EvaluateOperator(operatorNode, nodeValueDictionary);
+
+        }
+    }
+
+    protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
+
+    //HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
+
+    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        string functionName = functionNode.Text.ToLower();
+
+        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
+
+        switch (functionName)
+        {
+            case "abs": return Complex.Abs(a[0]);
+            case "acos": return Complex.Acos(a[0]);
+            case "acosd": return Complex.Acos(a[0]) * TODEG;
+            case "asin": return Complex.Asin(a[0]);
+            case "asind": return Complex.Asin(a[0]) * TODEG;
+            case "atan": return Complex.Atan(a[0]);
+            case "atand": return Complex.Atan(a[0]) * TODEG;
+            case "cos": return Complex.Cos(a[0]);
+            case "cosd": return Complex.Cos(a[0] * TORAD);
+            case "cosh": return Complex.Cosh(a[0]);
+            case "exp": return Complex.Exp(a[0]);
+            case "log":
+            case "ln": return Complex.Log(a[0]);
+            case "log10": return Complex.Log10(a[0]);
+            case "log2": return Complex.Log(a[0]) / Complex.Log(2);
+            case "logn": return Complex.Log(a[0]) / Complex.Log(a[1]);
+            case "pow": return Complex.Pow(a[0], a[1]);
+            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real));
+            case "sin": return Complex.Sin(a[0]);
+            case "sind": return Complex.Sin(a[0] * TORAD);
+            case "sinh": return Complex.Sinh(a[0]);
+            case "sqr":
+            case "sqrt": return Complex.Sqrt(a[0]);
+            case "tan": return Complex.Tan(a[0]);
+            case "tand": return Complex.Tan(a[0] * TORAD);
+            case "tanh": return Complex.Tanh(a[0]);
+        }
+
+        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+    }
+
+}
+```
+
+Below is an example of usage of the `ComplexParser`:
 
 ```cs
 using System.Numerics; //needed if we want to further use the result
@@ -115,7 +267,7 @@ Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.
 
 Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
-## `Vector3Parser` examples
+## Custom parser examples #2:  `Vector3Parser`
 
 `Vector3Parser` is the corresponding parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
 
@@ -142,7 +294,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom Types examples
+## Custom parser examples #3: `CustomTypeParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
@@ -544,7 +696,68 @@ The following constants are also defined _unless_ the same names are overriden b
 - `uy`: the unit vector Y
 - `uz`: the unit vector Z 
 
+## The Expression Tree
+
+The project is based on Expression binary trees. The classes `Node<T>`, `NodeBase` and `Tree` (all 3 in namespace `ParserLibrary.ExpressionTree`) are comprising everything we need about binary trees. In fact due to the fact that `Node<T>` is generic, we can use it for other uses as well. Each `Parser` uses a `Tokenizer` to facilitate any parsing. For the example below, we get the in-order, pre-order and post-order Nodes for the root node of the expression tree. For each `Tree` or a specific `Node`, we can print to the console a depiction of the binary tree. Visualizing the epressing tree is great for understanding the operations priorities
+```cs
+string expr = "a+tan(8+5) + sin(321+afsd*2^2)";
+var parser = App.GetDefaultParser();
+var tokenizer = app.Services.GetTokenizer();
+var tree = parser.GetExpressionTree(expr);
+Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
+Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
+tree.Print(withSlashes:false) ;
+```
+
+The code above prints the following to the Console:
+```
+Post order traversal: a 8 5 + tan + 321 afsd 2 2 ^ * + sin +
+Pre order traversal: + + a tan + 8 5 sin + 321 * afsd ^ 2 2
+In order traversal: a + tan 8 + 5 + sin 321 + afsd * 2 ^ 2
+
+
+      +
+   ┌──└───┐
+   +     sin
+  ┌└─┐     └┐
+  a tan     +
+      └┐  ┌─└─┐
+       + 321  *
+      ┌└┐   ┌─└┐
+      8 5 afsd ^
+              ┌└┐
+              2 2
+```
+## `Tree<T>`
+The `Tree<T>` class contains the following important members:
+* `Root [Node<T>]`: The Root Node of the tree. This the only node in the `Tree` which has no parent nodes.
+* `Print [void]`: Prints the Tree to the console using 2 available variations controlled by the argument `withSlashes`.
+* `Count [int]`: The total number of nodes in the tree.
+* `GetHeight() [int]`: The height of the binary tree. For example a tree with a single root node and 2 leafs has a height of 1.
+* `GetLeafNodesCount() [int]`: The number of leaf nodes.
+
+## `NodeBase`
+The `NodeBase` class contains the core of the binary tree functionality:
+* `Text [string]`: The text representation of the node
+* `Left [NodeBase]`: The left child node
+* `Right [NodeBase]`: The right child node
+* `PreOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in pre-order arrangement 
+* `PostOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in post-order arrangement
+* `InOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in in-order arrangement
+
+## `Node<T>`
+The `Node<T>` inherits `NodeaBase` and includes some additional members which are expression-oriented:
+* `Value<T>`: The value of the node. The inherited `Text` property should be a string representation of this value.
+To facilitate the retrieval of child nodes depending on the type of each token, some methods of the `Node<T>` are very practical:
+* `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator (such as unary `-`).
+* `GetBinaryArguments [(object LeftOperand, object RightOperand)]`: Retrieves the value of the two operand child nodes, assuming that the token represents a binary operator (such as `*` and `^`).
+* `GetFunctionArguments [(object[]]`: Retrieves the values of the function argument nodes, assuming that the token represents a function token operator (such as `sin`).
+Note, that we are not using any generic types for the node values. The array of objects allow the single returned array to return instances of different daa types.
+
+
 ### _more documentation to follow **soon**..._
+
 
 
 
