@@ -544,7 +544,7 @@ The following constants are also defined _unless_ the same names are overriden b
 - `uy`: the unit vector Y
 - `uz`: the unit vector Z 
 
-## The Expression tree
+## The Expression Tree
 
 The project is based on Expression binary trees. The classes `Node<T>`, `NodeBase` and `Tree` (all 3 in namespace `ParserLibrary.ExpressionTree`) are comprising everything we need about binary trees. In fact due to the fact that `Node<T>` is generic, we can use it for other uses as well. Each `Parser` uses a `Tokenizer` to facilitate any parsing. For the example below, we get the in-order, pre-order and post-order Nodes for the root node of the expression tree. For each `Tree` or a specific `Node`, we can print to the console a depiction of the binary tree. Visualizing the epressing tree is great for understanding the operations priorities
 ```cs
@@ -578,7 +578,24 @@ In order traversal: a + tan 8 + 5 + sin 321 + afsd * 2 ^ 2
               2 2
 ```
 
-
+The `Tree<T>` class contains the following important members:
+* `Root [Node<T>]`: The Root Node of the tree. This the only node in the `Tree` which has no parent nodes.
+* `Print [void]`: Prints the Tree to the console using 2 available variations controlled by the argument `withSlashes`.
+* `Count [int]`: The total number of nodes in the tree.
+* `GetHeight() [int]`: The height of the binary tree. For example a tree with a single root node and 2 leafs has a height of 1.
+* `GetLeafNodesCount() [int]`: The number of leaf nodes.
+The `NodeBase` class contains the core of the binary tree functionality:
+* `Text [string]`: The text representation of the node
+* `Left [NodeBase]`: The left child node
+* `Right [NodeBase]`: The right child node
+* `PreOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in pre-order arrangement 
+* `PostOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in post-order arrangement
+* `InOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in in-order arrangement
+The `Node<T>` inherits `NodeaBase` and includes some additional members which are expression-oriented:
+* `Value<T>`: The value of the node. The inherited `Text` property should be a string representation of this value.
+To facilitate the retrieval of child nodes depending on the type of each token, some methods of the `Node<T>` are very practical:
+* `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator.
+* `GetBinaryArguments [(object LeftOperand, object RightOperand)]`: Retrieves the value of the two operand child nodes, assuming that the token represents a binary operator.
 
 ### _more documentation to follow **soon**..._
 
