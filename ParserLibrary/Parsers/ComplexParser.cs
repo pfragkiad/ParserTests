@@ -1,7 +1,6 @@
-﻿namespace ParserLibrary.Parsers;
+﻿using System.Numerics;
 
-using ParserLibrary.Tokenizers;
-using System.Numerics;
+namespace ParserLibrary.Parsers;
 
 public class ComplexParser : Parser
 {
@@ -12,6 +11,7 @@ public class ComplexParser : Parser
     {
         if (variables is null) variables = new();
 
+        //we define "constants" if they are not already defined
         if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
         if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
         if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));

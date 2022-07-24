@@ -28,7 +28,6 @@ using System.Numerics;
 
 
 var app = App.GetParserApp<DefaultParser>("parsersettings.json");
-var parser = app.Services.GetParser();
 //or to immediately get the parser
 var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
@@ -50,16 +49,16 @@ expr = "-2";
 expr = "p------2";
 expr = "a+tan(8+5) + sin(321+afsd*2^2)";
 //expr = "-!!sds%*++2*6";
+//ar tokens = tokenizer.GetInOrderTokens(expr);
 
 //expr = "-5.0+4.0";
+var parser = App.GetDefaultParser();
 var tokenizer = app.Services.GetTokenizer();
-//ar tokens = tokenizer.GetInOrderTokens(expr);
 var tree = parser.GetExpressionTree(expr);
 Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
 Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
 Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 //Console.WriteLine(parser.Evaluate(expr));
-
 tree.Print(withSlashes:false) ;
 
 //TODO: SHOW EXAMPLE WITHOUT SERILOG (show examples using _loggger).

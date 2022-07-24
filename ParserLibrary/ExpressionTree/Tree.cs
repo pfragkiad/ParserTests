@@ -19,9 +19,9 @@ public class Tree<T>
         else Root.PrintWithDashes(topMargin: topMargin, leftMargin: leftMargin);
     }
 
-    public int CountLeafNodes
+    public int GetLeafNodesCount()
     {
-        get => NodeDictionary.
+       return NodeDictionary.
             Count(e => e.Value.Left is null && e.Value.Right is null);
     }
 
