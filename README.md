@@ -544,7 +544,44 @@ The following constants are also defined _unless_ the same names are overriden b
 - `uy`: the unit vector Y
 - `uz`: the unit vector Z 
 
+## The Expression tree
+
+The project is based on Expression binary trees. The classes `Node<T>`, `NodeBase` and `Tree` (all 3 in namespace `ParserLibrary.ExpressionTree`) are comprising everything we need about binary trees. In fact due to the fact that `Node<T>` is generic, we can use it for other uses as well. Each `Parser` uses a `Tokenizer` to facilitate any parsing. For the example below, we get the in-order, pre-order and post-order Nodes for the root node of the expression tree. For each `Tree` or a specific `Node`, we can print to the console a depiction of the binary tree. Visualizing the epressing tree is great for understanding the operations priorities
+```cs
+string expr = "a+tan(8+5) + sin(321+afsd*2^2)";
+var parser = App.GetDefaultParser();
+var tokenizer = app.Services.GetTokenizer();
+var tree = parser.GetExpressionTree(expr);
+Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
+Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
+tree.Print(withSlashes:false) ;
+```
+
+The code above prints the following to the Console:
+```
+Post order traversal: a 8 5 + tan + 321 afsd 2 2 ^ * + sin +
+Pre order traversal: + + a tan + 8 5 sin + 321 * afsd ^ 2 2
+In order traversal: a + tan 8 + 5 + sin 321 + afsd * 2 ^ 2
+
+
+      +
+   ┌──└───┐
+   +     sin
+  ┌└─┐     └┐
+  a tan     +
+      └┐  ┌─└─┐
+       + 321  *
+      ┌└┐   ┌─└┐
+      8 5 afsd ^
+              ┌└┐
+              2 2
+```
+
+
+
 ### _more documentation to follow **soon**..._
+
 
 
 
