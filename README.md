@@ -245,7 +245,7 @@ public class ComplexParser : Parser
 }
 ```
 
-Below is an example of use of the `ComplexParser`:
+Below is an example of usage of the `ComplexParser`:
 
 ```cs
 using System.Numerics; //needed if we want to further use the result
