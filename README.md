@@ -93,8 +93,10 @@ double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 
 
 ## Custom parser examples #1:  `ComplexParser`
 
-Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see an example (`Complex` belongs to the `System.Numerics` namespace).
-Let's see the implementation of the `ComplexParser`. Any `Parser` that uses custom types should inherit the `Parser` base class. 
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic.
+The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
+
+Any `Parser` that uses custom types should inherit the `Parser` base class. 
 Each custom parser should override the methods:
 * `Evaluate`: if there is at least one "constant" such as `pi`, which should be defined by default.
 * `EvaluateUnaryOperator` : if at least one unary operator
@@ -103,6 +105,8 @@ Each custom parser should override the methods:
 * `EvaluateFunction`: if there is at least one function.
 
 It is best to understand how to override these functions in the example of the `ComplexParser` implementation below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetUnaryArgument`, `GetFunctionArguments`).
+
+Let's see the implementation of the `ComplexParser` to make things clearer:
 
 ```cs
 using System.Numerics;
