@@ -91,7 +91,7 @@ var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
 
-## `ComplexParser` custom type example
+## Custom parser examples #1:  `ComplexParser`
 
 Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see an example (`Complex` belongs to the `System.Numerics` namespace).
 Let's see the implementation of the `ComplexParser`. Any `Parser` that uses custom types should inherit the `Parser` base class. 
@@ -263,7 +263,7 @@ Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.
 
 Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
-## `Vector3Parser` custom type example
+## Custom parser examples #2:  `Vector3Parser`
 
 `Vector3Parser` is the corresponding parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. Let's see some examples too:
 
@@ -290,7 +290,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom type parser 
+## Custom parser examples #3: `CustomTypeParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
