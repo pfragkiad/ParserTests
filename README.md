@@ -577,13 +577,15 @@ In order traversal: a + tan 8 + 5 + sin 321 + afsd * 2 ^ 2
               ┌└┐
               2 2
 ```
-
+## `Tree<T>`
 The `Tree<T>` class contains the following important members:
 * `Root [Node<T>]`: The Root Node of the tree. This the only node in the `Tree` which has no parent nodes.
 * `Print [void]`: Prints the Tree to the console using 2 available variations controlled by the argument `withSlashes`.
 * `Count [int]`: The total number of nodes in the tree.
 * `GetHeight() [int]`: The height of the binary tree. For example a tree with a single root node and 2 leafs has a height of 1.
 * `GetLeafNodesCount() [int]`: The number of leaf nodes.
+
+## `NodeBase`
 The `NodeBase` class contains the core of the binary tree functionality:
 * `Text [string]`: The text representation of the node
 * `Left [NodeBase]`: The left child node
@@ -591,11 +593,16 @@ The `NodeBase` class contains the core of the binary tree functionality:
 * `PreOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in pre-order arrangement 
 * `PostOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in post-order arrangement
 * `InOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in in-order arrangement
+
+## `Node<T>`
 The `Node<T>` inherits `NodeaBase` and includes some additional members which are expression-oriented:
 * `Value<T>`: The value of the node. The inherited `Text` property should be a string representation of this value.
 To facilitate the retrieval of child nodes depending on the type of each token, some methods of the `Node<T>` are very practical:
-* `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator.
-* `GetBinaryArguments [(object LeftOperand, object RightOperand)]`: Retrieves the value of the two operand child nodes, assuming that the token represents a binary operator.
+* `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator (such as unary `-`).
+* `GetBinaryArguments [(object LeftOperand, object RightOperand)]`: Retrieves the value of the two operand child nodes, assuming that the token represents a binary operator (such as `*` and `^`).
+* `GetFunctionArguments [(object[]]`: Retrieves the values of the function argument nodes, assuming that the token represents a function token operator (such as `sin`).
+Note, that we are not using any generic types for the node values. The array of objects allow the single returned array to return instances of different daa types.
+
 
 ### _more documentation to follow **soon**..._
 
