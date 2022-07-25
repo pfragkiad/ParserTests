@@ -5,6 +5,8 @@ _No Other Expression Parser, Ever_
 I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chords**, or even **vectors** and **matrices** and some other to represent numbers.
 The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start.
 
+**The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃.**
+
 The library is based on modern programming tools and can be highly customized. Its basic features are:
 - Default support for:
   - Double arithmetic via the `DefaultParser`
@@ -14,8 +16,6 @@ The library is based on modern programming tools and can be highly customized. I
 - Full control of unary and binary operators via configuration files  (typically `appsettings.json`).
 - Support for custom data types and/or combination of custom data types with standard data types (such as `int`, `double`).
 - Support for custom functions with arbitrary number of arguments. Each argument may be a custom type.
-
-*The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃.*
 
 The library is built with modern tools:
 - .NET 6.0
