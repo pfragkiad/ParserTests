@@ -104,7 +104,7 @@ Each custom parser should override the methods:
 * `EvaluateOperator`: if there is at least one binary operator
 * `EvaluateFunction`: if there is at least one function.
 
-It is best to understand how to override these functions in the example of the `ComplexParser` implementation below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetUnaryArgument`, `GetFunctionArguments`).
+It is best to understand how to override these functions in the example of the `ComplexParser` implementation below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetBinaryArguments`, `GetFunctionArguments`).
 
 Let's see the implementation of the `ComplexParser` to make things clearer:
 
