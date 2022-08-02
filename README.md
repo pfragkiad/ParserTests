@@ -91,10 +91,48 @@ var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
 
-## Custom parser examples #1:  `ComplexParser`
+## Custom parser examples #1: Single type parsing
 
-Another ready to use `Parser` is the `ComplexParser` for complex arithmetic.
-The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
+If we want to parse an expression that deals with a single data type, then we can avoid the use of creating a custom parser, using the `Parser.Evaluate` function. In the example below, we assume that the expression contains only `int` data types.
+```cs
+//we use the base Parser here
+var parserApp = App.GetParserApp<Parser>();
+var parser = parserApp.Services.GetParser();
+
+int result = parser.Evaluate<int>( //returns 860
+    "a+f10(8+5) + f2(321+asd*2^2)",
+    (s) => int.Parse(s),
+    variables:  new () {
+        { "a", 8 },
+        { "asd", 10 } },
+    binaryOperators: new () {
+        { "+",(v1,v2)=>v1+v2} ,
+        { "*", (v1, v2) => v1 * v2 },
+        { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
+    funcs1Arg:
+    new () {
+        { "f10", (v) => 10 * v } ,
+        { "f2", (v) => 2 * v }}
+    );
+```
+From the declaration of the function below, we can see that the `Evaluate` function supports functions from up to 3 arguments and the definition of custom operators. As shown in the example above, it is best to use the named parameters syntax.
+```cs
+ V Evaluate<V>(
+        string s,
+        Func<string, V> literalParser = null,
+        Dictionary<string, V> variables = null,
+        Dictionary<string, Func<V, V, V>> binaryOperators = null,
+        Dictionary<string, Func<V, V>> unaryOperators = null,
+
+        Dictionary<string, Func<V, V>>? funcs1Arg = null,
+        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+        );
+```
+
+## Custom parser examples #2:  `ComplexParser`
+
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
 
 Any `Parser` that uses custom types should inherit the `Parser` base class. 
 Each custom parser should override the methods:
@@ -118,7 +156,7 @@ public class ComplexParser : Parser
     public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null) variables = new();
 
@@ -267,7 +305,7 @@ Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.
 
 Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
-## Custom parser examples #2:  `Vector3Parser`
+## Custom parser examples #3:  `Vector3Parser`
 
 `Vector3Parser` is the corresponding parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. The implementation of the `Vector3Parser` is similar to the implementation of the `ComplexParser`. The same methods from the `Parser` base class are overriden.
 
@@ -282,7 +320,7 @@ public class Vector3Parser : Parser
     public Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protect override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null) variables = new();
 
@@ -423,7 +461,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #3: `CustomTypeParser`
+## Custom parser examples #4: `CustomTypeParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
