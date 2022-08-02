@@ -118,7 +118,7 @@ public class ComplexParser : Parser
     public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null) variables = new();
 
@@ -282,7 +282,7 @@ public class Vector3Parser : Parser
     public Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protect override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null) variables = new();
 
