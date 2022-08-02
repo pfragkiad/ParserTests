@@ -76,27 +76,33 @@ public class Parser : IParser
         string s,
         Func<string, V> literalParser = null,
         Dictionary<string, V> variables = null,
-        Dictionary<string, Func<V, V, V>> operators = null,
+        Dictionary<string, Func<V, V, V>> binaryOperators = null,
+        Dictionary<string, Func<V, V>> unaryOperators = null,
+
         Dictionary<string, Func<V, V>>? funcs1Arg = null,
-        Dictionary<string, Func<V, V, V>>? funcs2Arg = null
+        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
         )
     {
         var inOrderTokens = _tokenizer.GetInOrderTokens(s);
         var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
         return Evaluate(
             postfixTokens,
-            literalParser, variables, operators, funcs1Arg, funcs2Arg
+            literalParser, variables,
+            binaryOperators, unaryOperators,
+            funcs1Arg, funcs2Arg, funcs3Arg
             );
     }
 
-
-    public V Evaluate<V>( //code is practically the same with building the expression tree
+    protected V Evaluate<V>( //code is practically the same with building the expression tree
         List<Token> postfixTokens,
         Func<string, V> literalParser,
         Dictionary<string, V> variables = null,
-        Dictionary<string, Func<V, V, V>> operators = null,
+        Dictionary<string, Func<V, V, V>> binaryOperators = null,
+        Dictionary<string, Func<V, V>> unaryOperators = null,
         Dictionary<string, Func<V, V>>? funcs1Arg = null,
-        Dictionary<string, Func<V, V, V>>? funcs2Arg = null
+        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
         )
     {
         _logger.LogDebug("Evaluating...");
@@ -114,24 +120,40 @@ public class Parser : IParser
                 Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
-                V functionResult = default;
 
-                if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
+                //get function arguments
+                V[] args = functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
+                    //convert to generic nodeValueDictionary<string,object>
+                    nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value))
+                        .Select(v => (V)v).ToArray();
+
+                V functionResult = args.Length switch
                 {
-                    var arg1 = nodeValueDictionary[functionNode.Right as Node<Token>];
-                    functionResult = funcs1Arg[token.Text](arg1);
-                    nodeValueDictionary.Add(functionNode, functionResult);
-                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
-                } //else it contains more than one arguments
-                else //argument separator
-                {
-                    var separatorNode = functionNode.Right as Node<Token>;
-                    var arg1 = nodeValueDictionary[separatorNode.Left as Node<Token>];
-                    var arg2 = nodeValueDictionary[separatorNode.Right as Node<Token>];
-                    functionResult = funcs2Arg[token.Text](arg1, arg2);
-                    nodeValueDictionary.Add(functionNode, functionResult);
-                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
-                }
+                    1 => funcs1Arg[token.Text](args[0]),
+                    2 => funcs2Arg[token.Text](args[0], args[1]),
+                    3 => funcs3Arg[token.Text](args[0], args[1], args[2]),
+                    _ => default
+                };
+                nodeValueDictionary.Add(functionNode, functionResult);
+                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                continue;
+
+                //if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
+                //{
+                //    var arg1 = nodeValueDictionary[functionNode.Right as Node<Token>];
+                //    functionResult = funcs1Arg[token.Text](arg1);
+                //    nodeValueDictionary.Add(functionNode, functionResult);
+                //    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                //} //else it contains more than one arguments
+                //else //argument separator
+                //{
+                //    var separatorNode = functionNode.Right as Node<Token>;
+                //    var arg1 = nodeValueDictionary[separatorNode.Left as Node<Token>];
+                //    var arg2 = nodeValueDictionary[separatorNode.Right as Node<Token>];
+                //    functionResult = funcs2Arg[token.Text](arg1, arg2);
+                //    nodeValueDictionary.Add(functionNode, functionResult);
+                //    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                //}
                 //---------------------------------------------------------------------------------
                 continue;
             }
@@ -159,13 +181,26 @@ public class Parser : IParser
                 //XTRA
                 if (token.Text != _options.TokenPatterns.ArgumentSeparator)
                 {
-                    var result =
-                            operators[token.Text](
-                                nodeValueDictionary[operatorNode.Left as Node<Token>],
-                                nodeValueDictionary[operatorNode.Right as Node<Token>]);
-                    nodeValueDictionary.Add(operatorNode, result);
+                    V result;
+                    if (token.TokenType == TokenType.Operator)//binary operator
+                    {
+                        var operands = operatorNode.GetBinaryArguments(
+                            nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value));
+                        result = binaryOperators[token.Text]((V)operands.LeftOperand, (V)operands.RightOperand);
+                    }
+                    else //unary operator
+                    {
+                        V operand = (V)operatorNode.GetUnaryArgument(_options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix,
+                            nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value));
+                        result = unaryOperators[token.Text](operand);
+                    }
+                    //var result =
+                    //        operators[token.Text](
+                    //            nodeValueDictionary[operatorNode.Left as Node<Token>],
+                    //            nodeValueDictionary[operatorNode.Right as Node<Token>]);
                     //if (nodeValueDictionary.ContainsKey(operatorNode.Right as Node<Token>) && nodeValueDictionary.ContainsKey(operatorNode.Left as Node<Token>))
                     //  );
+                    nodeValueDictionary.Add(operatorNode, result);
                     _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
@@ -183,7 +218,7 @@ public class Parser : IParser
     }
 
 
-    #region Evaluation virtual functions for Custom Evaluation Classes
+    #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
     protected virtual object EvaluateFunction(
         Node<Token> functionNode,
         Dictionary<Node<Token>, object> nodeValueDictionary)
@@ -238,7 +273,7 @@ public class Parser : IParser
         return Evaluate(postfixTokens, variables);
     }
 
-    public virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         _logger.LogDebug("Evaluating...");
 

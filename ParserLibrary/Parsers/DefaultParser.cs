@@ -13,7 +13,7 @@ public class DefaultParser : Parser
     /// <param name="postfixTokens"></param>
     /// <param name="variables"></param>
     /// <returns></returns>
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null)
             variables = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

@@ -8,7 +8,7 @@ public class Vector3Parser : Parser
     public Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
     { }
 
-    public override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
     {
         if (variables is null) variables = new();
 
@@ -94,21 +94,11 @@ public class Vector3Parser : Parser
         };
     }
 
-    protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
-
-    HashSet<string> funcsWith3Args = new() { "lerp" };
-
-    //HashSet<string> funcsWith2Args = new() { "cross", "dot", "round" };
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         string functionName = functionNode.Text.ToLower();
 
-        Vector3[] a = GetVector3FunctionArguments(
-            //count:
-            //funcsWith2Args.Contains(functionName) ? 2 :
-            //funcsWith3Args.Contains(functionName) ? 3 :
-            //1,
-            functionNode, nodeValueDictionary);
+        Vector3[] a = GetVector3FunctionArguments( functionNode, nodeValueDictionary);
 
         switch (functionName)
         {
