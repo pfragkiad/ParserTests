@@ -93,12 +93,46 @@ double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 
 
 ## Custom parser examples #1: Single type parsing
 
-asd
+If we want to parse an expression that deals with a single data type, then we can avoid the use of creating a custom parser, using the `Parser.Evaluate` function. In the example below, we assume that the expression contains only `int` data types.
+```cs
+//we use the base Parser here
+var parserApp = App.GetParserApp<Parser>();
+var parser = parserApp.Services.GetParser();
+
+int result = parser.Evaluate<int>( //returns 860
+    "a+f10(8+5) + f2(321+asd*2^2)",
+    (s) => int.Parse(s),
+    variables:  new () {
+        { "a", 8 },
+        { "asd", 10 } },
+    binaryOperators: new () {
+        { "+",(v1,v2)=>v1+v2} ,
+        { "*", (v1, v2) => v1 * v2 },
+        { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
+    funcs1Arg:
+    new () {
+        { "f10", (v) => 10 * v } ,
+        { "f2", (v) => 2 * v }}
+    );
+```
+From the declaration of the function below, we can see that the `Evaluate` function supports functions from up to 3 arguments and the definition of custom operators. As shown in the example above, it is best to use the named parameters syntax.
+```cs
+ V Evaluate<V>(
+        string s,
+        Func<string, V> literalParser = null,
+        Dictionary<string, V> variables = null,
+        Dictionary<string, Func<V, V, V>> binaryOperators = null,
+        Dictionary<string, Func<V, V>> unaryOperators = null,
+
+        Dictionary<string, Func<V, V>>? funcs1Arg = null,
+        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+        );
+```
 
 ## Custom parser examples #2:  `ComplexParser`
 
-Another ready to use `Parser` is the `ComplexParser` for complex arithmetic.
-The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
 
 Any `Parser` that uses custom types should inherit the `Parser` base class. 
 Each custom parser should override the methods:
