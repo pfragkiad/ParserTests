@@ -24,7 +24,7 @@ The library is built with modern tools:
 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incrementally added functionality.
 
-# Examples
+# Simple Parser Examples
 
 ## `DefaultParser` examples
 
@@ -91,7 +91,7 @@ var parser = App.GetCustomParser<SimpleFunctionParser>();
 double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
 ```
 
-## Custom parser examples #1: Single type parsing
+## Single type parsing
 
 If we want to parse an expression that deals with a single data type, then we can avoid the use of creating a custom parser, using the `Parser.Evaluate` function. In the example below, we assume that the expression contains only `int` data types.
 ```cs
@@ -130,21 +130,20 @@ From the declaration of the function below, we can see that the `Evaluate` funct
         );
 ```
 
-## Custom parser examples #2:  `ComplexParser`
-
-Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). 
+# Custom Parsers
 
 Any `Parser` that uses custom types should inherit the `Parser` base class. 
 Each custom parser should override the methods:
 * `Evaluate`: if there is at least one "constant" such as `pi`, which should be defined by default.
-* `EvaluateUnaryOperator` : if at least one unary operator
+* `EvaluateUnaryOperator` : if there is at least one unary operator
 * `EvaluateLiteral`: if there is at least one literal value such as `0.421`. In most cases a simple parse function can be called for a `double` or `int`.
 * `EvaluateOperator`: if there is at least one binary operator
 * `EvaluateFunction`: if there is at least one function.
+It is best to understand how to override these functions in the example implementations below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetBinaryArguments`, `GetFunctionArguments`).
 
-It is best to understand how to override these functions in the example of the `ComplexParser` implementation below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetBinaryArguments`, `GetFunctionArguments`).
+## Custom parser examples #1:  `ComplexParser`
 
-Let's see the implementation of the `ComplexParser` to make things clearer:
+Another ready to use `Parser` is the `ComplexParser` for complex arithmetic. The application of the `Parser` for `Complex` numbers is a first application of a custom data type (i.e. other that `double`). Let's see the implementation of the `ComplexParser` to clarify how a generic custom parser is implemented:
 
 ```cs
 using System.Numerics;
@@ -305,7 +304,7 @@ Console.WriteLine(cparser.Evaluate("round(cos((1+i)/(8+i)),4)")); //(0.9962, -0.
 
 Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is correct!)
 ```
-## Custom parser examples #3:  `Vector3Parser`
+## Custom parser examples #2:  `Vector3Parser`
 
 `Vector3Parser` is the corresponding parser for vector arithmetic. The `Vector3` is also included in the `System.Numerics` namespace. The implementation of the `Vector3Parser` is similar to the implementation of the `ComplexParser`. The same methods from the `Parser` base class are overriden.
 
@@ -461,7 +460,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #4: `CustomTypeParser`
+## Custom parser examples #3: `CustomTypeParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
