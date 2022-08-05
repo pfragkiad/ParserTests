@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using ParserLibrary.Parsers;
 using ParserUnitTests.Parsers;
 using System.Diagnostics;
@@ -14,6 +15,18 @@ public class UnitTestParser
     {
         var parserApp = App.GetParserApp<IntParser>();
         var parser = parserApp.Services.GetParser();
+
+        string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
+        int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } });
+
+        Assert.Equal<int>(860, result);
+    }
+
+    [Fact]
+    public void TestCustomIntTransientParser()
+    {
+        var parserApp = App.GetTransientParserApp<IntTransientParser>();
+        var parser = parserApp.Services.GetTransientParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
         int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } });
@@ -72,6 +85,34 @@ public class UnitTestParser
     public void TestCustomTypeParser()
     {
         var parser = App.GetCustomParser<CustomTypeParser>();
+        Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+            new() {
+                {"a", new Item { Name="foo", Value = 3}  },
+                {"b", new Item { Name="bar"}  }
+            });
+
+        Assert.Equal("foo bar 12", result.ToString());
+    }
+
+    [Fact]
+    public void TestCustomTypeTransientParser()
+    {
+        //Sample adding the library to our own host
+        //var app = Host
+        //    .CreateDefaultBuilder()
+        //    .ConfigureServices((context, services) =>
+        //     {
+        //         services.AddTransientParserLibrary<CustomTypeTransientParser>(context);
+        //     }).Build();
+        //var parser = app.Services.GetTransientParser();
+
+        //or 
+        //var app = App.GetTransientParserApp<CustomTypeTransientParser>();
+        //var parser = app.Services.GetTransientParser();
+
+        //or
+        var parser = App.GetCustomTransientParser<CustomTypeTransientParser>();
+
         Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },

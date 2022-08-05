@@ -72,26 +72,26 @@ public class UnitTestParserBase
     [Fact]
     public void TestFunctionWithExpression()
     {
-    var parserApp = App.GetParserApp<Parser>();
-    var parser = parserApp.Services.GetParser();
+        var parserApp = App.GetParserApp<Parser>();
+        var parser = parserApp.Services.GetParser();
 
-    string expr = "a+f10(8+5) + f2(321+asd*2^2)"; //returns 860
+        string expr = "a+f10(8+5) + f2(321+asd*2^2)"; //returns 860
 
-    int result = parser.Evaluate<int>(
-        expr,
-        (s) => int.Parse(s),
-        variables:  new () {
+        int result = parser.Evaluate<int>(
+            expr,
+            (s) => int.Parse(s),
+            variables: new() {
             { "a", 8 },
             { "asd", 10 } },
-        binaryOperators: new (){
+            binaryOperators: new(){
             { "+",(v1,v2)=>v1+v2} ,
             { "*", (v1, v2) => v1 * v2 },
             { "^",(v1,v2)=>(int)Math.Pow(v1,v2)}  },
-        funcs1Arg:
-        new () {
+            funcs1Arg:
+            new() {
             { "f10", (v) => 10 * v } ,
             { "f2", (v) => 2 * v }}
-        );
+            );
 
         Assert.Equal<int>(860, result);
     }

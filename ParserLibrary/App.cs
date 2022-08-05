@@ -35,6 +35,28 @@ public static class App
         return app;
     }
 
+    public static IHost GetTransientParserApp<TParser>(string configFile = "appsettings.json") where TParser : TransientParser
+    {
+        IHost app = Host.CreateDefaultBuilder()
+           .ConfigureAppConfiguration(builder =>
+           {
+               if (configFile != "appsettings.json")
+                   builder.AddJsonFile(configFile, true, false);
+           })
+           .ConfigureServices((context, services) =>
+           {
+               services
+               .AddTransientParserLibrary<TParser>(context);
+           })
+           .UseSerilog((context, configuration) =>
+           {
+               configuration.ReadFrom.Configuration(context.Configuration);
+               //configuration.MinimumLevel.Debug();
+               //configuration.WriteTo.Console();
+           })
+           .Build();
+        return app;
+    }
 
 
     #region Utility functions
@@ -43,6 +65,8 @@ public static class App
     public static IParser GetCustomParser<TParser>(string configFile = "appsettings.json") where TParser : Parser =>
         GetParserApp<TParser>(configFile).Services.GetParser();
 
+    public static ITransientParser GetCustomTransientParser<TParser>(string configFile = "appsettings.json") where TParser : TransientParser =>
+        GetTransientParserApp<TParser>(configFile).Services.GetTransientParser();
 
     public static IParser? GetDefaultParser(string configFile = "appsettings.json") =>
         GetParserApp<DefaultParser>(configFile).Services.GetParser();
@@ -58,12 +82,18 @@ public static class App
     #region Tokenizer, Parser services extensions
     public static IServiceCollection AddParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context) where TParser : Parser
     {
-       return  services
-                   .ConfigureTokenizerOptions(context)
-                   .AddTokenizer()
-                   .AddParser<TParser>();
+        return services
+                    .ConfigureTokenizerOptions(context)
+                    .AddTokenizer()
+                    .AddParser<TParser>();
     }
-
+    public static IServiceCollection AddTransientParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context) where TParser : TransientParser
+    {
+        return services
+                    .ConfigureTokenizerOptions(context)
+                    .AddTokenizer()
+                    .AddTransientParser<TParser>();
+    }
     public static IServiceCollection ConfigureTokenizerOptions(this IServiceCollection services, HostBuilderContext context) =>
         services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));
 
@@ -76,6 +106,11 @@ public static class App
 
 
     public static IParser? GetParser(this IServiceProvider services) => services.GetService<IParser>();
+
+    public static IServiceCollection AddTransientParser<TParser>(this IServiceCollection services) where TParser : TransientParser
+            => services.AddTransient<ITransientParser, TParser>();
+
+    public static ITransientParser? GetTransientParser(this IServiceProvider services) => services.GetService<ITransientParser>();
 
     #endregion
 

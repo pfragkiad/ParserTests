@@ -44,3 +44,39 @@ public class IntParser : Parser
         };
     }
 }
+
+public class IntTransientParser : TransientParser
+{
+    public IntTransientParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    { }
+
+    protected override object EvaluateLiteral(string s)
+        => int.Parse(s);
+
+
+    protected override object EvaluateOperator(Node<Token> operatorNode)
+    {
+        var operands = GetBinaryArguments(operatorNode);
+        int left = (int)operands.LeftOperand, right = (int)operands.RightOperand;
+
+        return operatorNode.Text switch
+        {
+            "+" => left + right,
+            "*" => left * right,
+            "^" => (int)Math.Pow(left, right),
+            _ => base.EvaluateOperator(operatorNode)
+        };
+    }
+
+    protected override object EvaluateFunction(Node<Token> functionNode)
+    {
+        int arg = (int)GetFunctionArgument(functionNode);
+
+        return functionNode.Text.ToLower() switch
+        {
+            "tan" => 10 * arg,
+            "sin" => 2 * arg,
+            _ => base.EvaluateFunction(functionNode)
+        };
+    }
+}
