@@ -460,7 +460,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #3: `CustomTypeParser` and the `CustomType**Transient**Parser`
+## Custom parser examples #3: `CustomTypeParser` and the `CustomTypeTransientParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
@@ -540,7 +540,71 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
+### `CustomTypeTransientParser` and the `NodeValueDictionary`
 
+We can see from the example of the `CustomTypeParser`, that each function carries a `nodeValueDictionary` argument. An expected remark, is why this happens. All `Parser` subclasses are expected to be used as singletons, so to guarantee the thread-safe operations they are state-less. Being stateless, means that if we want a lot of parallel requests to be handled by the same `Parser` instance, then each expression has to store its own version of `nodeValueDictionary`. The latter is literally a `Dictionary` which stores the values, which have been evaluated at each stage of the parsing.
+In case, we want one of the following 2 cases:
+* a `Parser` instance per expression
+* a `Parser` that handles only non-parallel requests (such as the case of a terminal console),
+then the `NodeValueDictionary` could possibly be stored as an internal field and simplify the subclass definition. That's why the library contains another Parser variant named `TransientParser`. Subclasses of `TransientParser` (which implement the `ITransientParser` interface), are typically created with transient scope (not singleton), in order to avoid any conflict. All `TransientParser` instances come with state and have the `nodeValueDictionary` as an internal protected member. The example below, shows how we would implement a `TransientParser` for the same `Item`. The syntax of the `CustomTypeTransientParser` is simpler than the syntax of the `CustomTypeParser`, because it practically omits passing the `nodeValueDictionary` for each function call. Let's see how:
+
+```cs
+public class CustomTypeTransientParser : TransientParser
+{
+    public CustomTypeTransientParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) :
+        base(logger, tokenizer, options)
+    { }
+
+    //we assume that literals are integer numbers only
+    protected override object EvaluateLiteral(string s) => int.Parse(s);
+
+    protected override object EvaluateOperator(Node<Token> operatorNode)
+    {
+        (object LeftOperand, object RightOperand) = GetBinaryArguments(operatorNode);
+
+        if (operatorNode.Text == "+")
+        {
+            _logger.LogDebug("Adding with + operator ${left} and ${right}", LeftOperand, RightOperand);
+
+            
+            //we manage all combinations of Item/Item, Item/int, int/Item combinations here
+            if (LeftOperand is Item && RightOperand is Item)
+                return (Item)LeftOperand + (Item)RightOperand;
+
+            return LeftOperand is Item ? (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+        }
+
+        return base.EvaluateOperator(operatorNode);
+    }
+
+    protected override object EvaluateFunction(Node<Token> functionNode)
+    {
+        var a = GetFunctionArguments(functionNode);
+
+        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
+        //return functionNode.Text switch
+        return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+        {
+            "add" => (Item)a[0] + (int)a[1],
+            _ => base.EvaluateFunction(functionNode)
+        };
+    }
+}
+```
+
+In order to use the `TransientParser` we call the `GetCustomTransientParser` instead of the `GetCustomParser` function as shown below. Other than that, the syntax of the `Evaluate` function call is unchanged:
+
+```cs
+var parser = App.GetCustomTransientParser<CustomTypeTransientParser>();
+
+Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+    new() {
+        {"a", new Item { Name="foo", Value = 3}  },
+        {"b", new Item { Name="bar"}  }
+    });
+
+Assert.Equal("foo bar 12", result.ToString());
+```
 
 ## _more examples to follow **soon**..._
 
