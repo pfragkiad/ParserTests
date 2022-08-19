@@ -460,7 +460,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #3: `CustomTypeParser`
+## Custom parser examples #3: `CustomTypeParser` and the `CustomType**Transient**Parser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
@@ -539,6 +539,9 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     });
 Console.WriteLine(result); // foo bar 12
 ```
+
+
+
 ## _more examples to follow **soon**..._
 
 # Customizing ParserLibrary
