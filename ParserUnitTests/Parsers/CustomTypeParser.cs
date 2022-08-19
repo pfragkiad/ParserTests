@@ -91,7 +91,7 @@ public class CustomTypeTransientParser : TransientParser
         {
             _logger.LogDebug("Adding with + operator ${left} and ${right}", LeftOperand, RightOperand);
 
-
+            
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
             if (LeftOperand is Item && RightOperand is Item)
                 return (Item)LeftOperand + (Item)RightOperand;
