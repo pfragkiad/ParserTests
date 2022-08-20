@@ -24,6 +24,18 @@ The library is built with modern tools:
 
 There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them are base classes and adapt to the corresponding interfaces ```ITokenizer``` and ```IParser```. Let's uncover all the potential by giving examples with incrementally added functionality.
 
+### Installation
+
+Via tha Package Manager:
+```powershell
+Install-Package ParserLibrary -Version 1.4.4
+```
+
+Via the .NET CLI
+```bat
+dotnet add package ParserLibrary --version 1.4.4
+```
+
 # Simple Parser Examples
 
 ## `DefaultParser` examples
