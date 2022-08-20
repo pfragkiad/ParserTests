@@ -1,11 +1,13 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using ParserLibrary;
 
-using ParserLibrary.ExpressionTree;
+using ParserLibrary;
 using ParserLibrary.Parsers;
+
 using ParserLibrary.Tokenizers;
+using ParserLibrary.ExpressionTree;
+
 using System.Diagnostics;
 using System.Numerics;
 
