@@ -28,12 +28,12 @@ There are 2 main classes: the ```Tokenizer``` and the ```Parser```. Both of them
 
 Via tha Package Manager:
 ```powershell
-Install-Package ParserLibrary -Version 1.4.4
+Install-Package ParserLibrary -Version 1.4.5
 ```
 
 Via the .NET CLI
 ```bat
-dotnet add package ParserLibrary --version 1.4.4
+dotnet add package ParserLibrary --version 1.4.5
 ```
 
 ### Namespaces
