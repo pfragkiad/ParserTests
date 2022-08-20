@@ -36,6 +36,19 @@ Via the .NET CLI
 dotnet add package ParserLibrary --version 1.4.4
 ```
 
+### Namespaces
+
+At least the first 2 namespaces below, should be used in order to compile most of the examples below. The other 2 are for more advanced usage (expression trees and tokenizers).
+
+```cs
+//use at least these 2 namespaces
+using ParserLibrary;
+using ParserLibrary.Parsers;
+
+using ParserLibrary.Tokenizers;
+using ParserLibrary.ExpressionTree;
+```
+
 # Simple Parser Examples
 
 ## `DefaultParser` examples
