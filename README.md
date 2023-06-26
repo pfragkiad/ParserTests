@@ -1005,7 +1005,7 @@ The `NodeBase` class contains the core of the binary tree functionality:
 * `InOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in in-order arrangement
 
 ## `Node<T>`
-The `Node<T>` inherits `NodeaBase` and includes some additional members which are expression-oriented:
+The `Node<T>` inherits `NodeBase` and includes some additional members which are expression-oriented:
 * `Value<T>`: The value of the node. The inherited `Text` property should be a string representation of this value.
 To facilitate the retrieval of child nodes depending on the type of each token, some methods of the `Node<T>` are very practical:
 * `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator (such as unary `-`).
