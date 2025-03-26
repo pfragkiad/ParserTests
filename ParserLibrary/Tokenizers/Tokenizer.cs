@@ -23,35 +23,35 @@ public class Tokenizer : ITokenizer
 
         _logger.LogDebug("Retrieving infix tokens...");
 
-        List<Token> tokens = new();
+        List<Token> tokens = [];
 
         //identifiers
         var matches =
             _options.CaseSensitive ?
-            Regex.Matches(expression, _options.TokenPatterns.Identifier) :
-            Regex.Matches(expression, _options.TokenPatterns.Identifier, RegexOptions.IgnoreCase);
-        if (matches.Any())
+            Regex.Matches(expression, _options.TokenPatterns.Identifier!) :
+            Regex.Matches(expression, _options.TokenPatterns.Identifier!, RegexOptions.IgnoreCase);
+        if (matches.Count>0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m)));
 
         //literals
-        matches = Regex.Matches(expression, _options.TokenPatterns.Literal);
-        if (matches.Any())
+        matches = Regex.Matches(expression, _options.TokenPatterns.Literal!);
+        if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
         //open parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
-        if (matches.Any())
+        if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
 
         //open parenthesis with identifier
         string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
         matches = Regex.Matches(expression, functionPattern);
-        if (matches.Any())
+        if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Function, m)));
 
         //close parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
-        if (matches.Any())
+        if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
 
         //match unary operators that do NOT coincide with binary operators
@@ -62,16 +62,16 @@ public class Tokenizer : ITokenizer
             foreach (var op in uniqueUnary)
             {
                 matches = Regex.Matches(expression, $@"\{op.Name}");
-                if (matches.Any())
+                if (matches.Count != 0)
                     tokens.AddRange(matches.Select(m => new Token(TokenType.OperatorUnary, m)));
             }
         }
 
         //operators
-        foreach (var op in _options.TokenPatterns.Operators)
+        foreach (var op in _options.TokenPatterns.Operators ?? [])
         {
             matches = Regex.Matches(expression, $@"\{op.Name}");
-            if (matches.Any())
+            if (matches.Count != 0)
                 tokens.AddRange(matches.Select(m => new Token(TokenType.Operator, m)));
         }
 
@@ -98,11 +98,11 @@ public class Tokenizer : ITokenizer
 
         //search for unary operators (assuming they are the same with binary operators)
         var potentialUnaryOperators = tokens.Where(t =>
-        t.TokenType == TokenType.Operator && _options.TokenPatterns.Unary.Any(u => u.Name == t.Text));
+        t.TokenType == TokenType.Operator && _options.TokenPatterns.Unary!.Any(u => u.Name == t.Text));
         foreach (var token in potentialUnaryOperators)
         {
             int tokenIndex = tokens.IndexOf(token);
-            var unary = _options.TokenPatterns.Unary.First(u => u.Name == token.Text);
+            var unary = _options.TokenPatterns.Unary!.First(u => u.Name == token.Text);
 
             if (unary.Prefix)
             {
@@ -153,13 +153,13 @@ public class Tokenizer : ITokenizer
     //https://www.youtube.com/watch?v=PAceaOSnxQs
     public List<Token> GetPostfixTokens(List<Token> infixTokens)
     {
-        List<Token> postfixTokens = new();
+        List<Token> postfixTokens = [];
         Stack<Token> operatorStack = new();
 
         void LogState() => _logger.LogDebug("OP STACK: {stack}, POSTFIX {postfix}",
                     //reverse the operator stack so that the head is the last element
-                    operatorStack.Any() ? string.Join(" ", operatorStack.Reverse().Select(o => o.Text)) : "<empty>",
-                    postfixTokens.Any() ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
+                    operatorStack.Count != 0 ? string.Join(" ", operatorStack.Reverse().Select(o => o.Text)) : "<empty>",
+                    postfixTokens.Count != 0 ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
 
         var operators = _options.TokenPatterns.OperatorDictionary;
         var unary = _options.TokenPatterns.UnaryOperatorDictionary;
@@ -189,7 +189,7 @@ public class Tokenizer : ITokenizer
                 //pop all operators until we find open parenthesis
                 do
                 {
-                    if (!operatorStack.Any())
+                    if (operatorStack.Count == 0)
                     {
                         _logger.LogError("Unmatched closed parenthesis. An open parenthesis should precede.");
                         throw new InvalidOperationException($"Unmatched closed parenthesis (closed parenthesis at {token.Match.Index})");
@@ -216,7 +216,7 @@ public class Tokenizer : ITokenizer
 
                 //if (currentUnaryOperator?.Name == "%") Debugger.Break();
 
-                while (operatorStack.Any())
+                while (operatorStack.Count != 0)
                 {
 
                     Token currentHead = operatorStack.Peek();
@@ -272,7 +272,7 @@ public class Tokenizer : ITokenizer
         }
 
         //check the operator stack at the end
-        while (operatorStack.Any())
+        while (operatorStack.Count != 0)
         {
             var stackToken = operatorStack.Pop();
             if (stackToken.TokenType == TokenType.OpenParenthesis ||

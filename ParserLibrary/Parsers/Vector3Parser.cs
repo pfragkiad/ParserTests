@@ -3,14 +3,11 @@
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser : Parser
+public class Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
 {
-    public Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
-    { }
-
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {
-        if (variables is null) variables = new();
+        variables ??= [];
 
         if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
         if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
@@ -29,7 +26,7 @@ public class Vector3Parser : Parser
     #region Auxiliary functions to get operands
 
     public static Vector3 DoubleToVector3(object arg)
-        => new Vector3(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
+        => new(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
 
 
     public static bool IsNumeric(object arg) =>
@@ -49,17 +46,17 @@ public class Vector3Parser : Parser
 
     public (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        return (Left: GetVector3(operands.LeftOperand),
-                 Right: GetVector3(operands.RightOperand));
+        return (Left: GetVector3(LeftOperand),
+                 Right: GetVector3(RightOperand));
     }
 
     public Vector3[] GetVector3FunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode
+        return [.. functionNode
             .GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary)
-            .Select(arg => GetVector3(arg)).ToArray();
+            .Select(arg => GetVector3(arg))];
     }
 
     #endregion
@@ -100,27 +97,24 @@ public class Vector3Parser : Parser
 
         Vector3[] a = GetVector3FunctionArguments( functionNode, nodeValueDictionary);
 
-        switch (functionName)
+        return functionName switch
         {
-            case "abs": return Vector3.Abs(a[0]);
-            case "cross": return Vector3.Cross(a[0], a[1]);
-            case "dot": return Vector3.Dot(a[0], a[1]);
-            case "dist": return Vector3.Distance(a[0], a[1]);
-            case "dist2": return Vector3.DistanceSquared(a[0], a[1]);
-            case "lerp": return Vector3.Lerp(a[0], a[1], a[2].X);
-            case "length": return a[0].Length();
-            case "length2": return a[0].LengthSquared();
-            case "norm": return Vector3.Normalize(a[0]);
-            case "sqr":
-            case "sqrt": return Vector3.SquareRoot(a[0]);
-            case "round":
-                return new Vector3(
-                (float)Math.Round(a[0].X, (int)a[1].X),
-                (float)Math.Round(a[0].Y, (int)a[1].X),
-                (float)Math.Round(a[0].Z, (int)a[1].X));
-        }
-
-        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+            "abs" => Vector3.Abs(a[0]),
+            "cross" => Vector3.Cross(a[0], a[1]),
+            "dot" => Vector3.Dot(a[0], a[1]),
+            "dist" => Vector3.Distance(a[0], a[1]),
+            "dist2" => Vector3.DistanceSquared(a[0], a[1]),
+            "lerp" => Vector3.Lerp(a[0], a[1], a[2].X),
+            "length" => a[0].Length(),
+            "length2" => a[0].LengthSquared(),
+            "norm" => Vector3.Normalize(a[0]),
+            "sqr" or "sqrt" => Vector3.SquareRoot(a[0]),
+            "round" => new Vector3(
+                            (float)Math.Round(a[0].X, (int)a[1].X),
+                            (float)Math.Round(a[0].Y, (int)a[1].X),
+                            (float)Math.Round(a[0].Z, (int)a[1].X)),
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+        };
     }
 
 }

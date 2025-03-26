@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Company>Pavlos Fragkiadoulakis</Company>
     <Description>Parser Library that can be customized for multiple data types (double, complex, vector, matrices, chords (!) or whatever you want). Functions can be defined with multiple arguments, postfix and prefix multiple operators etc.
 Documentation and examples are being added currently. See README.</Description>
-    <Version>1.4.10</Version>
+    <Version>1.6</Version>
     <Authors>Pavlos Fragkiadoulakis</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Copyright>(c) 2022-2023 Paulus Stuff</Copyright>
+    <Copyright>(c) 2022-2025 Paulus Stuff</Copyright>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageTags>expression builer; binary tree; complex; vector3d; vector</PackageTags>
   </PropertyGroup>
@@ -38,9 +38,9 @@ Documentation and examples are being added currently. See README.</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

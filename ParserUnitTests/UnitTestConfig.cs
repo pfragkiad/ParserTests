@@ -10,7 +10,7 @@ public class UnitTestConfig
     public void TestConfigFile()
     {
         var app = App.GetParserApp<Parser>("appsettings2.json");
-        var options = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
+        var options = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
 
         Assert.Equal("2.0", options.Version);
     }

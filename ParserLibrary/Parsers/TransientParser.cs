@@ -12,9 +12,9 @@ public class TransientParser : ITransientParser
     protected readonly TokenizerOptions _options;
 
     //created for simplifying and caching dictionaries
-    protected internal Dictionary<Node<Token>, object> nodeValueDictionary;
-    protected Dictionary<Token, Node<Token>> nodeDictionary = new();
-    protected Stack<Token> stack;
+    protected internal Dictionary<Node<Token>, object> nodeValueDictionary = [];
+    protected Dictionary<Token, Node<Token>> nodeDictionary = [];
+    protected Stack<Token> stack = new();
 
 
 
@@ -66,7 +66,7 @@ public class TransientParser : ITransientParser
 
     protected virtual object EvaluateLiteral(string s)
     {
-        return null;
+        return new();
     }
     protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode) =>
         unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
@@ -81,11 +81,11 @@ public class TransientParser : ITransientParser
         functionNode.GetFunctionArgument(nodeValueDictionary);
 
 
-    public object Evaluate(string s, Dictionary<string, object> variables = null)
+    public object Evaluate(string s, Dictionary<string, object>? variables = null)
     {
         //these properties are reset for each evaluation!
-        nodeValueDictionary = new Dictionary<Node<Token>, object>();
-        nodeDictionary = new Dictionary<Token, Node<Token>>();
+        nodeValueDictionary = [];
+        nodeDictionary = [];
         stack = new Stack<Token>();
 
         var inOrderTokens = _tokenizer.GetInOrderTokens(s);
@@ -94,7 +94,7 @@ public class TransientParser : ITransientParser
         return Evaluate(postfixTokens, variables);
     }
 
-    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {
         _logger.LogDebug("Evaluating...");
 
@@ -119,10 +119,10 @@ public class TransientParser : ITransientParser
                 var tokenNode = PushToStack(token);
 
                 //XTRA CALCULATION HERE
-                object value = null;
+                object? value = null;
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
-                else if (token.TokenType == TokenType.Identifier)
+                else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);

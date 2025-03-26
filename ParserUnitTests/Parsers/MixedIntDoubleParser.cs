@@ -3,14 +3,10 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserUnitTests.Parsers;
 
-public class MixedIntDoubleParser : Parser
+public class MixedIntDoubleParser(
+    ILogger<Parser> logger, ITokenizer tokenizer,
+    IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
 {
-    public MixedIntDoubleParser(
-        ILogger<Parser> logger, ITokenizer tokenizer,
-        IOptions<TokenizerOptions> options) :
-        base(logger, tokenizer, options)
-    { }
-
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         string functionName = functionNode.Text;
@@ -26,7 +22,7 @@ public class MixedIntDoubleParser : Parser
                     var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
                     return (int)a[0] * (double)a[1];
                 }
-            default: return null;
+            default: return new();
         }
     }
 
@@ -47,13 +43,13 @@ public class MixedIntDoubleParser : Parser
                 {
                     //object v1 = nodeValueDictionary[(Node<Token>)operatorNode.Left];
                     //object v2 = nodeValueDictionary[(Node<Token>)operatorNode.Right];
-                    var v = operatorNode.GetBinaryArguments(nodeValueDictionary);
+                    var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-                    if (v.LeftOperand is int && v.RightOperand is int) return (int)v.LeftOperand + (int)v.RightOperand;
-                    if (v.LeftOperand is double && v.RightOperand is double) return (double)v.LeftOperand + (double)v.RightOperand;
+                    if (LeftOperand is int && RightOperand is int) return (int)LeftOperand + (int)RightOperand;
+                    if (LeftOperand is double && RightOperand is double) return (double)LeftOperand + (double)RightOperand;
                     break;
                 }
         }
-        return null;
+        return new();
     }
 }

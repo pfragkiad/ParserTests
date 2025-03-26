@@ -2,10 +2,8 @@
 
 namespace ParserLibrary.Parsers;
 
-public class DefaultParser : Parser
+public class DefaultParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
 {
-    public DefaultParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
-    { }
 
     /// <summary>
     /// Overriding the Evaluate function is great for adding custom "constant" literals.
@@ -13,10 +11,9 @@ public class DefaultParser : Parser
     /// <param name="postfixTokens"></param>
     /// <param name="variables"></param>
     /// <returns></returns>
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {
-        if (variables is null)
-            variables = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        variables ??= new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
         if (!variables.ContainsKey("pi")) variables.Add("pi", Math.PI);
         if (!variables.ContainsKey("e")) variables.Add("e", Math.E);
@@ -38,14 +35,14 @@ public class DefaultParser : Parser
             nodeValueDictionary));
     public (double Left, double Right) GetDoubleBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        return (Left: Convert.ToDouble(operands.LeftOperand),
-                 Right: Convert.ToDouble(operands.RightOperand));
+        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        return (Left: Convert.ToDouble(LeftOperand),
+                 Right: Convert.ToDouble(RightOperand));
     }
 
     public double[] GetDoubleFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary).Select(a => Convert.ToDouble(a)).ToArray();
+        return [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary).Select(a => Convert.ToDouble(a))];
     }
 
     #endregion
@@ -58,14 +55,12 @@ public class DefaultParser : Parser
 
         double operand = GetDoubleUnaryOperand(operatorNode, nodeValueDictionary);
 
-        switch (operatorNode.Text)
+        return operatorNode.Text switch
         {
-            case "-": return -operand;
-            case "+": return operand;
-            default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-
-
-        }
+            "-" => -operand,
+            "+" => operand,
+            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary),
+        };
     }
 
 
@@ -75,16 +70,15 @@ public class DefaultParser : Parser
         //double right = Convert.ToDouble(nodeValueDictionary[operatorNode.Right as Node<Token>]);
         (double left, double right) = GetDoubleBinaryOperands(operatorNode, nodeValueDictionary);
 
-        switch (operatorNode.Text)
+        return operatorNode.Text switch
         {
-            case "+": return left + right;
-            case "-": return left - right;
-            case "*": return left * right;
-            case "/": return left / right;
-            case "^": return Math.Pow(left, right);
-            default: return base.EvaluateOperator(operatorNode, nodeValueDictionary);
-
-        }
+            "+" => left + right,
+            "-" => left - right,
+            "*" => left * right,
+            "/" => left / right,
+            "^" => Math.Pow(left, right),
+            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary),
+        };
     }
 
     protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
@@ -99,45 +93,42 @@ public class DefaultParser : Parser
             //count:funcsWith2Args.Contains(functionName) ? 2 : 1,
             functionNode, nodeValueDictionary);
 
-        switch (functionName)
+        return functionName switch
         {
-            case "abs": return Math.Abs(a[0]);
-            case "acos": return Math.Acos(a[0]);
-            case "acosd": return Math.Acos(a[0]) * TODEG;
-            case "acosh": return Math.Acosh(a[0]);
-            case "asin": return Math.Asin(a[0]);
-            case "asind": return Math.Asin(a[0]) * TODEG;
-            case "asinh": return Math.Asinh(a[0]);
-            case "atan": return Math.Atan(a[0]);
-            case "atand": return Math.Atan(a[0]) * TODEG;
-            case "atan2": return Math.Atan2(a[0], a[1]); // y/x
-            case "atan2d": return Math.Atan2(a[0], a[1]) * TODEG; // y/x
-            case "atanh": return Math.Atanh(a[0]);
-            case "cbrt": return Math.Cbrt(a[0]);
-            case "cos": return Math.Cos(a[0]);
-            case "cosd": return Math.Cos(a[0] * TORAD);
-            case "cosh": return Math.Cosh(a[0]);
-            case "exp": return Math.Exp(a[0]);
-            case "log":
-            case "ln": return Math.Log(a[0]);
-            case "log10": return Math.Log10(a[0]);
-            case "log2": return Math.Log2(a[0]);
-            case "logn": return Math.Log(a[0]) / Math.Log(a[1]);
-            case "max": return Math.Max(a[0], a[1]);
-            case "min": return Math.Min(a[0], a[1]);
-            case "pow": return Math.Pow(a[0], a[1]);
-            case "round": return Math.Round(a[0], (int)a[1]);
-            case "sin": return Math.Sin(a[0]);
-            case "sind": return Math.Sin(a[0] * TORAD);
-            case "sinh": return Math.Sinh(a[0]);
-            case "sqr":
-            case "sqrt": return Math.Sqrt(a[0]);
-            case "tan": return Math.Tan(a[0]);
-            case "tand": return Math.Tan(a[0] * TORAD);
-            case "tanh": return Math.Tanh(a[0]);
-        }
-
-        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+            "abs" => Math.Abs(a[0]),
+            "acos" => Math.Acos(a[0]),
+            "acosd" => Math.Acos(a[0]) * TODEG,
+            "acosh" => Math.Acosh(a[0]),
+            "asin" => Math.Asin(a[0]),
+            "asind" => Math.Asin(a[0]) * TODEG,
+            "asinh" => Math.Asinh(a[0]),
+            "atan" => Math.Atan(a[0]),
+            "atand" => Math.Atan(a[0]) * TODEG,
+            "atan2" => Math.Atan2(a[0], a[1]),// y/x
+            "atan2d" => Math.Atan2(a[0], a[1]) * TODEG,// y/x
+            "atanh" => Math.Atanh(a[0]),
+            "cbrt" => Math.Cbrt(a[0]),
+            "cos" => Math.Cos(a[0]),
+            "cosd" => Math.Cos(a[0] * TORAD),
+            "cosh" => Math.Cosh(a[0]),
+            "exp" => Math.Exp(a[0]),
+            "log" or "ln" => Math.Log(a[0]),
+            "log10" => Math.Log10(a[0]),
+            "log2" => Math.Log2(a[0]),
+            "logn" => Math.Log(a[0]) / Math.Log(a[1]),
+            "max" => Math.Max(a[0], a[1]),
+            "min" => Math.Min(a[0], a[1]),
+            "pow" => Math.Pow(a[0], a[1]),
+            "round" => Math.Round(a[0], (int)a[1]),
+            "sin" => Math.Sin(a[0]),
+            "sind" => Math.Sin(a[0] * TORAD),
+            "sinh" => Math.Sinh(a[0]),
+            "sqr" or "sqrt" => Math.Sqrt(a[0]),
+            "tan" => Math.Tan(a[0]),
+            "tand" => Math.Tan(a[0] * TORAD),
+            "tanh" => Math.Tanh(a[0]),
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+        };
     }
 
 }

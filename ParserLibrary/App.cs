@@ -63,17 +63,20 @@ public static class App
 
 
     public static IParser GetCustomParser<TParser>(string configFile = "appsettings.json") where TParser : Parser =>
-        GetParserApp<TParser>(configFile).Services.GetParser();
+        GetParserApp<TParser>(configFile).Services.GetRequiredParser();
 
     public static ITransientParser GetCustomTransientParser<TParser>(string configFile = "appsettings.json") where TParser : TransientParser =>
-        GetTransientParserApp<TParser>(configFile).Services.GetTransientParser();
+        GetTransientParserApp<TParser>(configFile).Services.GetRequiredTransientParser();
 
     public static IParser? GetDefaultParser(string configFile = "appsettings.json") =>
         GetParserApp<DefaultParser>(configFile).Services.GetParser();
 
+    public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json") =>
+        GetParserApp<DefaultParser>(configFile).Services.GetRequiredParser();
+
     public static double Evaluate(string s, Dictionary<string, object>? variables = null)
     {
-        return (double)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables);
+        return (double)GetParserApp<DefaultParser>().Services.GetRequiredParser().Evaluate(s, variables);
     }
 
     #endregion

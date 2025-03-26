@@ -1,20 +1,14 @@
 ﻿namespace ParserLibrary.ExpressionTree;
 
-public abstract class NodeBase
+public abstract class NodeBase(string text)
 {
-    public string Text { get; set; }
+    public string Text { get; set; } = text;
 
-    public NodeBase Left { get; set; } //1
+    public NodeBase? Left { get; set; } = null; //1
 
-    public NodeBase Right { get; set; } //0
+    public NodeBase? Right { get; set; } = null; //0
 
     public List<NodeBase>? Other { get; set; } //>=2 (added for functions with more than 2 arguments)
-
-
-    public NodeBase(string text)
-    {
-        Text = text;
-    }
 
     public override string ToString() => Text;
 
@@ -33,8 +27,8 @@ public abstract class NodeBase
     {
         yield return this;
 
-        if (Other?.Any() ?? false) //PRE ORDER TESTED!
-            foreach (var node in (Other as IEnumerable<NodeBase>).Reverse())
+        if ( (Other?.Count ?? 0)>0) //PRE ORDER TESTED!
+            foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
                 yield return node;
 
         if (Left is not null)
@@ -48,8 +42,8 @@ public abstract class NodeBase
 
     public IEnumerable<NodeBase> PostOrderNodes() 
     {
-        if(Other?.Any() ?? false) //POST ORDER TESTED!
-            foreach(var node in (Other as IEnumerable<NodeBase>).Reverse())
+        if((Other?.Count ?? 0) > 0) //POST ORDER TESTED!
+            foreach(var node in (Other! as IEnumerable<NodeBase>).Reverse())
                 yield return node;
 
         if (Left is not null)
@@ -65,12 +59,12 @@ public abstract class NodeBase
 
     public IEnumerable<NodeBase> InOrderNodes() //WORKS ONLY
     {
-        if (Other?.Any() ?? false) //Argument case only (Left cannot precede function in any case)
+        if ((Other?.Count ?? 0) > 0) //Argument case only (Left cannot precede function in any case)
         {
             //to be consistent and remove this case, all Other should be stored on the Right Node
             yield return this;
 
-            foreach (var node in (Other as IEnumerable<NodeBase>).Reverse())
+            foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
                 yield return node;
 
             if (Left is not null)

@@ -4,9 +4,9 @@ namespace ParserLibrary.ExpressionTree;
 
 public class Tree<T>
 {
-    public Node<T> Root { get; set; }
+    public required Node<T> Root { get; set; }
 
-    public Dictionary<Token, Node<T>> NodeDictionary { get; internal set; }
+    public Dictionary<Token, Node<T>> NodeDictionary { get; internal set; } = [];
 
     public int GetHeight() => (Root?.GetHeight() - 1) ?? 0;
 

@@ -2,14 +2,11 @@
 
 namespace ParserLibrary.Parsers;
 
-public class ComplexParser : Parser
+public class ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
 {
-    public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
-    { }
-
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {
-        if (variables is null) variables = new();
+        variables ??= [];
 
         //we define "constants" if they are not already defined
         if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
@@ -38,23 +35,23 @@ public class ComplexParser : Parser
 
     public (Complex Left, Complex Right) GetComplexBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        return (Left: operands.LeftOperand is double || operands.LeftOperand is int ?
-            new Complex(Convert.ToDouble(operands.LeftOperand), 0) : (Complex)operands.LeftOperand,
-                 Right: operands.RightOperand is double || operands.RightOperand is int ?
-            new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
+        return (Left: LeftOperand is double || LeftOperand is int ?
+            new Complex(Convert.ToDouble(LeftOperand), 0) : (Complex)LeftOperand,
+                 Right: RightOperand is double || RightOperand is int ?
+            new Complex(Convert.ToDouble(RightOperand), 0) : (Complex)RightOperand);
     }
 
     public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        return functionNode.GetFunctionArguments(
+        return [.. functionNode.GetFunctionArguments(
             _options.TokenPatterns.ArgumentSeparator,
             nodeValueDictionary).Select(arg =>
      {
          if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
          else return (Complex)arg;
-     }).ToArray();
+     })];
     }
 
     #endregion
@@ -63,12 +60,12 @@ public class ComplexParser : Parser
     {
         Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
 
-        switch (operatorNode.Text)
+        return operatorNode.Text switch
         {
-            case "-": return -operand;
-            case "+": return operand;
-            default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-        }
+            "-" => -operand,
+            "+" => operand,
+            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary),
+        };
     }
 
 
@@ -76,16 +73,15 @@ public class ComplexParser : Parser
     {
         (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
 
-        switch (operatorNode.Text)
+        return operatorNode.Text switch
         {
-            case "+": return Complex.Add(left, right);
-            case "-": return left - right;
-            case "*": return left * right;
-            case "/": return left / right;
-            case "^": return Complex.Pow(left, right);
-            default: return base.EvaluateOperator(operatorNode, nodeValueDictionary);
-
-        }
+            "+" => Complex.Add(left, right),
+            "-" => left - right,
+            "*" => left * right,
+            "/" => left / right,
+            "^" => Complex.Pow(left, right),
+            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary),
+        };
     }
 
     protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
@@ -98,37 +94,34 @@ public class ComplexParser : Parser
 
         Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
 
-        switch (functionName)
+        return functionName switch
         {
-            case "abs": return Complex.Abs(a[0]);
-            case "acos": return Complex.Acos(a[0]);
-            case "acosd": return Complex.Acos(a[0]) * TODEG;
-            case "asin": return Complex.Asin(a[0]);
-            case "asind": return Complex.Asin(a[0]) * TODEG;
-            case "atan": return Complex.Atan(a[0]);
-            case "atand": return Complex.Atan(a[0]) * TODEG;
-            case "cos": return Complex.Cos(a[0]);
-            case "cosd": return Complex.Cos(a[0] * TORAD);
-            case "cosh": return Complex.Cosh(a[0]);
-            case "exp": return Complex.Exp(a[0]);
-            case "log":
-            case "ln": return Complex.Log(a[0]);
-            case "log10": return Complex.Log10(a[0]);
-            case "log2": return Complex.Log(a[0]) / Complex.Log(2);
-            case "logn": return Complex.Log(a[0]) / Complex.Log(a[1]);
-            case "pow": return Complex.Pow(a[0], a[1]);
-            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real));
-            case "sin": return Complex.Sin(a[0]);
-            case "sind": return Complex.Sin(a[0] * TORAD);
-            case "sinh": return Complex.Sinh(a[0]);
-            case "sqr":
-            case "sqrt": return Complex.Sqrt(a[0]);
-            case "tan": return Complex.Tan(a[0]);
-            case "tand": return Complex.Tan(a[0] * TORAD);
-            case "tanh": return Complex.Tanh(a[0]);
-        }
-
-        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+            "abs" => Complex.Abs(a[0]),
+            "acos" => Complex.Acos(a[0]),
+            "acosd" => Complex.Acos(a[0]) * TODEG,
+            "asin" => Complex.Asin(a[0]),
+            "asind" => Complex.Asin(a[0]) * TODEG,
+            "atan" => Complex.Atan(a[0]),
+            "atand" => Complex.Atan(a[0]) * TODEG,
+            "cos" => Complex.Cos(a[0]),
+            "cosd" => Complex.Cos(a[0] * TORAD),
+            "cosh" => Complex.Cosh(a[0]),
+            "exp" => Complex.Exp(a[0]),
+            "log" or "ln" => Complex.Log(a[0]),
+            "log10" => Complex.Log10(a[0]),
+            "log2" => Complex.Log(a[0]) / Complex.Log(2),
+            "logn" => Complex.Log(a[0]) / Complex.Log(a[1]),
+            "pow" => Complex.Pow(a[0], a[1]),
+            "round" => new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real)),
+            "sin" => Complex.Sin(a[0]),
+            "sind" => Complex.Sin(a[0] * TORAD),
+            "sinh" => Complex.Sinh(a[0]),
+            "sqr" or "sqrt" => Complex.Sqrt(a[0]),
+            "tan" => Complex.Tan(a[0]),
+            "tand" => Complex.Tan(a[0] * TORAD),
+            "tanh" => Complex.Tanh(a[0]),
+            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+        };
     }
 
 }

@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Parsers;
 
-public class Parser : IParser
+public abstract class Parser : IParser
 {
     protected readonly ILogger<Parser> _logger;
     protected readonly ITokenizer _tokenizer;
@@ -31,7 +31,7 @@ public class Parser : IParser
 
         //build expression tree from postfix 
         Stack<Token> stack = new();
-        Dictionary<Token, Node<Token>> nodeDictionary = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
 
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens) //these should be PostfixOrder tokens
@@ -67,17 +67,20 @@ public class Parser : IParser
 
         //the last item on the postfix expression is the root node
         var root = nodeDictionary[stack.Pop()];
-        Tree<Token> tree = new() { Root = root };
-        tree.NodeDictionary = nodeDictionary;
+        Tree<Token> tree = new()
+        {
+            Root = root,
+            NodeDictionary = nodeDictionary
+        };
         return tree;
     }
 
     public V Evaluate<V>(
         string s,
-        Func<string, V> literalParser = null,
-        Dictionary<string, V> variables = null,
-        Dictionary<string, Func<V, V, V>> binaryOperators = null,
-        Dictionary<string, Func<V, V>> unaryOperators = null,
+        Func<string, V>? literalParser = null,
+        Dictionary<string, V>? variables = null,
+        Dictionary<string, Func<V, V, V>>? binaryOperators = null,
+        Dictionary<string, Func<V, V>>? unaryOperators = null,
 
         Dictionary<string, Func<V, V>>? funcs1Arg = null,
         Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
@@ -96,10 +99,10 @@ public class Parser : IParser
 
     protected V Evaluate<V>( //code is practically the same with building the expression tree
         List<Token> postfixTokens,
-        Func<string, V> literalParser,
-        Dictionary<string, V> variables = null,
-        Dictionary<string, Func<V, V, V>> binaryOperators = null,
-        Dictionary<string, Func<V, V>> unaryOperators = null,
+        Func<string, V>? literalParser,
+        Dictionary<string, V>? variables = null,
+        Dictionary<string, Func<V, V, V>>? binaryOperators = null,
+        Dictionary<string, Func<V, V>>? unaryOperators = null,
         Dictionary<string, Func<V, V>>? funcs1Arg = null,
         Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
         Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
@@ -109,8 +112,8 @@ public class Parser : IParser
 
         //build expression tree from postfix 
         Stack<Token> stack = new();
-        Dictionary<Token, Node<Token>> nodeDictionary = new();
-        Dictionary<Node<Token>, V> nodeValueDictionary = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
+        Dictionary<Node<Token>, V?> nodeValueDictionary = [];
 
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
@@ -122,16 +125,17 @@ public class Parser : IParser
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
 
                 //get function arguments
-                V[] args = functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
+                V[] args = [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
                     //convert to generic nodeValueDictionary<string,object>
-                    nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value))
-                        .Select(v => (V)v).ToArray();
+                    nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value))
+                        .Select(v => (V)v)];
 
-                V functionResult = args.Length switch
+                int l = args.Length;
+                V? functionResult = args.Length switch
                 {
-                    1 => funcs1Arg[token.Text](args[0]),
-                    2 => funcs2Arg[token.Text](args[0], args[1]),
-                    3 => funcs3Arg[token.Text](args[0], args[1], args[2]),
+                    1 when funcs1Arg is not null => funcs1Arg[token.Text](args[0]),
+                    2 when funcs2Arg is not null => funcs2Arg[token.Text](args[0], args[1]),
+                    3 when funcs3Arg is not null => funcs3Arg[token.Text](args[0], args[1], args[2]),
                     _ => default
                 };
                 nodeValueDictionary.Add(functionNode, functionResult);
@@ -155,7 +159,7 @@ public class Parser : IParser
                 //    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 //}
                 //---------------------------------------------------------------------------------
-                continue;
+                //continue;
             }
 
             //from now on we deal with operators, literals and identifiers only
@@ -164,10 +168,10 @@ public class Parser : IParser
                 var tokenNode = PushToStack(stack, nodeDictionary, token);
 
                 //XTRA
-                V value = default;
-                if (token.TokenType == TokenType.Literal)
+                V? value = default;
+                if (token.TokenType == TokenType.Literal && literalParser is not null)
                     nodeValueDictionary.Add(tokenNode, value = literalParser(token.Text));
-                else if (token.TokenType == TokenType.Identifier)
+                else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
@@ -181,17 +185,17 @@ public class Parser : IParser
                 //XTRA
                 if (token.Text != _options.TokenPatterns.ArgumentSeparator)
                 {
-                    V result;
-                    if (token.TokenType == TokenType.Operator)//binary operator
+                    V? result = default;
+                    if (token.TokenType == TokenType.Operator && binaryOperators is not null)//binary operator
                     {
-                        var operands = operatorNode.GetBinaryArguments(
-                            nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value));
-                        result = binaryOperators[token.Text]((V)operands.LeftOperand, (V)operands.RightOperand);
+                        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(
+                            nodeValueDictionary.Select(e => (e.Key, Value: (object)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
+                        result = binaryOperators[token.Text]((V)LeftOperand, (V)RightOperand);
                     }
-                    else //unary operator
+                    else if (unaryOperators is not null) //unary operator
                     {
                         V operand = (V)operatorNode.GetUnaryArgument(_options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix,
-                            nodeValueDictionary.Select(e => (Key: e.Key, Value: (object)e.Value)).ToDictionary(e => e.Key, e => e.Value));
+                            nodeValueDictionary.Select(e => (e.Key, Value: (object)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
                         result = unaryOperators[token.Text](operand);
                     }
                     //var result =
@@ -213,8 +217,8 @@ public class Parser : IParser
         //the last item on the postfix expression is the root node
         //Tree<Token> tree = new() {  };
         //tree.NodeDictionary = nodeDictionary;
-        var root = nodeDictionary[stack.Pop()];
-        return nodeValueDictionary[root];
+        Node<Token> root = nodeDictionary[stack.Pop()];
+        return nodeValueDictionary[root]!;
     }
 
 
@@ -259,13 +263,13 @@ public class Parser : IParser
         //            nodeValueDictionary[operatorNode.Right as Node<Token>]);
     }
 
-    protected virtual object EvaluateLiteral(string s)
-    {
-        return null;
-    }
+    protected abstract object EvaluateLiteral(string s);
+    //{
+    //    return null;
+    //}
 
 
-    public object Evaluate(string s, Dictionary<string, object> variables = null)
+    public object Evaluate(string s, Dictionary<string, object>? variables = null)
     {
         var inOrderTokens = _tokenizer.GetInOrderTokens(s);
         var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
@@ -273,15 +277,15 @@ public class Parser : IParser
         return Evaluate(postfixTokens, variables);
     }
 
-    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {
         _logger.LogDebug("Evaluating...");
 
         //build expression tree from postfix 
         Stack<Token> stack = new();
-        Dictionary<Token, Node<Token>> nodeDictionary = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
         //XTRA
-        Dictionary<Node<Token>, object> nodeValueDictionary = new();
+        Dictionary<Node<Token>, object> nodeValueDictionary = [];
 
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
@@ -303,10 +307,10 @@ public class Parser : IParser
                 var tokenNode = PushToStack(stack, nodeDictionary, token);
 
                 //XTRA CALCULATION HERE
-                object value = null;
+                object? value = null;
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
-                else if (token.TokenType == TokenType.Identifier)
+                else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);

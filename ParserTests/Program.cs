@@ -56,7 +56,7 @@ expr = "a+tan(8+5) + sin(321+afsd*2^2)";
 //expr = "-5.0+4.0";
 var parser = App.GetDefaultParser();
 var tokenizer = app.Services.GetTokenizer();
-var tree = parser.GetExpressionTree(expr);
+var tree = parser!.GetExpressionTree(expr);
 Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
 Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
 Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
@@ -76,5 +76,5 @@ Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Comp
 Console.WriteLine(result2);
 
 
-var tokenizerOptions = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
+var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
 

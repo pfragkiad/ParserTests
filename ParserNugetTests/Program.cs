@@ -30,7 +30,7 @@ using System.Numerics;
 //tree.Print();
 
 
-Complex c1 = new Complex(1, 1);
+Complex c1 = new(1, 1);
 Console.WriteLine(Complex.Cos(c1));
 
 var cparser = App.GetCustomParser<ComplexParser>();
@@ -42,8 +42,7 @@ Console.WriteLine(cparser.Evaluate("round(exp(i*pi),8)")); //(-1, 0)  (Euler is 
 
 var vparser = App.GetCustomParser<Vector3Parser>();
 
-Vector3 v1 = new Vector3(1, 4, 2),
-    v2 = new Vector3(2, -2, 0);
+Vector3 v1 = new(1, 4, 2), v2 = new(2, -2, 0);
 
 Console.WriteLine(vparser.Evaluate("!(v1+3*v2)", //! means normalize vector
    new() { { "v1", v1 }, { "v2", v2 } })); //<0,92717266. -0,26490647. 0,26490647>
@@ -62,7 +61,7 @@ Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 
 
 var tree = App
-    .GetDefaultParser()
+    .GetRequiredDefaultParser()
     .GetExpressionTree("cos(sin(a+b, 3+4) +1,+2, set(5,6,7+8,9)+1, sda(sin(2+2,2),sin(s,s,s)) , sin(s,s,s,s)*sin(asd,212,2123,212))");
 tree.Print();
 

@@ -38,10 +38,15 @@ public static class DependencyInjection
 
     public static IParser? GetParser(this IServiceProvider services) => services.GetService<IParser>();
 
+    public static IParser GetRequiredParser(this IServiceProvider services) => services.GetRequiredService<IParser>();
+
     public static IServiceCollection AddTransientParser<TParser>(this IServiceCollection services) where TParser : TransientParser
             => services.AddTransient<ITransientParser, TParser>();
 
+
     public static ITransientParser? GetTransientParser(this IServiceProvider services) => services.GetService<ITransientParser>();
+
+    public static ITransientParser GetRequiredTransientParser(this IServiceProvider services) => services.GetRequiredService<ITransientParser>();
 
     #endregion
 

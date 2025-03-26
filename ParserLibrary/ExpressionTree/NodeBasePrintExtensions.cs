@@ -5,12 +5,12 @@ public static class NodeBasePrintExtensions
 {
     private class NodeInfo
     {
-        public NodeBase Node;
-        public string Text;
+        public NodeBase? Node;
+        public string? Text;
         public int StartPos;
-        public int Size => Text.Length;
+        public int Size => Text?.Length ?? 0;
         public int EndPos { get => StartPos + Size;  set { StartPos = value - Size; } }
-        public NodeInfo Parent, Left, Right;
+        public NodeInfo? Parent, Left, Right;
     }
 
     public static void PrintWithDashes(this NodeBase root, int topMargin = 2, int leftMargin = 2)
@@ -40,7 +40,7 @@ public static class NodeBasePrintExtensions
             if (level > 0)
             {
                 item.Parent = last[level - 1];
-                if (next == item.Parent.Node.Left)
+                if (next == item.Parent.Node!.Left)
                 {
                     item.Parent.Left = item;
                     item.EndPos = Math.Max(item.EndPos, item.Parent.StartPos);
@@ -56,10 +56,10 @@ public static class NodeBasePrintExtensions
             {
                 Print(item, rootTop + 2 * level);
                 if (--level < 0) break;
-                if (item == item.Parent.Left)
+                if (item == item.Parent!.Left)
                 {
                     item.Parent.StartPos = item.EndPos;
-                    next = item.Parent.Node.Right;
+                    next = item.Parent.Node!.Right;
                 }
                 else
                 {
@@ -84,7 +84,7 @@ public static class NodeBasePrintExtensions
     private static void Print(NodeInfo item, int top)
     {
         //SwapColors();
-        Print(item.Text, top, item.StartPos);
+        Print(item.Text ?? "", top, item.StartPos);
         //SwapColors();
         if (item.Left != null)
             PrintLink(top + 1, "┌", "┘", item.Left.StartPos + item.Left.Size / 2, item.StartPos);
@@ -139,7 +139,7 @@ public static class NodeBasePrintExtensions
             if (level > 0)
             {
                 item.Parent = last[level - 1];
-                if (next == item.Parent.Node.Left)
+                if (next == item.Parent!.Node!.Left)
                 {
                     item.Parent.Left = item;
                     item.EndPos = Math.Max(item.EndPos, item.Parent.StartPos - 1);
@@ -154,7 +154,7 @@ public static class NodeBasePrintExtensions
             for (; next == null; item = item.Parent)
             {
                 int top = rootTop + 2 * level;
-                Print(item.Text, top, item.StartPos);
+                Print(item.Text ?? "", top, item.StartPos);
                 if (item.Left != null)
                 {
                     Print2("/", top + 1, item.Left.EndPos);
@@ -166,10 +166,10 @@ public static class NodeBasePrintExtensions
                     Print2("\\", top + 1, item.Right.StartPos - 1);
                 }
                 if (--level < 0) break;
-                if (item == item.Parent.Left)
+                if (item == item.Parent!.Left)
                 {
                     item.Parent.StartPos = item.EndPos + 1;
-                    next = item.Parent.Node.Right;
+                    next = item.Parent.Node!.Right;
                 }
                 else
                 {
