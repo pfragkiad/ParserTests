@@ -1,10 +1,5 @@
 ﻿using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ParserUnitTests.Parsers;
 
@@ -46,8 +41,8 @@ public class CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOpt
 
 
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
-            if (LeftOperand is Item && RightOperand is Item)
-                return (Item)LeftOperand + (Item)RightOperand;
+            if (LeftOperand is Item left && RightOperand is Item right)
+                return left + right;
 
             return LeftOperand is Item ? (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
         }

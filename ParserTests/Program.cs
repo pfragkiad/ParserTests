@@ -29,52 +29,57 @@ using System.Numerics;
 //string expr = "0.1*sin(a1,a2)+90";
 
 
-var app = App.GetParserApp<DefaultParser>("parsersettings.json");
-//or to immediately get the parser
-var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
+internal class Program
+{
+    private static void Main(string[] args)
+    {
+        var app = App.GetParserApp<DefaultParser>("parsersettings.json");
+        //or to immediately get the parser
+        var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
-//var tree = parser.Parse(expr);
-//tree.Root.PrintWithDashes();
-//Console.WriteLine($"Tree nodes: {tree.Count}");
-//Console.WriteLine($"Tree leaf nodes: {tree.CountLeafNodes}");
-//Console.WriteLine($"Tree height: {tree.GetHeight()}");
-//Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
-//Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
-//Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
+        //var tree = parser.Parse(expr);
+        //tree.Root.PrintWithDashes();
+        //Console.WriteLine($"Tree nodes: {tree.Count}");
+        //Console.WriteLine($"Tree leaf nodes: {tree.CountLeafNodes}");
+        //Console.WriteLine($"Tree height: {tree.GetHeight()}");
+        //Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
+        //Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+        //Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
 
-//expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
-//expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
-//parser.Parse(expr).Root.PrintWithDashes(0,0);
+        //expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
+        //expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
+        //parser.Parse(expr).Root.PrintWithDashes(0,0);
 
-string expr = "21--(231)";
-expr = "-2";
-expr = "p------2";
-expr = "a+tan(8+5) + sin(321+afsd*2^2)";
-//expr = "-!!sds%*++2*6";
-//ar tokens = tokenizer.GetInOrderTokens(expr);
+        string expr = "21--(231)";
+        expr = "-2";
+        expr = "p------2";
+        expr = "a+tan(8+5) + sin(321+afsd*2^2)";
+        //expr = "-!!sds%*++2*6";
+        //ar tokens = tokenizer.GetInOrderTokens(expr);
 
-//expr = "-5.0+4.0";
-var parser = App.GetDefaultParser();
-var tokenizer = app.Services.GetTokenizer();
-var tree = parser!.GetExpressionTree(expr);
-Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
-Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
-Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
-//Console.WriteLine(parser.Evaluate(expr));
-tree.Print(withSlashes:false) ;
+        //expr = "-5.0+4.0";
+        var parser = App.GetDefaultParser();
+        var tokenizer = app.Services.GetTokenizer();
+        var tree = parser!.GetExpressionTree(expr);
+        Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
+        Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
+        Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
+        //Console.WriteLine(parser.Evaluate(expr));
+        tree.Print(withSlashes: false);
 
-//TODO: SHOW EXAMPLE WITHOUT SERILOG (show examples using _loggger).
-//TODO: SHOW TREE
-
-
-//Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
-
-var cparser = App.GetCustomParser<ComplexParser>();
-Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
-Console.WriteLine(result);
-Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2,-3)} });
-Console.WriteLine(result2);
+        //TODO: SHOW EXAMPLE WITHOUT SERILOG (show examples using _loggger).
+        //TODO: SHOW TREE
 
 
-var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+        //Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
 
+        var cparser = App.GetCustomParser<ComplexParser>();
+        Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
+        Console.WriteLine(result);
+        Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
+        Console.WriteLine(result2);
+
+
+        var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+    }
+}

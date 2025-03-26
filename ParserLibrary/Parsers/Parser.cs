@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Parsers;
 
-public abstract class Parser : IParser
+public class Parser : IParser
 {
     protected readonly ILogger<Parser> _logger;
     protected readonly ITokenizer _tokenizer;
@@ -263,10 +263,10 @@ public abstract class Parser : IParser
         //            nodeValueDictionary[operatorNode.Right as Node<Token>]);
     }
 
-    protected abstract object EvaluateLiteral(string s);
-    //{
-    //    return null;
-    //}
+    protected virtual  object EvaluateLiteral(string s)
+    {
+        return new();
+    }
 
 
     public object Evaluate(string s, Dictionary<string, object>? variables = null)

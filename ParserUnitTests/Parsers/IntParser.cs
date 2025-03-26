@@ -5,11 +5,8 @@ using ParserLibrary.Tokenizers;
 namespace ParserUnitTests.Parsers;
 
 
-public class IntParser : Parser
+public class IntParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
 {
-    public IntParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
-    { }
-
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);
 

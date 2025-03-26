@@ -86,7 +86,7 @@ public static class App
     private static void Tests()
     {
         //#1a
-        IConfigurationBuilder builder = new ConfigurationBuilder();
+        var builder = new ConfigurationBuilder();
         builder.AddJsonFile("appsettings.json");
         IConfiguration config = builder.Build();
 
