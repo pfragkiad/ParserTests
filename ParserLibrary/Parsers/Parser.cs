@@ -1,4 +1,5 @@
-﻿using ParserLibrary.Tokenizers;
+﻿using OneOf;
+using ParserLibrary.Tokenizers;
 
 namespace ParserLibrary.Parsers;
 
@@ -276,6 +277,62 @@ public class Parser : IParser
 
         return Evaluate(postfixTokens, variables);
     }
+
+    public OneOf<T1, T2> Evaluate<T1, T2>(string s, Dictionary<string, OneOf<T1, T2>> variables)
+    {
+        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+        //return based on the type of result
+        if (result is T1 t1) return t1;
+        if (result is T2 t2) return t2;
+        throw new InvalidOperationException("Could not evaluate return type.");
+    }
+    
+    public OneOf<T1,T2,T3> Evaluate<T1, T2, T3>(string s, Dictionary<string, OneOf<T1, T2, T3>> variables)
+    {
+        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+        //return based on the type of result
+        if (result is T1 t1) return t1;
+        if (result is T2 t2) return t2;
+        if (result is T3 t3) return t3;
+        throw new InvalidOperationException("Could not evaluate return type.");
+    }
+
+    public OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(string s, Dictionary<string, OneOf<T1, T2, T3, T4>> variables)
+    {
+        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+        //return based on the type of result
+        if (result is T1 t1) return t1;
+        if (result is T2 t2) return t2;
+        if (result is T3 t3) return t3;
+        if (result is T4 t4) return t4;
+        throw new InvalidOperationException("Could not evaluate return type.");
+    }
+
+    public OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables)
+    {
+        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+        //return based on the type of result
+        if (result is T1 t1) return t1;
+        if (result is T2 t2) return t2;
+        if (result is T3 t3) return t3;
+        if (result is T4 t4) return t4;
+        if (result is T5 t5) return t5;
+        throw new InvalidOperationException("Could not evaluate return type.");
+    }
+
+    public OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables)
+    {
+        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+        //return based on the type of result
+        if (result is T1 t1) return t1;
+        if (result is T2 t2) return t2;
+        if (result is T3 t3) return t3;
+        if (result is T4 t4) return t4;
+        if (result is T5 t5) return t5;
+        if (result is T6 t6) return t6;
+        throw new InvalidOperationException("Could not evaluate return type.");
+    }
+
 
     protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
     {

@@ -1,0 +1,68 @@
+{
+  "tokenizer": {
+    "version": "1.0",
+    "caseSensitive": false,
+    "tokenPatterns": {
+      "identifier": "[A-Za-z_]\\w*",
+      "literal": "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
+      "openParenthesis": "(",
+      "closeParenthesis": ")",
+      "argumentSeparator": ",",
+
+      "unary": [
+        {
+          "name": "-",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "+",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "!",
+          "priority": 3,
+          "prefix": true
+        },
+        {
+          "name": "%",
+          "priority": 3,
+          "prefix": false
+        },
+        {
+          "name": "*",
+          "priority": 3,
+          "prefix": false
+        }
+      ],
+      "operators": [
+        {
+          "name": ",",
+          "priority": 0
+        },
+        {
+          "name": "+",
+          "priority": 1
+        },
+        {
+          "name": "-",
+          "priority": 1
+        },
+        {
+          "name": "*",
+          "priority": 2
+        },
+        {
+          "name": "/",
+          "priority": 2
+        },
+        {
+          "name": "^",
+          "priority": 4,
+          "lefttoright": false
+        }
+      ]
+    }
+  }
+}

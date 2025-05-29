@@ -1,4 +1,5 @@
-﻿using ParserLibrary.ExpressionTree;
+﻿using OneOf;
+using ParserLibrary.ExpressionTree;
 using ParserLibrary.Tokenizers;
 
 namespace ParserLibrary.Parsers;
@@ -18,6 +19,32 @@ public interface IParser
         );
 
     object Evaluate(string s, Dictionary<string, object>? variables = null);
+
+    OneOf<T1, T2> Evaluate<T1, T2>(
+        string s,
+        Dictionary<string, OneOf<T1, T2>> variables
+    );
+
+    OneOf<T1, T2, T3> Evaluate<T1, T2, T3>(
+        string s,
+        Dictionary<string, OneOf<T1, T2, T3>> variables
+    );
+
+    OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(
+        string s,
+        Dictionary<string, OneOf<T1, T2, T3, T4>> variables
+    );
+
+    OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(
+        string s,
+        Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables
+    );
+
+    OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(
+        string s,
+        Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables
+    );
+
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
     Tree<Token> GetExpressionTree(string s);
 }
