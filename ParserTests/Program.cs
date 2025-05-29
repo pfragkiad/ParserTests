@@ -31,9 +31,9 @@ using System.Numerics;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    private static void MainTests()
     {
-        var app = App.GetParserApp<DefaultParser>("parsersettings.json");
+  var app = App.GetParserApp<DefaultParser>("parsersettings.json");
         //or to immediately get the parser
         var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
@@ -74,12 +74,18 @@ internal class Program
         //Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
 
         var cparser = App.GetCustomParser<ComplexParser>();
-        Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
+        Complex result = (Complex)cparser.Evaluate("(1+3*i))/(2-3*i)");
         Console.WriteLine(result);
         Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
         Console.WriteLine(result2);
 
 
         var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+    }
+
+
+    private static void Main(string[] args)
+    {
+      
     }
 }
