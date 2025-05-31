@@ -286,5 +286,12 @@ public class TransientParser : ITransientParser
 
     }
 
+    #region Utility functions
+
+    public bool AreParenthesesMatched(string expression) =>
+        _tokenizer.AreParenthesesMatched(expression);
+
+    #endregion
+
 
 }

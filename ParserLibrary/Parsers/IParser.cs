@@ -6,6 +6,7 @@ namespace ParserLibrary.Parsers;
 
 public interface IParser
 {
+    bool AreParenthesesMatched(string expression);
     V Evaluate<V>(
         string s,
         Func<string, V>? literalParser = null,

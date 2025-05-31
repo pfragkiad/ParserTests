@@ -542,4 +542,11 @@ public class Parser : IParser
         return tokenNode;
 
     }
+
+    #region Utility functions
+
+    public bool AreParenthesesMatched(string expression) =>
+        _tokenizer.AreParenthesesMatched(expression);
+
+    #endregion
 }

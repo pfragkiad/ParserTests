@@ -14,6 +14,29 @@ public class Tokenizer : ITokenizer
 
     }
 
+    public bool AreParenthesesMatched(string expression)
+    {
+        var open = _options.TokenPatterns.OpenParenthesis;
+        var close = _options.TokenPatterns.CloseParenthesis;
+
+        int count = 0;
+        foreach (char c in expression)
+        {
+            if (c.ToString() == open)
+            {
+                count++;
+                continue;
+            }
+
+            if (c.ToString() != close) continue;
+
+            count--;
+            if (count < 0)
+                return false;
+        }
+        return count == 0;
+    }
+
 
 
     //The second property contains the number of arguments needed by each corresponding function.
@@ -30,7 +53,7 @@ public class Tokenizer : ITokenizer
             _options.CaseSensitive ?
             Regex.Matches(expression, _options.TokenPatterns.Identifier!) :
             Regex.Matches(expression, _options.TokenPatterns.Identifier!, RegexOptions.IgnoreCase);
-        if (matches.Count>0)
+        if (matches.Count > 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m)));
 
         //literals
@@ -268,7 +291,7 @@ public class Tokenizer : ITokenizer
             }
 
 
-        NextToken:;
+            NextToken:;
         }
 
         //check the operator stack at the end

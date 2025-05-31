@@ -118,6 +118,13 @@ internal class Program
                 { "a",  item1 }
             });
 
+        parser.RegisterFunction("myfunc(a,b) = a + b + 10");
+        var result4 = parser.Evaluate("myfunc(a,10)",
+            new() {
+                { "a",  500 }
+            });
+
+
         //var result4 = parser.Evaluate<double,Item>("a+10.7+80",
         //new() {
         //   { "a",  item1 }
@@ -126,7 +133,7 @@ internal class Program
         //var results = new object[]
         //    {result, result2, result3, result4 }.Cast<OneOf<Item,double>>();
 
-        object[] results = [result, result2, result3];
+        object[] results = [result, result2, result3, result4];
         foreach(var r in results)
             Console.WriteLine($"Result: {r}, Type: {r.GetType()}");
 
