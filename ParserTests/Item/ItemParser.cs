@@ -79,6 +79,8 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
         return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
         {
             "add" => (Item)a[0] + (int)a[1],
+
+            //at the end check for custom functions
             _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
         };
     }

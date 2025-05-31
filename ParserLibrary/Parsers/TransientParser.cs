@@ -27,10 +27,57 @@ public class TransientParser : ITransientParser
         if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
     }
 
+    #region Custom functions
+
+    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+    
+    public void RegisterFunction(string definition)
+    {
+        // Example: "myf(x,y) = 10*x+sin(y)"
+        var parts = definition.Split('=', 2);
+        if (parts.Length != 2)
+            throw new ArgumentException("Invalid function definition format.");
+
+        var header = parts[0].Trim();
+        var body = parts[1].Trim();
+
+        var nameAndParams = header.Split('(', 2);
+        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
+            throw new ArgumentException("Invalid function header format.");
+
+        var name = nameAndParams[0].Trim();
+
+        var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        _customFunctions[name] = (paramList, body);
+    }
+
+
+    #endregion
+
+
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
     protected virtual object EvaluateFunction(Node<Token> functionNode)
     {
+        //checks only for custom functions registered with RegisterFunction method  
+        var functionName = functionNode.Value!.Text;
+        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        {
+            var args = GetFunctionArguments(functionNode);
+            if (args.Length != funcDef.Parameters.Length)
+                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
+
+            // Build a variable dictionary for the function body
+            var localVars = new Dictionary<string, object>();
+            for (int i = 0; i < funcDef.Parameters.Length; i++)
+                localVars[funcDef.Parameters[i]] = args[i];
+
+            // Evaluate the function body with the local variables
+            return Evaluate(funcDef.Body, localVars);
+        }
+
         throw new InvalidOperationException($"Unknown function ({functionNode.Text})");
+
         //V functionResult = default(V);
         //if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
         //{
@@ -68,6 +115,7 @@ public class TransientParser : ITransientParser
     {
         return new();
     }
+   
     protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode) =>
         unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
 
@@ -237,4 +285,6 @@ public class TransientParser : ITransientParser
         return tokenNode;
 
     }
+
+
 }

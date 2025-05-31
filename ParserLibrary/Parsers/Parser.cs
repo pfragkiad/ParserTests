@@ -222,12 +222,57 @@ public class Parser : IParser
         return nodeValueDictionary[root]!;
     }
 
+    #region Custom functions
+
+    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+
+    public void RegisterFunction(string definition)
+    {
+        // Example: "myf(x,y) = 10*x+sin(y)"
+        var parts = definition.Split('=', 2);
+        if (parts.Length != 2)
+            throw new ArgumentException("Invalid function definition format.");
+
+        var header = parts[0].Trim();
+        var body = parts[1].Trim();
+
+        var nameAndParams = header.Split('(', 2);
+        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
+            throw new ArgumentException("Invalid function header format.");
+
+        var name = nameAndParams[0].Trim();
+
+        var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        _customFunctions[name] = (paramList, body);
+    }
+
+
+    #endregion
+
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
     protected virtual object EvaluateFunction(
         Node<Token> functionNode,
         Dictionary<Node<Token>, object> nodeValueDictionary)
     {
+        //checks only for custom functions registered with RegisterFunction method  
+        var functionName = functionNode.Value!.Text;
+        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        {
+            var args = GetFunctionArguments(functionNode, nodeValueDictionary);
+            if (args.Length != funcDef.Parameters.Length)
+                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
+
+            // Build a variable dictionary for the function body
+            var localVars = new Dictionary<string, object>();
+            for (int i = 0; i < funcDef.Parameters.Length; i++)
+                localVars[funcDef.Parameters[i]] = args[i];
+
+            // Evaluate the function body with the local variables
+            return Evaluate(funcDef.Body, localVars);
+        }
+
         throw new InvalidOperationException($"Unknown function ({functionNode.Text})");
         //V functionResult = default(V);
         //if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
@@ -269,6 +314,19 @@ public class Parser : IParser
         return new();
     }
 
+    protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+    unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
+
+    protected (object LeftOperand, object RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+        binaryOperatorNode.GetBinaryArguments(nodeValueDictionary);
+
+    protected object[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+        functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
+
+    protected object GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+        functionNode.GetFunctionArgument(nodeValueDictionary);
+
+
 
     public object Evaluate(string s, Dictionary<string, object>? variables = null)
     {
@@ -278,60 +336,60 @@ public class Parser : IParser
         return Evaluate(postfixTokens, variables);
     }
 
-    public OneOf<T1, T2> Evaluate<T1, T2>(string s, Dictionary<string, OneOf<T1, T2>> variables)
-    {
-        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-        //return based on the type of result
-        if (result is T1 t1) return t1;
-        if (result is T2 t2) return t2;
-        throw new InvalidOperationException("Could not evaluate return type.");
-    }
+    //public OneOf<T1, T2> Evaluate<T1, T2>(string s, Dictionary<string, OneOf<T1, T2>> variables)
+    //{
+    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+    //    //return based on the type of result
+    //    if (result is T1 t1) return t1;
+    //    if (result is T2 t2) return t2;
+    //    throw new InvalidOperationException("Could not evaluate return type.");
+    //}
     
-    public OneOf<T1,T2,T3> Evaluate<T1, T2, T3>(string s, Dictionary<string, OneOf<T1, T2, T3>> variables)
-    {
-        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-        //return based on the type of result
-        if (result is T1 t1) return t1;
-        if (result is T2 t2) return t2;
-        if (result is T3 t3) return t3;
-        throw new InvalidOperationException("Could not evaluate return type.");
-    }
+    //public OneOf<T1,T2,T3> Evaluate<T1, T2, T3>(string s, Dictionary<string, OneOf<T1, T2, T3>> variables)
+    //{
+    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+    //    //return based on the type of result
+    //    if (result is T1 t1) return t1;
+    //    if (result is T2 t2) return t2;
+    //    if (result is T3 t3) return t3;
+    //    throw new InvalidOperationException("Could not evaluate return type.");
+    //}
 
-    public OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(string s, Dictionary<string, OneOf<T1, T2, T3, T4>> variables)
-    {
-        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-        //return based on the type of result
-        if (result is T1 t1) return t1;
-        if (result is T2 t2) return t2;
-        if (result is T3 t3) return t3;
-        if (result is T4 t4) return t4;
-        throw new InvalidOperationException("Could not evaluate return type.");
-    }
+    //public OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(string s, Dictionary<string, OneOf<T1, T2, T3, T4>> variables)
+    //{
+    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+    //    //return based on the type of result
+    //    if (result is T1 t1) return t1;
+    //    if (result is T2 t2) return t2;
+    //    if (result is T3 t3) return t3;
+    //    if (result is T4 t4) return t4;
+    //    throw new InvalidOperationException("Could not evaluate return type.");
+    //}
 
-    public OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables)
-    {
-        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-        //return based on the type of result
-        if (result is T1 t1) return t1;
-        if (result is T2 t2) return t2;
-        if (result is T3 t3) return t3;
-        if (result is T4 t4) return t4;
-        if (result is T5 t5) return t5;
-        throw new InvalidOperationException("Could not evaluate return type.");
-    }
+    //public OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables)
+    //{
+    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+    //    //return based on the type of result
+    //    if (result is T1 t1) return t1;
+    //    if (result is T2 t2) return t2;
+    //    if (result is T3 t3) return t3;
+    //    if (result is T4 t4) return t4;
+    //    if (result is T5 t5) return t5;
+    //    throw new InvalidOperationException("Could not evaluate return type.");
+    //}
 
-    public OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables)
-    {
-        object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-        //return based on the type of result
-        if (result is T1 t1) return t1;
-        if (result is T2 t2) return t2;
-        if (result is T3 t3) return t3;
-        if (result is T4 t4) return t4;
-        if (result is T5 t5) return t5;
-        if (result is T6 t6) return t6;
-        throw new InvalidOperationException("Could not evaluate return type.");
-    }
+    //public OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables)
+    //{
+    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
+    //    //return based on the type of result
+    //    if (result is T1 t1) return t1;
+    //    if (result is T2 t2) return t2;
+    //    if (result is T3 t3) return t3;
+    //    if (result is T4 t4) return t4;
+    //    if (result is T5 t5) return t5;
+    //    if (result is T6 t6) return t6;
+    //    throw new InvalidOperationException("Could not evaluate return type.");
+    //}
 
 
     protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
