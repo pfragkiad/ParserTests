@@ -70,6 +70,49 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
         return base.EvaluateOperator(operatorNode, nodeValueDictionary);
     }
 
+    //needed when evaluating type ONLY
+    protected override Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+
+        /*
+    public static Item operator +(int v1, Item v2) =>
+        new() { Name = v2.Name, Value = v2.Value + v1 };
+
+    public static Item operator +(Item v2, int v1) =>
+        new() { Name = v2.Name, Value = v2.Value + v1 };
+
+
+    //check return as double
+    public static double operator +(Item v2, double v1) =>
+        v2.Value + v1;
+
+    public static double operator +(double v1, Item v2) =>
+        v2.Value + v1;
+
+    public static Item operator +(Item v1, Item v2) =>
+        new() { Name = $"{v1.Name} {v2.Name}", Value = v2.Value + v1.Value };
+         */
+
+        bool isLeftInt = LeftOperand is int;
+        bool isRightInt = RightOperand is int;
+        bool isLeftNumeric = LeftOperand is int or double;
+        bool isRightNumeric = RightOperand is int or double;
+        bool isLeftItem = LeftOperand is Item;
+        bool isRightItem = RightOperand is Item;
+
+        if (operatorNode.Text == "+")
+        {
+            if (isLeftInt && isRightInt) return typeof(int);
+            if(isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
+            if (isLeftItem && isRightItem) return typeof(Item);
+            if(isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
+            if (isLeftItem || isRightItem) return typeof(Item); //Item + double or double + Item returns Item
+        }
+        return null;
+    }
+
     protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
         var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
@@ -82,6 +125,24 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
 
             //at the end check for custom functions
             _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+        };
+    }
+
+
+    //needed when evaluating type ONLY
+
+    protected override Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    {
+        var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
+
+        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
+        //return functionNode.Text switch   
+        return (_options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text) switch
+        {
+            "add" => typeof(Item),
+
+            //at the end check for custom functions
+            _ => base.EvaluateFunctionType(functionNode, nodeValueDictionary)
         };
     }
 

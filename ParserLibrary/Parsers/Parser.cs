@@ -356,8 +356,8 @@ public class Parser : IParser
     }
 
     protected virtual Type EvaluateLiteralType(string s) //used only if we want to check the output type of the literal
-    {   //default is object
-        return typeof(object);
+    {  
+        return EvaluateLiteral(s).GetType();
     }
 
     protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>

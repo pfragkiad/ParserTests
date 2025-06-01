@@ -97,6 +97,7 @@ internal class Program
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
 
         IParser parser = app.Services.GetRequiredParser();
+        parser.RegisterFunction("myfunc(a,b) = a + b + 10");
 
 
         Item item1 = new Item { Name = "foo", Value = 3 };
@@ -118,7 +119,6 @@ internal class Program
                 { "a",  item1 }
             });
 
-        parser.RegisterFunction("myfunc(a,b) = a + b + 10");
         var result4 = parser.Evaluate("myfunc(a,10)",
             new() {
                 { "a",  500 }
@@ -136,6 +136,29 @@ internal class Program
         object[] results = [result, result2, result3, result4];
         foreach(var r in results)
             Console.WriteLine($"Result: {r}, Type: {r.GetType()}");
+
+        //now call EvaluateType for all results
+        var resultType = parser.EvaluateType("a + add(b,4) + 5",
+            new() {
+                { "a", item1 },
+                { "b", new Item { Name = "bar" } }
+            });
+        var resultType2 = parser.EvaluateType("a+10",
+            new() {
+                { "a", item1 }
+            });
+        var resultType3 = parser.EvaluateType("a+10.7+90.8",
+            new() {
+                { "a", item1 }
+            });
+        var resultType4 = parser.EvaluateType("myfunc(a,10)",
+            new() {
+                { "a", 500 }
+            });
+
+        Type[] resultTypes = [resultType, resultType2, resultType3, resultType4];
+        foreach (var rt in resultTypes)
+            Console.WriteLine($"Result type: {rt.Name}");
 
 
         //Console.WriteLine($"Result: {result}, Type: {result.GetType().Name}");
