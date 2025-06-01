@@ -75,7 +75,7 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
         var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
 
         //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
-        //return functionNode.Text switch
+        //return functionNode.Text switch   
         return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
         {
             "add" => (Item)a[0] + (int)a[1],
