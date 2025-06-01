@@ -20,6 +20,7 @@ public interface IParser
         );
 
     object Evaluate(string s, Dictionary<string, object>? variables = null);
+    Type EvaluateType(string s, Dictionary<string, object>? variables = null);
 
     //OneOf<T1, T2> Evaluate<T1, T2>(
     //    string s,
