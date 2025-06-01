@@ -545,7 +545,7 @@ public class Parser : IParser
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteralType(token.Text));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
-                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
+                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;

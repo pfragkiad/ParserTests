@@ -94,13 +94,12 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
     public static Item operator +(Item v1, Item v2) =>
         new() { Name = $"{v1.Name} {v2.Name}", Value = v2.Value + v1.Value };
          */
-
-        bool isLeftInt = LeftOperand is int;
-        bool isRightInt = RightOperand is int;
-        bool isLeftNumeric = LeftOperand is int or double;
-        bool isRightNumeric = RightOperand is int or double;
-        bool isLeftItem = LeftOperand is Item;
-        bool isRightItem = RightOperand is Item;
+        bool isLeftInt = LeftOperand as Type == typeof(int);
+        bool isRightInt = RightOperand as Type == typeof(int);
+        bool isLeftNumeric = LeftOperand as Type == typeof(int) || LeftOperand as Type == typeof(double);
+        bool isRightNumeric = RightOperand as Type == typeof(int) || RightOperand as Type == typeof(double);
+        bool isLeftItem = LeftOperand as Type == typeof(Item);
+        bool isRightItem = RightOperand as Type == typeof(Item);
 
         if (operatorNode.Text == "+")
         {
