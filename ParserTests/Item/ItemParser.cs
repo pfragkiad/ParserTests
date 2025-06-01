@@ -98,8 +98,8 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
         bool isRightInt = RightOperand as Type == typeof(int);
         bool isLeftNumeric = LeftOperand as Type == typeof(int) || LeftOperand as Type == typeof(double);
         bool isRightNumeric = RightOperand as Type == typeof(int) || RightOperand as Type == typeof(double);
-        bool isLeftItem = LeftOperand as Type == typeof(Item);
-        bool isRightItem = RightOperand as Type == typeof(Item);
+        bool isLeftItem = LeftOperand is Type t && t == typeof(Item);
+        bool isRightItem = RightOperand is Type t2 && t2 == typeof(Item);
 
         if (operatorNode.Text == "+")
         {
@@ -107,7 +107,7 @@ public class ItemParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<T
             if(isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
             if (isLeftItem && isRightItem) return typeof(Item);
             if(isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
-            if (isLeftItem || isRightItem) return typeof(Item); //Item + double or double + Item returns Item
+            if (isLeftItem || isRightItem) return typeof(double); //Item + double or double + Item returns double
         }
         return null;
     }

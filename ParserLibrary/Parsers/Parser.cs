@@ -252,7 +252,7 @@ public class Parser : IParser
 
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
-  
+
     protected virtual object EvaluateFunction(
         Node<Token> functionNode,
         Dictionary<Node<Token>, object> nodeValueDictionary)
@@ -356,7 +356,7 @@ public class Parser : IParser
     }
 
     protected virtual Type EvaluateLiteralType(string s) //used only if we want to check the output type of the literal
-    {  
+    {
         return EvaluateLiteral(s).GetType();
     }
 
@@ -545,7 +545,11 @@ public class Parser : IParser
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteralType(token.Text));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
-                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
+                {
+                    if (variables[token.Text] is Type) //useful for custom functions
+                        nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
+                    else nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
+                }
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;

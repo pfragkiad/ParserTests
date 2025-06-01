@@ -277,7 +277,11 @@ public class TransientParser : ITransientParser
                 if (token.TokenType == TokenType.Literal)
                     nodeValueDictionary.Add(tokenNode, value = EvaluateLiteralType(token.Text));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
-                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
+                {
+                    if (variables[token.Text] is Type) //useful for custom functions
+                        nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
+                    else nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
+                }
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
