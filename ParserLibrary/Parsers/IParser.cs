@@ -49,5 +49,6 @@ public interface IParser
 
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
     Tree<Token> GetExpressionTree(string s);
+    ParenthesisCheckResult GetUnmatchedParentheses(string expression);
     void RegisterFunction(string definition);
 }

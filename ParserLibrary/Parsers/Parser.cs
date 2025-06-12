@@ -670,5 +670,8 @@ public class Parser : IParser
     public bool AreParenthesesMatched(string expression) =>
         _tokenizer.AreParenthesesMatched(expression);
 
+    public ParenthesisCheckResult GetUnmatchedParentheses(string expression) =>
+        _tokenizer.GetUnmatchedParentheses(expression);
+
     #endregion
 }

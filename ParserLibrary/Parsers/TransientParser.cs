@@ -72,8 +72,15 @@ public class TransientParser : ITransientParser
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 
+
             // Evaluate the function body with the local variables
-            return Evaluate(funcDef.Body, localVars);
+            // Note that this is different from the Parser.EvaluateFunction
+            var self = new TransientParser(_logger, _tokenizer, Options.Create(_options));
+            // Copy custom functions to the new instance
+            foreach (var kvp in _customFunctions)
+                self._customFunctions[kvp.Key] = kvp.Value;
+            return self.Evaluate(funcDef.Body, localVars);
+
         }
 
         throw new InvalidOperationException($"Unknown function ({functionNode.Text})");
@@ -401,6 +408,10 @@ public class TransientParser : ITransientParser
 
     public bool AreParenthesesMatched(string expression) =>
         _tokenizer.AreParenthesesMatched(expression);
+
+
+    public ParenthesisCheckResult GetUnmatchedParentheses(string expression) =>
+        _tokenizer.GetUnmatchedParentheses(expression);
 
     #endregion
 

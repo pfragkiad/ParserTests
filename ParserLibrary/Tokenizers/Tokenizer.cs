@@ -1,5 +1,8 @@
 ﻿namespace ParserLibrary.Tokenizers;
 
+
+
+
 public class Tokenizer : ITokenizer
 {
     private readonly ILogger<Tokenizer> _logger;
@@ -36,6 +39,45 @@ public class Tokenizer : ITokenizer
         }
         return count == 0;
     }
+
+    public ParenthesisCheckResult GetUnmatchedParentheses(string expression)
+    {
+        var open = _options.TokenPatterns.OpenParenthesis;
+        var close = _options.TokenPatterns.CloseParenthesis;
+
+        List<int> unmatchedClosed = [];
+        List<int> openPositions = [];
+
+        for (int i = 0; i < expression.Length; i++)
+        {
+            char c = expression[i];
+
+            if (c.ToString() == open)
+            {
+                openPositions.Add(i);
+                continue;
+            }
+
+            if (c.ToString() != close) continue;
+
+            if (openPositions.Count == 0)
+            {
+                unmatchedClosed.Add(i);
+            }
+            else
+            {
+                openPositions.RemoveAt(openPositions.Count - 1);
+            }
+        }
+
+       return new ParenthesisCheckResult
+        {
+            UnmatchedClosed = unmatchedClosed,
+            UnmatchedOpen = openPositions
+        };
+    }
+
+
 
 
 

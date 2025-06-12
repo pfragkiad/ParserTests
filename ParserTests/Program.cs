@@ -102,22 +102,22 @@ internal class Program
 
         Item item1 = new Item { Name = "foo", Value = 3 };
 
-        //var result = parser.Evaluate("a + add(b,4) + 5",
-        //      new() {
-        //        {"a", item1 },
-        //        {"b", new Item { Name="bar"}  }
-        //      });
+        var result = parser.Evaluate("a + add(b,4) + 5",
+              new() {
+                {"a", item1 },
+                {"b", new Item { Name="bar"}  }
+              });
 
-        ////should return  item
-        //var result2 = parser.Evaluate("a+10",
-        //    new() {
-        //       { "a",  item1 }
-        //    });
+        //should return  item
+        var result2 = parser.Evaluate("a+10",
+            new() {
+               { "a",  item1 }
+            });
 
-        //var result3 = parser.Evaluate("a+10.7+90.8",
-        //    new() {
-        //        { "a",  item1 }
-        //    });
+        var result3 = parser.Evaluate("a+10.7+90.8",
+            new() {
+                { "a",  item1 }
+            });
 
         var result4 = parser.Evaluate("myfunc(a,10)",
             new() {
@@ -125,41 +125,33 @@ internal class Program
             });
 
 
-        //var result4 = parser.Evaluate<double,Item>("a+10.7+80",
-        //new() {
-        //   { "a",  item1 }
-        //});
-
-        //var results = new object[]
-        //    {result, result2, result3, result4 }.Cast<OneOf<Item,double>>();
-
-        //object[] results = [result, result2, result3, result4];
-        object[] results  = [result4]; //, result2, result3, result4];
+        object[] results = [result, result2, result3, result4];
+        //object[] results  = [result4]; //, result2, result3, result4];
         foreach (var r in results)
             Console.WriteLine($"Result: {r}, Type: {r.GetType()}");
 
         //now call EvaluateType for all results
-        //var resultType = parser.EvaluateType("a + add(b,4) + 5",
-        //    new() {
-        //        { "a", item1 },
-        //        { "b", new Item { Name = "bar" } }
-        //    });
-        //var resultType2 = parser.EvaluateType("a+10",
-        //    new() {
-        //        { "a", item1 }
-        //    });
-        //var resultType3 = parser.EvaluateType("a+10.7+90.8",
-        //    new() {
-        //        { "a", item1 }
-        //    });
+        var resultType = parser.EvaluateType("a + add(b,4) + 5",
+            new() {
+                { "a", item1 },
+                { "b", new Item { Name = "bar" } }
+            });
+        var resultType2 = parser.EvaluateType("a+10",
+            new() {
+                { "a", item1 }
+            });
+        var resultType3 = parser.EvaluateType("a+10.7+90.8",
+            new() {
+                { "a", item1 }
+            });
 
         var resultType4 = parser.EvaluateType("myfunc(a,10)",
             new() {
                 { "a", 500 }
             });
 
-        //Type[] resultTypes = [resultType, resultType2, resultType3, resultType4];
-        Type[] resultTypes = [resultType4]; //, resultType2, resultType3, resultType4];
+        Type[] resultTypes = [resultType, resultType2, resultType3, resultType4];
+        //Type[] resultTypes = [resultType4]; //, resultType2, resultType3, resultType4];
         foreach (var rt in resultTypes)
             Console.WriteLine($"Result type: {rt.Name}");
 
