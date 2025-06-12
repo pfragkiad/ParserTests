@@ -5,11 +5,8 @@ namespace ParserLibrary.Parsers;
 /// <summary>
 /// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.
 /// </summary>
-public class TransientParser : ITransientParser
+public class TransientParser : ParserBase, ITransientParser
 {
-    protected readonly ILogger<Parser> _logger;
-    protected readonly ITokenizer _tokenizer;
-    protected readonly TokenizerOptions _options;
 
     //created for simplifying and caching dictionaries
     protected internal Dictionary<Node<Token>, object> nodeValueDictionary = [];
@@ -17,44 +14,9 @@ public class TransientParser : ITransientParser
     protected Stack<Token> stack = new();
 
 
-
-    public TransientParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options)
-    {
-        _logger = logger;
-        _tokenizer = tokenizer;
-        _options = options.Value;
-
-        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
-    }
-
-    #region Custom functions
-
-    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
-
-    public void RegisterFunction(string definition)
-    {
-        // Example: "myf(x,y) = 10*x+sin(y)"
-        var parts = definition.Split('=', 2);
-        if (parts.Length != 2)
-            throw new ArgumentException("Invalid function definition format.");
-
-        var header = parts[0].Trim();
-        var body = parts[1].Trim();
-
-        var nameAndParams = header.Split('(', 2);
-        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
-            throw new ArgumentException("Invalid function header format.");
-
-        var name = nameAndParams[0].Trim();
-
-        var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        _customFunctions[name] = (paramList, body);
-    }
-
-
-    #endregion
-
+    public TransientParser(ILogger<TransientParser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) 
+        :base(logger, tokenizer, options)
+    {  }
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
     protected virtual object EvaluateFunction(Node<Token> functionNode)
@@ -75,7 +37,7 @@ public class TransientParser : ITransientParser
 
             // Evaluate the function body with the local variables
             // Note that this is different from the Parser.EvaluateFunction
-            var self = new TransientParser(_logger, _tokenizer, Options.Create(_options));
+            var self = new TransientParser((ILogger<TransientParser>)_logger, _tokenizer, Options.Create(_options));
             // Copy custom functions to the new instance
             foreach (var kvp in _customFunctions)
                 self._customFunctions[kvp.Key] = kvp.Value;
@@ -404,16 +366,6 @@ public class TransientParser : ITransientParser
 
     }
 
-    #region Utility functions
-
-    public bool AreParenthesesMatched(string expression) =>
-        _tokenizer.AreParenthesesMatched(expression);
-
-
-    public ParenthesisCheckResult GetUnmatchedParentheses(string expression) =>
-        _tokenizer.GetUnmatchedParentheses(expression);
-
-    #endregion
 
 
 }

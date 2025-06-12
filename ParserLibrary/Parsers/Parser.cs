@@ -3,20 +3,12 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserLibrary.Parsers;
 
-public class Parser : IParser
+public class Parser : ParserBase, IParser
 {
-    protected readonly ILogger<Parser> _logger;
-    protected readonly ITokenizer _tokenizer;
-    protected readonly TokenizerOptions _options;
 
     public Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options)
-    {
-        _logger = logger;
-        _tokenizer = tokenizer;
-        _options = options.Value;
-
-        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
-    }
+        :base(logger, tokenizer, options)
+    { }
 
     public Tree<Token> GetExpressionTree(string s)
     {
@@ -222,49 +214,7 @@ public class Parser : IParser
         return nodeValueDictionary[root]!;
     }
 
-    #region Custom functions
-
-    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
-    
-    protected virtual List<string> MainFunctionNames  => [];
-    //needed for checking the function identifiers in the expression tree
-
-    public void RegisterFunction(string definition)
-    {
-        // Example: "myf(x,y) = 10*x+sin(y)"
-        var parts = definition.Split('=', 2);
-        if (parts.Length != 2)
-            throw new ArgumentException("Invalid function definition format.");
-
-        var header = parts[0].Trim();
-        var body = parts[1].Trim();
-
-        var nameAndParams = header.Split('(', 2);
-        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
-            throw new ArgumentException("Invalid function header format.");
-
-        var name = nameAndParams[0].Trim();
-
-        var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        _customFunctions[name] = (paramList, body);
-    }
-
-
-    public FunctionNamesCheckResult GetUnmatchedFunctionNames(string expression)
-    {
-        //returns the names of the functions that are not registered
-        var tokens = _tokenizer.GetInOrderTokens(expression);
-        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
-        List<string> unmatchedNames =  [.. tokens
-            .Where(t => t.TokenType == TokenType.Function && !_customFunctions.ContainsKey(t.Text) && !MainFunctionNames.Contains(t.Text))
-            .Select(t => t.Text)
-            .Distinct()];
-
-        return new FunctionNamesCheckResult { UnmatchedFunctionNames = unmatchedNames };
-    }
-
-    #endregion
+  
 
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
@@ -681,13 +631,4 @@ public class Parser : IParser
 
     }
 
-    #region Utility functions
-
-    public bool AreParenthesesMatched(string expression) =>
-        _tokenizer.AreParenthesesMatched(expression);
-
-    public ParenthesisCheckResult GetUnmatchedParentheses(string expression) =>
-        _tokenizer.GetUnmatchedParentheses(expression);
-
-    #endregion
 }

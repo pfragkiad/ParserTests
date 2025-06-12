@@ -1,12 +1,9 @@
 ﻿namespace ParserLibrary.Tokenizers;
 
-
-
-
 public class Tokenizer : ITokenizer
 {
-    private readonly ILogger<Tokenizer> _logger;
-    private readonly TokenizerOptions _options;
+    protected readonly ILogger _logger;
+    protected readonly TokenizerOptions _options;
 
     public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options)
     {
@@ -17,68 +14,14 @@ public class Tokenizer : ITokenizer
 
     }
 
-    public bool AreParenthesesMatched(string expression)
+    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options) 
     {
-        var open = _options.TokenPatterns.OpenParenthesis;
-        var close = _options.TokenPatterns.CloseParenthesis;
+        _logger = logger;
+        _options = options.Value;
 
-        int count = 0;
-        foreach (char c in expression)
-        {
-            if (c.ToString() == open)
-            {
-                count++;
-                continue;
-            }
+        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
 
-            if (c.ToString() != close) continue;
-
-            count--;
-            if (count < 0)
-                return false;
-        }
-        return count == 0;
     }
-
-    public ParenthesisCheckResult GetUnmatchedParentheses(string expression)
-    {
-        var open = _options.TokenPatterns.OpenParenthesis;
-        var close = _options.TokenPatterns.CloseParenthesis;
-
-        List<int> unmatchedClosed = [];
-        List<int> openPositions = [];
-
-        for (int i = 0; i < expression.Length; i++)
-        {
-            char c = expression[i];
-
-            if (c.ToString() == open)
-            {
-                openPositions.Add(i);
-                continue;
-            }
-
-            if (c.ToString() != close) continue;
-
-            if (openPositions.Count == 0)
-            {
-                unmatchedClosed.Add(i);
-            }
-            else
-            {
-                openPositions.RemoveAt(openPositions.Count - 1);
-            }
-        }
-
-       return new ParenthesisCheckResult
-        {
-            UnmatchedClosed = unmatchedClosed,
-            UnmatchedOpen = openPositions
-        };
-    }
-
-
-
 
 
     //The second property contains the number of arguments needed by each corresponding function.
@@ -359,5 +302,143 @@ public class Tokenizer : ITokenizer
         }
         return postfixTokens;
     }
+
+
+    #region Utility methods
+
+    public bool AreParenthesesMatched(string expression)
+    {
+        var open = _options.TokenPatterns.OpenParenthesis;
+        var close = _options.TokenPatterns.CloseParenthesis;
+
+        int count = 0;
+        foreach (char c in expression)
+        {
+            if (c.ToString() == open)
+            {
+                count++;
+                continue;
+            }
+
+            if (c.ToString() != close) continue;
+
+            count--;
+            if (count < 0)
+                return false;
+        }
+        return count == 0;
+    }
+
+    public ParenthesisCheckResult GetUnmatchedParentheses(string expression)
+    {
+        var open = _options.TokenPatterns.OpenParenthesis;
+        var close = _options.TokenPatterns.CloseParenthesis;
+
+        List<int> unmatchedClosed = [];
+        List<int> openPositions = [];
+
+        for (int i = 0; i < expression.Length; i++)
+        {
+            char c = expression[i];
+
+            if (c.ToString() == open)
+            {
+                openPositions.Add(i);
+                continue;
+            }
+
+            if (c.ToString() != close) continue;
+
+            if (openPositions.Count == 0)
+            {
+                unmatchedClosed.Add(i);
+            }
+            else
+            {
+                openPositions.RemoveAt(openPositions.Count - 1);
+            }
+        }
+
+       return new ParenthesisCheckResult
+        {
+            UnmatchedClosed = unmatchedClosed,
+            UnmatchedOpen = openPositions
+        };
+    }
+
+
+    public List<string> GetIdentifiers(string expression)
+    {
+        //returns the identifiers in the expression
+        var tokens = GetInOrderTokens(expression);
+        return [.. tokens
+            .Where(t => t.TokenType == TokenType.Identifier)
+            .Select(t => t.Text)
+            .Distinct()];
+    }
+
+    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, 
+        string[] ignorePrefixes, string[] ignorePostfixes)
+    {
+        var tokens = GetInOrderTokens(expression);
+
+        HashSet<string> matchedNames = [];
+        HashSet<string> unmatchedNames = []; 
+
+        foreach(var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
+        {
+            if (
+                identifierNames.Contains(t.Text) ||
+                ignorePrefixes.Any(prefix => t.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ||
+                ignorePostfixes.Any(postfix => t.Text.EndsWith(postfix, StringComparison.OrdinalIgnoreCase))
+                )
+            {
+                matchedNames.Add(t.Text);
+                continue;
+            }
+            unmatchedNames.Add(t.Text);
+        }   
+
+        return new NamesCheckResult
+        {
+            MatchedNames = [..matchedNames],
+            UnmatchedNames = [..unmatchedNames]
+        };
+    }
+
+    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
+        {
+        //returns the identifiers in the expression
+        var tokens = GetInOrderTokens(expression);
+        HashSet<string> matchedNames = [];
+        HashSet<string> unmatchedNames = [];
+        HashSet<string> ignoredNames = [];
+        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
+        {
+            if ( identifierNames.Contains(t.Text) )
+            {
+                matchedNames.Add(t.Text);
+                continue;
+            }
+
+            if (ignoreIdentifierPattern is not null && ignoreIdentifierPattern.IsMatch(t.Text))
+            {
+                ignoredNames.Add(t.Text);
+                continue;
+            }
+
+            unmatchedNames.Add(t.Text);
+        }
+        return new NamesCheckResult
+        {
+            MatchedNames = [.. matchedNames],
+            UnmatchedNames = [.. unmatchedNames],
+            IgnoredNames = [.. ignoredNames]
+        };
+    }
+
+
+
+    #endregion
 
 }

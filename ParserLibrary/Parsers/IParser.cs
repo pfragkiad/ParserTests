@@ -6,7 +6,8 @@ namespace ParserLibrary.Parsers;
 
 public interface IParser
 {
-    bool AreParenthesesMatched(string expression);
+    ITokenizer Tokenizer { get; }
+
     V Evaluate<V>(
         string s,
         Func<string, V>? literalParser = null,
@@ -49,7 +50,7 @@ public interface IParser
 
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
     Tree<Token> GetExpressionTree(string s);
-    FunctionNamesCheckResult GetUnmatchedFunctionNames(string expression);
-    ParenthesisCheckResult GetUnmatchedParentheses(string expression);
+    List<string> GetMatchedFunctionNames(string expression);
+
     void RegisterFunction(string definition);
 }
