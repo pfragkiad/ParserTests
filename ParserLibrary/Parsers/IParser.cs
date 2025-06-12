@@ -1,13 +1,7 @@
-﻿using OneOf;
-using ParserLibrary.ExpressionTree;
-using ParserLibrary.Tokenizers;
+﻿namespace ParserLibrary.Parsers;
 
-namespace ParserLibrary.Parsers;
-
-public interface IParser
+public interface IParser : IParserBase
 {
-    ITokenizer Tokenizer { get; }
-
     V Evaluate<V>(
         string s,
         Func<string, V>? literalParser = null,
@@ -49,8 +43,8 @@ public interface IParser
     //);
 
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
-    Tree<Token> GetExpressionTree(string s);
-    List<string> GetMatchedFunctionNames(string expression);
 
-    void RegisterFunction(string definition);
+    Tree<Token> GetExpressionTree(string s);
+    
+
 }

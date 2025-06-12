@@ -14,6 +14,8 @@ public interface ITokenizer
     ParenthesisCheckResult GetUnmatchedParentheses(string expression);
   
     List<string> GetIdentifiers(string expression);
+    
     NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, string[] ignorePrefixes, string[] ignorePostfixes);
+ 
     NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null);
 }

@@ -14,9 +14,13 @@ public class TransientParser : ParserBase, ITransientParser
     protected Stack<Token> stack = new();
 
 
-    public TransientParser(ILogger<TransientParser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) 
-        :base(logger, tokenizer, options)
+    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options) 
+        :base(logger, options)
     {  }
+
+    protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options)
+    : base(logger, options)
+    { }
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
     protected virtual object EvaluateFunction(Node<Token> functionNode)
@@ -37,7 +41,7 @@ public class TransientParser : ParserBase, ITransientParser
 
             // Evaluate the function body with the local variables
             // Note that this is different from the Parser.EvaluateFunction
-            var self = new TransientParser((ILogger<TransientParser>)_logger, _tokenizer, Options.Create(_options));
+            var self = new TransientParser((ILogger<TransientParser>)_logger, Options.Create(_options));
             // Copy custom functions to the new instance
             foreach (var kvp in _customFunctions)
                 self._customFunctions[kvp.Key] = kvp.Value;
@@ -143,16 +147,16 @@ public class TransientParser : ParserBase, ITransientParser
         nodeDictionary = [];
         stack = new Stack<Token>();
 
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return Evaluate(postfixTokens, variables);
     }
 
     public Type EvaluateType(string s, Dictionary<string, object>? variables = null)
     {
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return EvaluateType(postfixTokens, variables);
     }

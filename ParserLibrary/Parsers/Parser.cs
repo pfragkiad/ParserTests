@@ -6,14 +6,14 @@ namespace ParserLibrary.Parsers;
 public class Parser : ParserBase, IParser
 {
 
-    public Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options)
-        :base(logger, tokenizer, options)
+    public Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options)
+        :base(logger, options)
     { }
 
     public Tree<Token> GetExpressionTree(string s)
     {
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return GetExpressionTree(postfixTokens);
     }
@@ -80,8 +80,8 @@ public class Parser : ParserBase, IParser
         Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
         )
     {
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
         return Evaluate(
             postfixTokens,
             literalParser, variables,
@@ -342,16 +342,16 @@ public class Parser : ParserBase, IParser
 
     public object Evaluate(string s, Dictionary<string, object>? variables = null)
     {
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return Evaluate(postfixTokens, variables);
     }
 
     public Type EvaluateType(string s, Dictionary<string, object>? variables = null)
     {
-        var inOrderTokens = _tokenizer.GetInOrderTokens(s);
-        var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        var inOrderTokens = GetInOrderTokens(s);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return EvaluateType(postfixTokens, variables);
     }

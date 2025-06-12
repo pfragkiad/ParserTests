@@ -14,7 +14,7 @@ public class Tokenizer : ITokenizer
 
     }
 
-    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options) 
+    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options)
     {
         _logger = logger;
         _options = options.Value;
@@ -359,7 +359,7 @@ public class Tokenizer : ITokenizer
             }
         }
 
-       return new ParenthesisCheckResult
+        return new ParenthesisCheckResult
         {
             UnmatchedClosed = unmatchedClosed,
             UnmatchedOpen = openPositions
@@ -377,37 +377,44 @@ public class Tokenizer : ITokenizer
             .Distinct()];
     }
 
-    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, 
+    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression,
         string[] ignorePrefixes, string[] ignorePostfixes)
     {
         var tokens = GetInOrderTokens(expression);
 
         HashSet<string> matchedNames = [];
-        HashSet<string> unmatchedNames = []; 
+        HashSet<string> unmatchedNames = [];
+        HashSet<string> ignoredNames = [];
 
-        foreach(var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
+        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
         {
             if (
-                identifierNames.Contains(t.Text) ||
-                ignorePrefixes.Any(prefix => t.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ||
-                ignorePostfixes.Any(postfix => t.Text.EndsWith(postfix, StringComparison.OrdinalIgnoreCase))
-                )
+                identifierNames.Contains(t.Text))
             {
                 matchedNames.Add(t.Text);
                 continue;
             }
+
+            if (ignorePrefixes.Any(p => t.Text.StartsWith(p) ||
+                ignorePostfixes.Any(s => t.Text.EndsWith(s))))
+            {
+                ignoredNames.Add(t.Text);
+                continue;
+            }
+
             unmatchedNames.Add(t.Text);
-        }   
+        }
 
         return new NamesCheckResult
         {
-            MatchedNames = [..matchedNames],
-            UnmatchedNames = [..unmatchedNames]
+            MatchedNames = [.. matchedNames],
+            UnmatchedNames = [.. unmatchedNames],
+            IgnoredNames = [.. ignoredNames]
         };
     }
 
     public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
-        {
+    {
         //returns the identifiers in the expression
         var tokens = GetInOrderTokens(expression);
         HashSet<string> matchedNames = [];
@@ -415,7 +422,7 @@ public class Tokenizer : ITokenizer
         HashSet<string> ignoredNames = [];
         foreach (var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
         {
-            if ( identifierNames.Contains(t.Text) )
+            if (identifierNames.Contains(t.Text))
             {
                 matchedNames.Add(t.Text);
                 continue;

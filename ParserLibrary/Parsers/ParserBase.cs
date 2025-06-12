@@ -4,7 +4,7 @@ public class ParserBase  : Tokenizer, IParserBase
 {
     public ParserBase(ILogger logger, IOptions<TokenizerOptions> options)
         :base(logger, options)
-    { }
+    {  }
 
     protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
 
@@ -29,8 +29,8 @@ public class ParserBase  : Tokenizer, IParserBase
         _customFunctions[name] = (paramList, body);
     }
 
-    protected virtual List<string> MainFunctionNames => [];
     //needed for checking the function identifiers in the expression tree
+    protected virtual List<string> MainFunctionNames => [];
 
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {

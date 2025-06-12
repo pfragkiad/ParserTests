@@ -24,7 +24,7 @@ public class Item
 
 }
 
-public class CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : Parser(logger, tokenizer, options)
+public class CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
 
     //we assume that literals are integer numbers only
@@ -66,7 +66,7 @@ public class CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOpt
 }
 
 
-public class CustomTypeTransientParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : TransientParser(logger, tokenizer, options)
+public class CustomTypeTransientParser(ILogger<Parser> logger,IOptions<TokenizerOptions> options) : TransientParser(logger,  options)
 {
 
     //we assume that literals are integer numbers only

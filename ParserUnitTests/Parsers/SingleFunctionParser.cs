@@ -10,7 +10,7 @@ namespace ParserUnitTests.Parsers;
 
 public class SimpleFunctionParser : DefaultParser
 {
-    public SimpleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public SimpleFunctionParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     {
     }
 

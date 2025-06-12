@@ -90,7 +90,7 @@ That was the boring stuff, let's start adding some custom functionality. Let's a
 ```cs
 private class SimpleFunctionParser : DefaultParser
 {
-    public SimpleFunctionParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public SimpleFunctionParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     {
     }
 
@@ -176,7 +176,7 @@ namespace ParserLibrary.Parsers;
 
 public class ComplexParser : Parser
 {
-    public ComplexParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     { }
 
     protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
@@ -340,7 +340,7 @@ using System.Numerics;
 
 public class Vector3Parser : Parser
 {
-    public Vector3Parser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     { }
 
     protect override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
@@ -514,7 +514,7 @@ A custom parser that uses custom types derives from the ```Parser``` class. Beca
 ```cs
 public class CustomTypeParser : Parser
 {
-    public CustomTypeParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) : base(logger, tokenizer, options)
+    public CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     { }
 
 
@@ -575,8 +575,8 @@ then the `NodeValueDictionary` could possibly be stored as an internal field and
 ```cs
 public class CustomTypeTransientParser : TransientParser
 {
-    public CustomTypeTransientParser(ILogger<Parser> logger, ITokenizer tokenizer, IOptions<TokenizerOptions> options) :
-        base(logger, tokenizer, options)
+    public CustomTypeTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) :
+        base(logger, options)
     { }
 
     //we assume that literals are integer numbers only
