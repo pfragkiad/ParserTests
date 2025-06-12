@@ -21,9 +21,9 @@ public class NamesCheckResult
     }
 }
 
-public class IdentifierNamesCheckResult : NamesCheckResult
+public class VariableNamesCheckResult : NamesCheckResult
 {
-    public override string NameCategory => "identifier";
+    public override string NameCategory => "variable";
 
 }
 public class FunctionNamesCheckResult : NamesCheckResult

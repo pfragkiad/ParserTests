@@ -367,7 +367,7 @@ public class Tokenizer : ITokenizer
     }
 
 
-    public List<string> GetIdentifiers(string expression)
+    public List<string> GetVariableNames(string expression)
     {
         //returns the identifiers in the expression
         var tokens = GetInOrderTokens(expression);
@@ -377,7 +377,7 @@ public class Tokenizer : ITokenizer
             .Distinct()];
     }
 
-    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression,
+    public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression,
         string[] ignorePrefixes, string[] ignorePostfixes)
     {
         var tokens = GetInOrderTokens(expression);
@@ -405,7 +405,7 @@ public class Tokenizer : ITokenizer
             unmatchedNames.Add(t.Text);
         }
 
-        return new NamesCheckResult
+        return new VariableNamesCheckResult
         {
             MatchedNames = [.. matchedNames],
             UnmatchedNames = [.. unmatchedNames],
@@ -413,7 +413,7 @@ public class Tokenizer : ITokenizer
         };
     }
 
-    public NamesCheckResult CheckIdentifiers(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
+    public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
     {
         //returns the identifiers in the expression
         var tokens = GetInOrderTokens(expression);
@@ -436,7 +436,7 @@ public class Tokenizer : ITokenizer
 
             unmatchedNames.Add(t.Text);
         }
-        return new NamesCheckResult
+        return new VariableNamesCheckResult
         {
             MatchedNames = [.. matchedNames],
             UnmatchedNames = [.. unmatchedNames],
