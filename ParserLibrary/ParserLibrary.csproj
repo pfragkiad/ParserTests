@@ -14,8 +14,8 @@ Documentation and examples are being added currently. See README.</Description>
     <Copyright>(c) 2022-2025 Paulus Stuff</Copyright>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageTags>expression builer; binary tree; complex; vector3d; vector</PackageTags>
-    <AssemblyVersion>1.8</AssemblyVersion>
-    <FileVersion>1.8</FileVersion>
+    <AssemblyVersion>1.8.1</AssemblyVersion>
+    <FileVersion>1.8.1</FileVersion>
   </PropertyGroup>
 
 	<ItemGroup>
