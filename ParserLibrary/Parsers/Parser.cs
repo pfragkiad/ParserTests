@@ -225,6 +225,9 @@ public class Parser : IParser
     #region Custom functions
 
     protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+    
+    protected virtual List<string> MainFunctionNames  => [];
+    //needed for checking the function identifiers in the expression tree
 
     public void RegisterFunction(string definition)
     {
@@ -247,6 +250,19 @@ public class Parser : IParser
         _customFunctions[name] = (paramList, body);
     }
 
+
+    public FunctionNamesCheckResult GetUnmatchedFunctionNames(string expression)
+    {
+        //returns the names of the functions that are not registered
+        var tokens = _tokenizer.GetInOrderTokens(expression);
+        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        List<string> unmatchedNames =  [.. tokens
+            .Where(t => t.TokenType == TokenType.Function && !_customFunctions.ContainsKey(t.Text) && !MainFunctionNames.Contains(t.Text))
+            .Select(t => t.Text)
+            .Distinct()];
+
+        return new FunctionNamesCheckResult { UnmatchedFunctionNames = unmatchedNames };
+    }
 
     #endregion
 
