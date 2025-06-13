@@ -362,7 +362,7 @@ public class Tokenizer : ITokenizer
         return count == 0;
     }
 
-    public ParenthesisCheckResult GetUnmatchedParentheses(string expression)
+    public ParenthesisCheckResult CheckParentheses(string expression)
     {
         var open = _options.TokenPatterns.OpenParenthesis;
         var close = _options.TokenPatterns.CloseParenthesis;

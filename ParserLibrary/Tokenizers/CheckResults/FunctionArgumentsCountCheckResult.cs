@@ -13,7 +13,7 @@ public readonly struct FunctionArgumentCheckResult
     public int? ActualArgumentsCount { get; init; }
 }
 
-public class FunctionArgumentsCheckResult : CheckResult
+public class FunctionArgumentsCountCheckResult : CheckResult
 {
     public List<FunctionArgumentCheckResult> ValidFunctions { get; init; } = [];
     public List<FunctionArgumentCheckResult> InvalidFunctions { get; init; } = [];
@@ -40,3 +40,5 @@ public class EmptyFunctionArgumentsCheckResult : CheckResult
         return [.. InvalidFunctions.Select(f => new ValidationFailure("Formula", $"Function '{f.FunctionName}' at position {f.Position} has empty argument(s)."))];
     }
 }
+
+

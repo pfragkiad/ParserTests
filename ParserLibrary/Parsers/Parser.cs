@@ -634,6 +634,8 @@ public class Parser : ParserBase, IParser
 
     }
 
+    #region Checks before evaluation (optional) [move to parserbase? no nodevalues are needed]
+
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         //returns the names of the functions that are registered but have empty arguments
@@ -677,7 +679,7 @@ public class Parser : ParserBase, IParser
     }
 
 
-    public FunctionArgumentsCheckResult CheckFunctionArgumentsCount(string expression)
+    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
         //returns the names of the functions that are registered but have invalid argument count
         var inOrderTokens = GetInOrderTokens(expression);
@@ -740,7 +742,7 @@ public class Parser : ParserBase, IParser
 
         }
 
-        return new FunctionArgumentsCheckResult
+        return new FunctionArgumentsCountCheckResult
         {
             ValidFunctions = [.. validFunctions],
             InvalidFunctions = [.. invalidFunctions]
@@ -841,4 +843,10 @@ public class Parser : ParserBase, IParser
             InvalidPositions = [.. invalidPositions]
         };
     }
+
+    #endregion
+
+
+
+
 }

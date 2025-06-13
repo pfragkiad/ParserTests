@@ -13,7 +13,7 @@ public interface ITokenizer
     
     bool AreParenthesesMatched(string expression); //fast version
 
-    ParenthesisCheckResult GetUnmatchedParentheses(string expression);
+    ParenthesisCheckResult CheckParentheses(string expression);
   
     List<string> GetVariableNames(string expression);
 

@@ -69,7 +69,4 @@ public class ParserBase  : Tokenizer, IParserBase
             .Select(t => t.Text)
             .Distinct()];
     }
-
-
-
 }
