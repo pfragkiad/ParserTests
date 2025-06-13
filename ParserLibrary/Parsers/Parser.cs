@@ -789,4 +789,56 @@ public class Parser : ParserBase, IParser
         };
     }
 
+    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
+    {
+        // Parse expression and build the tree
+        var inOrderTokens = GetInOrderTokens(expression);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        var tree = GetExpressionTree(postfixTokens);
+
+        List<int> validPositions = [];
+        List<int> invalidPositions = [];
+
+        // Traverse the tree and check for argument separators that have a parent other than argument separator or a function
+        foreach (var entry in tree.NodeDictionary)
+        {
+            var token = entry.Key;
+            var node = entry.Value;
+
+            // Only check tokens that are argument separators
+            if (token.TokenType != TokenType.Operator || token.Text != _options.TokenPatterns.ArgumentSeparator)
+                continue;
+
+            // Find the parent node of this argument separator
+            var parentFound = false;
+            foreach (var parentEntry in tree.NodeDictionary)
+            {
+                var parentNode = parentEntry.Value;
+
+                // Check if parentNode has this argument separator as one of its children
+                if ((parentNode.Left == node || parentNode.Right == node) &&
+                    (parentEntry.Key.TokenType == TokenType.Function ||
+                     (parentEntry.Key.TokenType == TokenType.Operator &&
+                      parentEntry.Key.Text == _options.TokenPatterns.ArgumentSeparator)))
+                {
+                    // Valid: Parent is either a function or an argument separator
+                    validPositions.Add(token.Index + 1); // 1-based index
+                    parentFound = true;
+                    break;
+                }
+            }
+
+            // If no valid parent was found, the argument separator is invalid
+            if (!parentFound)
+            {
+                invalidPositions.Add(token.Index + 1); // 1-based index
+            }
+        }
+
+        return new InvalidArgumentSeparatorsCheckResult
+        {
+            ValidPositions = [.. validPositions],
+            InvalidPositions = [.. invalidPositions]
+        };
+    }
 }
