@@ -1,8 +1,8 @@
 ﻿using FluentValidation.Results;
 
-namespace ParserLibrary.Tokenizers;
+namespace ParserLibrary.Tokenizers.CheckResults;
 
-public class NamesCheckResult
+public class NamesCheckResult : CheckResult
 {
     public List<string> MatchedNames { get; init; } = [];
     public List<string> UnmatchedNames { get; init; } = [];
@@ -10,11 +10,11 @@ public class NamesCheckResult
     public List<string> IgnoredNames { get; init; } = [];   
 
 
-    public bool IsSuccess => UnmatchedNames.Count == 0;
+    public override bool IsSuccess => UnmatchedNames.Count == 0;
 
     public virtual string NameCategory { get; } = "";
 
-    public IList<ValidationFailure> GetValidationFailures()
+    public override IList<ValidationFailure> GetValidationFailures()
     {
         //report in the order of the position of the unmatched identifier names
         return [.. UnmatchedNames.Select(name => new ValidationFailure("Formula", $"Unmatched {NameCategory} name: {name}"))];

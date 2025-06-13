@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary.Parsers;
+﻿using ParserLibrary.Tokenizers.CheckResults;
+
+namespace ParserLibrary.Parsers;
 
 public class ParserBase  : Tokenizer, IParserBase
 {
@@ -7,6 +9,9 @@ public class ParserBase  : Tokenizer, IParserBase
     {  }
 
     protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+
+    //needed for checking the function identifiers and arguments count in the expression tree
+    protected virtual Dictionary<string,int> MainFunctions => [];
 
     public void RegisterFunction(string definition)
     {
@@ -29,8 +34,6 @@ public class ParserBase  : Tokenizer, IParserBase
         _customFunctions[name] = (paramList, body);
     }
 
-    //needed for checking the function identifiers in the expression tree
-    protected virtual List<string> MainFunctionNames => [];
 
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
@@ -42,7 +45,7 @@ public class ParserBase  : Tokenizer, IParserBase
         HashSet<string> unmatchedNames = [];
         foreach (var t in tokens.Where(t => t.TokenType == TokenType.Function))
         {
-            if (_customFunctions.ContainsKey(t.Text) || MainFunctionNames.Contains(t.Text))
+            if (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text))
             { matchedNames.Add(t.Text); continue; }
 
             unmatchedNames.Add(t.Text);
@@ -62,10 +65,11 @@ public class ParserBase  : Tokenizer, IParserBase
         //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
         return [.. tokens
             .Where(t => t.TokenType == TokenType.Function &&
-                (_customFunctions.ContainsKey(t.Text) || MainFunctionNames.Contains(t.Text)))
+                (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text)))
             .Select(t => t.Text)
             .Distinct()];
     }
+
 
 
 }

@@ -1,4 +1,6 @@
 ﻿
+using ParserLibrary.Tokenizers.CheckResults;
+
 namespace ParserLibrary.Tokenizers;
 
 public interface ITokenizer

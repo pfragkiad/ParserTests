@@ -1,16 +1,16 @@
 ﻿using FluentValidation.Results;
 
-namespace ParserLibrary.Tokenizers;
+namespace ParserLibrary.Tokenizers.CheckResults;
 
-public readonly struct ParenthesisCheckResult
+public class ParenthesisCheckResult : CheckResult
 {
-    public List<int> UnmatchedClosed { get; init; }
+    public List<int> UnmatchedClosed { get; init; } = [];
 
-    public List<int> UnmatchedOpen { get; init; }
+    public List<int> UnmatchedOpen { get; init; }  =[];
 
-    public bool IsSuccess => UnmatchedClosed.Count == 0 && UnmatchedOpen.Count == 0;
+    public override bool IsSuccess => UnmatchedClosed.Count == 0 && UnmatchedOpen.Count == 0;
 
-    public IList<ValidationFailure> GetValidationFailures()
+    public override IList<ValidationFailure> GetValidationFailures()
     {
         //report in the order of the position of the unmatched parenthesis
         List<(int, ValidationFailure)> failuresByPosition = [];

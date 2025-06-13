@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary.Tokenizers;
+﻿using ParserLibrary.Tokenizers.CheckResults;
+
+namespace ParserLibrary.Tokenizers;
 
 public class Tokenizer : ITokenizer
 {
@@ -447,5 +449,6 @@ public class Tokenizer : ITokenizer
 
 
     #endregion
+
 
 }

@@ -1,10 +1,12 @@
-﻿namespace ParserLibrary.Parsers;
+﻿using ParserLibrary.Tokenizers.CheckResults;
+
+namespace ParserLibrary.Parsers;
 
 public class Parser : ParserBase, IParser
 {
 
     public Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options)
-        :base(logger, options)
+        : base(logger, options)
     { }
 
     public Tree<Token> GetExpressionTree(string s)
@@ -211,7 +213,7 @@ public class Parser : ParserBase, IParser
         return nodeValueDictionary[root]!;
     }
 
-  
+
 
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
@@ -628,4 +630,78 @@ public class Parser : ParserBase, IParser
 
     }
 
+
+    public FunctionArgumentsCheckResult CheckFunctionArgumentsCount(string expression)
+    {
+        //returns the names of the functions that are registered but have invalid argument count
+        var inOrderTokens = GetInOrderTokens(expression);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
+
+        var tree = GetExpressionTree(postfixTokens);
+
+        HashSet<FunctionArgumentCheckResult> validFunctions = [];
+        HashSet<FunctionArgumentCheckResult> invalidFunctions = [];
+
+        foreach (var entry in tree.NodeDictionary)
+        {
+            var node = entry.Value;
+            if (node.Value!.TokenType != TokenType.Function) continue;
+
+            string functionName = node.Value.Text;
+            int actualArgumentsCount = node.GetFunctionArgumentsCount(_options.TokenPatterns.ArgumentSeparator);
+
+            if (_customFunctions.TryGetValue(node.Value.Text, out var funcDef))
+            {
+                int expectedArgumentsCount = funcDef.Parameters.Length;
+                var checkResult = new FunctionArgumentCheckResult
+                {
+                    ActualArgumentsCount = actualArgumentsCount,
+                    ExpectedArgumentsCount = expectedArgumentsCount,
+                    FunctionName = functionName
+                };
+                if (actualArgumentsCount != expectedArgumentsCount)
+                    invalidFunctions.Add(checkResult);
+                else validFunctions.Add(checkResult);
+
+                continue;
+            }
+
+            if (MainFunctions.TryGetValue(functionName, out int expectedCount))
+            {
+                var checkResult = new FunctionArgumentCheckResult
+                {
+                    ActualArgumentsCount = actualArgumentsCount,
+                    ExpectedArgumentsCount = expectedCount,
+                    FunctionName = functionName
+                };
+                if (actualArgumentsCount != expectedCount)
+                    invalidFunctions.Add(checkResult);
+                else validFunctions.Add(checkResult);
+
+                continue;
+            }
+
+            //function is not registered at all
+
+            invalidFunctions.Add(new FunctionArgumentCheckResult
+            {
+                ActualArgumentsCount = actualArgumentsCount,
+                ExpectedArgumentsCount = 0, //unknown
+                FunctionName = functionName
+            });
+
+        }
+
+        return new FunctionArgumentsCheckResult
+        {
+            ValidFunctions = [.. validFunctions],
+            InvalidFunctions = [.. invalidFunctions]
+        };
+
+        //return [.. tokens
+        //    .Where(t => t.TokenType == TokenType.Function && _customFunctions.ContainsKey(t.Text))
+        //    .Where(t => _customFunctions[t.Text].Parameters.Length != 1) //for simplicity, we check only for single parameter functions
+        //    .Select(t => t.Text)
+        //    .Distinct()];
+    }
 }

@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary.Parsers;
+﻿using ParserLibrary.Tokenizers.CheckResults;
+
+namespace ParserLibrary.Parsers;
 
 public interface IParser : IParserBase
 {
@@ -45,6 +47,6 @@ public interface IParser : IParserBase
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
 
     Tree<Token> GetExpressionTree(string s);
-    
 
+    FunctionArgumentsCheckResult CheckFunctionArgumentsCount(string expression);
 }
