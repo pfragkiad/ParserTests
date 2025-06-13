@@ -642,8 +642,8 @@ public class Parser : ParserBase, IParser
         var tree = GetExpressionTree(postfixTokens);
 
 
-        List<string> ValidFunctions = [];
-        List<string> InvalidFunctions = [];
+        List<FunctionArgumentCheckResult> ValidFunctions = [];
+        List<FunctionArgumentCheckResult> InvalidFunctions = [];
         foreach (var entry in tree.NodeDictionary)
         {
             var token = entry.Key;
@@ -653,13 +653,19 @@ public class Parser : ParserBase, IParser
             var arguments = GetFunctionArgumentNodes(node);
             //if at least one empty node then it is invalid
 
+            var newCheckResult = new FunctionArgumentCheckResult
+            {
+                FunctionName = token.Text,
+                Position = token.Index + 1 //1-based index
+            };
+
             if (arguments.Any(n => n.Value!.IsNull))
             {
-                InvalidFunctions.Add(token.Text);
+                InvalidFunctions.Add(newCheckResult);
             }
             else
             {
-                ValidFunctions.Add(token.Text);
+                ValidFunctions.Add(newCheckResult);
             }
         }
 
@@ -697,7 +703,8 @@ public class Parser : ParserBase, IParser
                 {
                     ActualArgumentsCount = actualArgumentsCount,
                     ExpectedArgumentsCount = expectedArgumentsCount,
-                    FunctionName = functionName
+                    FunctionName = functionName,
+                    Position = node.Value.Index + 1
                 };
                 if (actualArgumentsCount != expectedArgumentsCount)
                     invalidFunctions.Add(checkResult);
@@ -712,7 +719,8 @@ public class Parser : ParserBase, IParser
                 {
                     ActualArgumentsCount = actualArgumentsCount,
                     ExpectedArgumentsCount = expectedCount,
-                    FunctionName = functionName
+                    FunctionName = functionName,
+                    Position = node.Value.Index + 1
                 };
                 if (actualArgumentsCount != expectedCount)
                     invalidFunctions.Add(checkResult);
@@ -738,4 +746,47 @@ public class Parser : ParserBase, IParser
             InvalidFunctions = [.. invalidFunctions]
         };
     }
+
+    public InvalidOperatorsCheckResult CheckOperators(string expression)
+    {
+        //returns the names of the functions that are registered but have empty arguments
+        var inOrderTokens = GetInOrderTokens(expression);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        var tree = GetExpressionTree(postfixTokens);
+
+
+        List<OperatorArgumentCheckResult> ValidOperators = [];
+        List<OperatorArgumentCheckResult> InvalidOperators = [];
+        foreach (var entry in tree.NodeDictionary)
+        {
+            var token = entry.Key;
+            var node = entry.Value;
+            if (token.TokenType != TokenType.Operator) continue;
+
+            var arguments = node.GetBinaryArgumentNodes();
+            //if at least one empty node then it is invalid
+
+            var newCheckResult = new OperatorArgumentCheckResult
+            {
+                Operator = token.Text,
+                Position = token.Index + 1 //1-based index
+            };
+
+            if (arguments.LeftOperand.Value!.IsNull || arguments.RightOperand.Value!.IsNull)
+            {
+                InvalidOperators.Add(newCheckResult);
+            }
+            else
+            {
+                ValidOperators.Add(newCheckResult);
+            }
+        }
+
+        return new InvalidOperatorsCheckResult
+        {
+            ValidOperators = [.. ValidOperators],
+            InvalidOperators = [.. InvalidOperators]
+        };
+    }
+
 }

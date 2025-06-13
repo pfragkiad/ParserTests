@@ -236,11 +236,13 @@ public class Tokenizer : ITokenizer
                 else if (token.TokenType == TokenType.OperatorUnary)
                     currentUnaryOperator = unary[token.Text!];
 
-                if(token.TokenType== TokenType.Operator)
+                if(token.TokenType== TokenType.Operator )
                 {
                     //check if previous token is a binary operator (including argument separator)
                     //this will save the expression tree from having a non-empty stack
-                    if (iToken > 0 && infixTokens[iToken - 1].TokenType == TokenType.Operator)
+                    TokenType? previousTokenType = iToken>0 ?  infixTokens[iToken - 1].TokenType : null ;
+
+                    if (previousTokenType is null || previousTokenType == TokenType.Operator || previousTokenType == TokenType.OpenParenthesis || previousTokenType == TokenType.Function)
                     {
                         //add null token to postfix expression
                         postfixTokens.Add(Token.Null);
@@ -303,6 +305,12 @@ public class Tokenizer : ITokenizer
 
             NextToken:;
         }
+
+        //add dummy node if the expression ends with an operator
+        var lastToken = infixTokens[^1];
+        if(lastToken.TokenType == TokenType.Operator)
+            postfixTokens.Add(Token.Null);
+
 
         //check the operator stack at the end
         while (operatorStack.Count != 0)

@@ -6,9 +6,11 @@ public readonly struct FunctionArgumentCheckResult
 {
     public string FunctionName { get; init; }
 
-    public int ExpectedArgumentsCount { get; init; }
+    public int Position { get; init; }
 
-    public int ActualArgumentsCount { get; init; }
+    public int? ExpectedArgumentsCount { get; init; }
+
+    public int? ActualArgumentsCount { get; init; }
 }
 
 public class FunctionArgumentsCheckResult : CheckResult
@@ -21,20 +23,20 @@ public class FunctionArgumentsCheckResult : CheckResult
     public override IList<ValidationFailure> GetValidationFailures()
     {
         //return [.. InvalidFunctions.Select(name => new ValidationFailure("Formula", $"Invalid function arguments count: {name}"))];
-        return [.. InvalidFunctions.Select(f => new ValidationFailure("Formula", $"Function '{f.FunctionName}' expects {f.ExpectedArgumentsCount} argument(s), but got {f.ActualArgumentsCount}."))];
+        return [.. InvalidFunctions.Select(f => new ValidationFailure("Formula", $"Function '{f.FunctionName}' at position {f.Position} expects {f.ExpectedArgumentsCount} argument(s), but got {f.ActualArgumentsCount}."))];
     }
 
 }
 
 public class EmptyFunctionArgumentsCheckResult : CheckResult
 {
-    public List<string> ValidFunctions { get; init; } = [];
+    public List<FunctionArgumentCheckResult> ValidFunctions { get; init; } = [];
 
-    public List<string> InvalidFunctions { get; init; } = [];
+    public List<FunctionArgumentCheckResult> InvalidFunctions { get; init; } = [];
 
     public override bool IsSuccess => InvalidFunctions.Count==0;
     public override IList<ValidationFailure> GetValidationFailures()
     {
-        return [.. InvalidFunctions.Select(name => new ValidationFailure("Formula", $"Empty argument(s) in function: {name}"))];
+        return [.. InvalidFunctions.Select(f => new ValidationFailure("Formula", $"Function '{f.FunctionName}' at position {f.Position} has empty argument(s)."))];
     }
 }

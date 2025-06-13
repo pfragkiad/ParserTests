@@ -26,10 +26,21 @@ public class Node<T> : NodeBase
             ((isPrefix ? Right : Left) as Node<T>)!];
     }
 
+    public Node<T> GetUnaryArgumentNode(bool isPrefix)
+    {
+        return ((isPrefix ? Right : Left) as Node<T>)!;
+    }
+
+
     public (object LeftOperand, object RightOperand) GetBinaryArguments(Dictionary<Node<T>, object> nodeValueDictionary)
     {
         return (LeftOperand: nodeValueDictionary[(this.Left as Node<T>)!],
                 RightOperand: nodeValueDictionary[(this.Right as Node<T>)!]);
+    }
+    public (Node<T> LeftOperand, Node<T> RightOperand) GetBinaryArgumentNodes()
+    {
+        return (LeftOperand: (this.Left as Node<T>)!,
+                RightOperand: (this.Right as Node<T>)!);
     }
 
     public object GetFunctionArgument(Dictionary<Node<T>, object> nodeValueDictionary)
