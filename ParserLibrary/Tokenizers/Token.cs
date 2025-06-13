@@ -29,6 +29,10 @@ public class Token : IComparable<Token>
 
     public int Index => Match.Index;
 
+    public static Token Null => new(TokenType.Literal, Match.Empty);
+
+    public bool IsNull => Match == Match.Empty;
+
     public override string ToString() => Match.Value;
 
     public int CompareTo(Token? other)

@@ -1,4 +1,5 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
+using System.Diagnostics;
 
 namespace ParserLibrary.Parsers;
 
@@ -630,6 +631,71 @@ public class Parser : ParserBase, IParser
 
     }
 
+    public List<string> CheckEmptyFunctionArguments(string expression)
+    {
+        //returns the names of the functions that are registered but have empty arguments
+        var inOrderTokens = GetInOrderTokens(expression);
+        var postfixTokens = GetPostfixTokens(inOrderTokens);
+
+        //build expression tree from postfix 
+        Stack<Token> stack = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
+
+        //https://www.youtube.com/watch?v=WHs-wSo33MM
+        foreach (var token in postfixTokens) //these should be PostfixOrder tokens
+        {
+            if (token.TokenType == TokenType.Function)
+            {
+                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
+                _logger.LogDebug("Pushing {token} from stack (function node)", token);
+                continue;
+            }
+
+            //from now on we deal with operators, literals and identifiers only
+            if (ShouldPushToStack(stack, token))
+            {
+                var tokenNode = PushToStack(stack, nodeDictionary, token);
+                _logger.LogDebug("Push {token} to stack", token);
+                continue;
+            }
+
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            {
+                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
+                _logger.LogDebug("Pushing {token} from stack (operator node)", token);
+            }
+            else
+            {
+                _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
+                throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
+            }
+        }
+
+        //if (stack.Count == 0)
+        //    return [];
+
+        //var token2 = stack.Pop();
+        ////get the first function token from the stack
+        //while (token2.TokenType != TokenType.Function && stack.Count > 0) //pop until we find a function or the stack is empty
+        //    token2 = stack.Pop();
+
+
+
+        ThrowExceptionIfStackIsInvalid(stack);
+
+        //the last item on the postfix expression is the root node
+        var root = nodeDictionary[stack.Pop()];
+        Tree<Token> tree = new()
+        {
+            Root = root,
+            NodeDictionary = nodeDictionary
+        };
+
+        //tree.Print(topMargin:0,leftMargin:0,withSlashes:false);
+
+        return [];
+    }
+
 
     public FunctionArgumentsCheckResult CheckFunctionArgumentsCount(string expression)
     {
@@ -697,11 +763,5 @@ public class Parser : ParserBase, IParser
             ValidFunctions = [.. validFunctions],
             InvalidFunctions = [.. invalidFunctions]
         };
-
-        //return [.. tokens
-        //    .Where(t => t.TokenType == TokenType.Function && _customFunctions.ContainsKey(t.Text))
-        //    .Where(t => _customFunctions[t.Text].Parameters.Length != 1) //for simplicity, we check only for single parameter functions
-        //    .Select(t => t.Text)
-        //    .Distinct()];
     }
 }

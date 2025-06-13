@@ -24,3 +24,16 @@ public class FunctionArgumentsCheckResult : CheckResult
     }
 
 }
+
+public class EmptyFunctionArgumentsCheckResult : CheckResult
+{
+    public List<string> ValidFunctions { get; init; } = [];
+
+    public List<string> InvalidFunctions { get; init; } = [];
+
+    public override bool IsSuccess => InvalidFunctions.Count==0;
+    public override IList<ValidationFailure> GetValidationFailures()
+    {
+        return [.. InvalidFunctions.Select(name => new ValidationFailure("Formula", $"Empty argument(s) in function: {name}"))];
+    }
+}

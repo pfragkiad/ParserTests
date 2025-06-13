@@ -19,13 +19,13 @@ public class ParenthesisCheckResult : CheckResult
         {
             //_logger.LogError("Unmatched open parenthesis at position {position}", unmatched);
             //failures.Add(new ValidationFailure("Formula", $"Unmatched open parenthesis at position {unmatched}."));
-            failuresByPosition.Add((unmatched, new ValidationFailure("Formula", $"Unmatched open parenthesis at position {unmatched}.")));
+            failuresByPosition.Add((unmatched, new ValidationFailure("Formula", $"Unmatched open parenthesis at position {unmatched+1}.")));
         }
         foreach (var unmatched in UnmatchedClosed)
         {
             //_logger.LogError("Unmatched close parenthesis at position {position}", unmatched);
             //failures.Add(new ValidationFailure("Formula", $"Unmatched close parenthesis at position {unmatched}."));
-            failuresByPosition.Add((unmatched, new ValidationFailure("Formula", $"Unmatched close parenthesis at position {unmatched}.")));
+            failuresByPosition.Add((unmatched, new ValidationFailure("Formula", $"Unmatched close parenthesis at position {unmatched+1}.")));
         }
         // Sort failures by position and return only failures 
         return [.. failuresByPosition.OrderBy(e => e.Item1).Select( e => e.Item2)];

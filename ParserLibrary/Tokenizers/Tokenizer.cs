@@ -175,8 +175,11 @@ public class Tokenizer : ITokenizer
         var unary = _options.TokenPatterns.UnaryOperatorDictionary;
 
         _logger.LogDebug("Retrieving postfix tokens...");
-        foreach (var token in infixTokens)
+
+        //foreach (var token in infixTokens)
+        for(int iToken =0; iToken < infixTokens.Count; iToken++)
         {
+            var token = infixTokens[iToken];
             //if(token.Text == "asd") Debugger.Break();
 
             if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
@@ -195,6 +198,15 @@ public class Tokenizer : ITokenizer
             else if (token.TokenType == TokenType.ClosedParenthesis)
             {
                 _logger.LogDebug("Pop stack until open parenthesis is found (close parenthesis) -> {token}", token);
+
+                //check if previous token is a binary operator (including argument separator)
+                //this will save the expression tree from having a non-empty stack
+                if ( iToken>0 &&  infixTokens[iToken-1].TokenType == TokenType.Operator )
+                {
+                    //add null token to postfix expression
+                    postfixTokens.Add(Token.Null);
+                }
+
 
                 //pop all operators until we find open parenthesis
                 do
@@ -223,6 +235,17 @@ public class Tokenizer : ITokenizer
                     currentOperator = operators[token.Text]!;
                 else if (token.TokenType == TokenType.OperatorUnary)
                     currentUnaryOperator = unary[token.Text!];
+
+                if(token.TokenType== TokenType.Operator)
+                {
+                    //check if previous token is a binary operator (including argument separator)
+                    //this will save the expression tree from having a non-empty stack
+                    if (iToken > 0 && infixTokens[iToken - 1].TokenType == TokenType.Operator)
+                    {
+                        //add null token to postfix expression
+                        postfixTokens.Add(Token.Null);
+                    }
+                }
 
                 //if (currentUnaryOperator?.Name == "%") Debugger.Break();
 

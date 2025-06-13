@@ -77,7 +77,7 @@ internal class Program
         //Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
 
         var cparser = App.GetCustomParser<ComplexParser>();
-        Complex result = (Complex)cparser.Evaluate("(1+3*i))/(2-3*i)");
+        Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
         Console.WriteLine(result);
         Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
         Console.WriteLine(result2);
@@ -89,7 +89,9 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        //MainTests();
+        MainTests();
+
+        return;
 
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
