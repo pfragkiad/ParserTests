@@ -49,5 +49,6 @@ public interface IParser : IParserBase
     Tree<Token> GetExpressionTree(string s);
 
     FunctionArgumentsCheckResult CheckFunctionArgumentsCount(string expression);
-    List<string> CheckEmptyFunctionArguments(string expression);
+   
+    EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression);
 }

@@ -335,6 +335,9 @@ public class Parser : ParserBase, IParser
     protected object[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
         functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
 
+    protected Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
+        functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
+
     protected object GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
         functionNode.GetFunctionArgument(nodeValueDictionary);
 
@@ -631,69 +634,40 @@ public class Parser : ParserBase, IParser
 
     }
 
-    public List<string> CheckEmptyFunctionArguments(string expression)
+    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         //returns the names of the functions that are registered but have empty arguments
         var inOrderTokens = GetInOrderTokens(expression);
         var postfixTokens = GetPostfixTokens(inOrderTokens);
+        var tree = GetExpressionTree(postfixTokens);
 
-        //build expression tree from postfix 
-        Stack<Token> stack = new();
-        Dictionary<Token, Node<Token>> nodeDictionary = [];
 
-        //https://www.youtube.com/watch?v=WHs-wSo33MM
-        foreach (var token in postfixTokens) //these should be PostfixOrder tokens
+        List<string> ValidFunctions = [];
+        List<string> InvalidFunctions = [];
+        foreach (var entry in tree.NodeDictionary)
         {
-            if (token.TokenType == TokenType.Function)
-            {
-                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
-                _logger.LogDebug("Pushing {token} from stack (function node)", token);
-                continue;
-            }
+            var token = entry.Key;
+            var node = entry.Value;
+            if (token.TokenType != TokenType.Function) continue;
 
-            //from now on we deal with operators, literals and identifiers only
-            if (ShouldPushToStack(stack, token))
-            {
-                var tokenNode = PushToStack(stack, nodeDictionary, token);
-                _logger.LogDebug("Push {token} to stack", token);
-                continue;
-            }
+            var arguments = GetFunctionArgumentNodes(node);
+            //if at least one empty node then it is invalid
 
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            if (arguments.Any(n => n.Value!.IsNull))
             {
-                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
-                _logger.LogDebug("Pushing {token} from stack (operator node)", token);
+                InvalidFunctions.Add(token.Text);
             }
             else
             {
-                _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
-                throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
+                ValidFunctions.Add(token.Text);
             }
         }
 
-        //if (stack.Count == 0)
-        //    return [];
-
-        //var token2 = stack.Pop();
-        ////get the first function token from the stack
-        //while (token2.TokenType != TokenType.Function && stack.Count > 0) //pop until we find a function or the stack is empty
-        //    token2 = stack.Pop();
-
-
-
-        ThrowExceptionIfStackIsInvalid(stack);
-
-        //the last item on the postfix expression is the root node
-        var root = nodeDictionary[stack.Pop()];
-        Tree<Token> tree = new()
+        return new EmptyFunctionArgumentsCheckResult
         {
-            Root = root,
-            NodeDictionary = nodeDictionary
+            ValidFunctions = [.. ValidFunctions],
+            InvalidFunctions = [.. InvalidFunctions]
         };
-
-        //tree.Print(topMargin:0,leftMargin:0,withSlashes:false);
-
-        return [];
     }
 
 

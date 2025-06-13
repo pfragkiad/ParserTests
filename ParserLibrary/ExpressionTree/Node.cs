@@ -115,6 +115,56 @@ public class Node<T> : NodeBase
         arguments[count - 1] = nodeValueDictionary[(Right!.Right as Node<T>)!];
         return arguments;
     }
+
+
+
+    public Node<T>[] GetFunctionArgumentNodes(string argumentSeparator)
+    {
+        int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
+        return GetFunctionArgumentNodes(argumentsCount);
+    }
+
+    public Node<T>[] GetFunctionArgumentNodes(int count)
+    {
+        if (count == 1) return [(Right as Node<T>)!]; //a1
+
+        if (count == 2) return [
+             (Right!.Left as Node<T>)!, //a1
+             (Right!.Right as Node<T>)!, //a2
+        ];
+
+        if (count == 3) return
+        [
+            (Right!.Left!.Left as Node<T>)!, //a1
+            (Right!.Left!.Right as Node<T>)!, //a2
+            (Right!.Right as Node<T>)! //a3
+        ];
+
+        if (count == 4) return
+        [
+            (Right!.Left!.Left!.Left as Node<T>)!, //a1
+            (Right.Left.Left.Right as Node <T>)!, //a2
+            (Right.Left.Right as Node <T>)!, //a3
+            (Right.Right as Node <T>)! //a4
+        ];
+
+        //generic case for arguments >=5
+        Node<T>[] arguments = new Node<T>[count];
+        var leftFarNode = Right;
+        for (int iDepth = 0; iDepth <= count - 2; iDepth++)
+            leftFarNode = leftFarNode!.Left;
+        arguments[0] = (leftFarNode as Node<T>)!;
+
+        for (int iArg = 1; iArg < count - 1; iArg++)
+        {
+            var internalNode = Right;
+            for (int iDepth = 0; iDepth <= count - iArg - 2; iDepth++)
+                internalNode = internalNode!.Left;
+            arguments[iArg] = (internalNode!.Right as Node<T>)!;
+        }
+        arguments[count - 1] = (Right!.Right as Node<T>)!;
+        return arguments;
+    }
 }
 
 

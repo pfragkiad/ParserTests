@@ -5,6 +5,7 @@ namespace ParserLibrary.Tokenizers.CheckResults;
 public readonly struct FunctionArgumentCheckResult
 {
     public string FunctionName { get; init; }
+
     public int ExpectedArgumentsCount { get; init; }
 
     public int ActualArgumentsCount { get; init; }
