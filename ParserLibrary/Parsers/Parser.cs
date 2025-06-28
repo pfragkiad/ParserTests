@@ -765,6 +765,8 @@ public class Parser : ParserBase, IParser
             var node = entry.Value;
             if (token.TokenType != TokenType.Operator) continue;
 
+            if (token.Text == _options.TokenPatterns.ArgumentSeparator) continue;
+
             var arguments = node.GetBinaryArgumentNodes();
             //if at least one empty node then it is invalid
 

@@ -20,4 +20,5 @@ public interface ITokenizer
     VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, string[] ignorePrefixes, string[] ignorePostfixes);
 
     VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null);
+    List<Token> GetPostfixTokens(string expression);
 }

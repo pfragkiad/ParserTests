@@ -48,12 +48,14 @@ public class Tokenizer : ITokenizer
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
+        var m0 = matches[0];
+
         //open parenthesis
         matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
 
-        //open parenthesis with identifier
+        //open parenthesis with identifier (for functions)
         string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
         matches = Regex.Matches(expression, functionPattern);
         if (matches.Count != 0)
@@ -214,7 +216,7 @@ public class Tokenizer : ITokenizer
                     if (operatorStack.Count == 0)
                     {
                         _logger.LogError("Unmatched closed parenthesis. An open parenthesis should precede.");
-                        throw new InvalidOperationException($"Unmatched closed parenthesis (closed parenthesis at {token.Match.Index})");
+                        throw new InvalidOperationException($"Unmatched closed parenthesis (closed parenthesis at {token.Index})");
                     }
                     var stackToken = operatorStack.Pop();
                     if (stackToken.TokenType == TokenType.OpenParenthesis) break;
@@ -320,12 +322,12 @@ public class Tokenizer : ITokenizer
                 stackToken.TokenType == TokenType.Function)
             {
                 _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
-                throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Match.Index})");
+                throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Index})");
             }
             if (stackToken.TokenType == TokenType.Function) //XTRA
             {
                 _logger.LogError("Unmatched function open parenthesis. A closed parenthesis should follow.");
-                throw new InvalidOperationException($"Unmatched function open parenthesis (open parenthesis at {stackToken.Match.Index})");
+                throw new InvalidOperationException($"Unmatched function open parenthesis (open parenthesis at {stackToken.Index})");
             }
 
             postfixTokens.Add(stackToken);
@@ -336,6 +338,12 @@ public class Tokenizer : ITokenizer
         return postfixTokens;
     }
 
+    public List<Token> GetPostfixTokens(string expression)
+    {
+        //returns the postfix tokens of the expression
+        var infixTokens = GetInOrderTokens(expression);
+        return GetPostfixTokens(infixTokens);
+    }
 
     #region Utility methods
 

@@ -26,11 +26,6 @@
           "prefix": true
         },
         {
-          "name": "%",
-          "priority": 3,
-          "prefix": false
-        },
-        {
           "name": "*",
           "priority": 3,
           "prefix": false

@@ -23,11 +23,36 @@ public class Token : IComparable<Token>
     //public string TokenType { get; set; }
 
     public TokenType TokenType { get; set; }
-    public Match Match { get; set; }
 
-    public string Text => Match.Value;
+    //Used only when regex is used.
+    public Match? Match { get; set; }
 
-    public int Index => Match.Index;
+
+    protected string? _text;
+
+    public string? Text
+    {
+        get
+        {
+            return Match is not null ? Match.Value :
+                _text ?? string.Empty;
+        }
+        set { _text = value; }
+    }
+
+
+    protected int? _index = -1;
+
+    public int Index
+    {
+        get
+        {
+            return Match is not null ? Match.Index :
+                (_index ?? -1);
+        }
+
+        set { _index = value; }
+    }
 
     public static Token Null => new(TokenType.Literal, Match.Empty);
 

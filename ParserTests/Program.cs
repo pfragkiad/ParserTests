@@ -75,31 +75,43 @@ internal class Program
 
 
         //Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
+        //ComplexTests();
 
+        var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+    }
+
+    private static void ComplexTests()
+    {
         var cparser = App.GetCustomParser<ComplexParser>();
         Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
         Console.WriteLine(result);
         Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
         Console.WriteLine(result2);
-
-
-        var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
     }
-
 
     private static void Main(string[] args)
     {
-        MainTests();
-
-        return;
-
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
+        MainTests();
+        //return;
+
+
         //ItemTests
+        //CheckTypeTests();
+
+
+
+        //get host app with ItemParser
+
+    }
+
+    private static void CheckTypeTests()
+    {
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
 
         IParser parser = app.Services.GetRequiredParser();
-         parser.RegisterFunction("myfunc(a,b) = a + b + 10");
+        parser.RegisterFunction("myfunc(a,b) = a + b + 10");
 
 
         Item item1 = new Item { Name = "foo", Value = 3 };
@@ -162,10 +174,5 @@ internal class Program
         //Console.WriteLine($"Result2: {result2}, Type: {result2.GetType().Name}");
         //Console.WriteLine($"Result3: {result3}, Type: {result3.GetType().Name}");
         //Console.WriteLine($"Result4: {result4}, Type: {result4.GetType().Name}");
-
-
-
-        //get host app with ItemParser
-
     }
 }
