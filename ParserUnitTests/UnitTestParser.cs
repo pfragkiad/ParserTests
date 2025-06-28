@@ -128,7 +128,12 @@ public class UnitTestParser
         //Complex c1 = new(1, 1);
 
         var cparser = App.GetCustomParser<ComplexParser>();
-        var result = (Complex)cparser.Evaluate("cos(1+i)");
+
+        string expression = "cos(1+i)";
+        //var tree = cparser.GetExpressionTree(expression);
+        //tree.Print(withSlashes: false);
+
+        var result = (Complex)cparser.Evaluate(expression);
 
         Assert.Equal(Complex.Cos(new Complex(1, 1)), result);
 

@@ -6,11 +6,15 @@ public class TokenPatterns //NOT records here!
 
     public string? Literal { get; set; }
 
-    public string OpenParenthesis { get; set; } = "(";
+    //Only these 3 are required to be single characters.
+    public char OpenParenthesis { get; set; } = '(';
 
-    public string CloseParenthesis { get; set; } = ")";
+    public char CloseParenthesis { get; set; } = ')';
 
     public string ArgumentSeparator { get; set; } = ",";
+
+
+    //------------------------------------------------------
 
 
     private List<Operator> _operators = [];

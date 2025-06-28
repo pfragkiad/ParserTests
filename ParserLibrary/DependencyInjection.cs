@@ -11,22 +11,29 @@ namespace ParserLibrary;
 public static class DependencyInjection
 {
     #region Tokenizer, Parser services extensions
-    public static IServiceCollection AddParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context) where TParser : Parser
+    public static IServiceCollection AddParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context
+        , string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser
     {
         return services
-                    .ConfigureTokenizerOptions(context)
+                    .ConfigureTokenizerOptions(context, tokenizerSection)
                     .AddTokenizer()
                     .AddParser<TParser>();
     }
-    public static IServiceCollection AddTransientParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context) where TParser : TransientParser
+    public static IServiceCollection AddTransientParserLibrary<TParser>(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser
     {
         return services
-                    .ConfigureTokenizerOptions(context)
+                    .ConfigureTokenizerOptions(context, tokenizerSection)
                     .AddTokenizer()
                     .AddTransientParser<TParser>();
     }
-    public static IServiceCollection ConfigureTokenizerOptions(this IServiceCollection services, HostBuilderContext context) =>
-        services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection));
+    public static IServiceCollection ConfigureTokenizerOptions(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
+        services.Configure<TokenizerOptions>(context.Configuration.GetSection(tokenizerSection));
 
     public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer, Tokenizer>();
 

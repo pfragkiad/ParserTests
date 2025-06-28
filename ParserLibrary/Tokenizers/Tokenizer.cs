@@ -35,6 +35,8 @@ public class Tokenizer : ITokenizer
 
         List<Token> tokens = [];
 
+        //ONLY IDENTIFIERS AND LITERALS NEED REGEX MATCHING!
+
         //identifiers
         var matches =
             _options.CaseSensitive ?
@@ -48,27 +50,35 @@ public class Tokenizer : ITokenizer
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
-        var m0 = matches[0];
-
-        //open parenthesis
-        matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
-        if (matches.Count != 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
-
         //open parenthesis with identifier (for functions)
         string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
         matches = Regex.Matches(expression, functionPattern);
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Function, m)));
 
-        //close parenthesis
-        matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
-        if (matches.Count != 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
+        ////open parenthesis
+        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
+        //if (matches.Count != 0)
+        //    tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
+        ////close parenthesis
+        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
+        //if (matches.Count != 0)
+        //    tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
+        for (int i = 0; i < expression.Length; i++)
+        {
+            char c = expression[i];
+            if (c == _options.TokenPatterns.OpenParenthesis)
+                tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
+            else if (c == _options.TokenPatterns.CloseParenthesis)
+                tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
+            //else if (c == _options.TokenPatterns.ArgumentSeparator)
+            //    tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));   
+        }
+
 
         //match unary operators that do NOT coincide with binary operators
         var uniqueUnary =
-            _options.TokenPatterns.Unary?.Where(u => !_options.TokenPatterns.OperatorDictionary.ContainsKey(u.Name));
+            _options.TokenPatterns.Unary.Where(u => !_options.TokenPatterns.OperatorDictionary.ContainsKey(u.Name));
         if (uniqueUnary?.Any() ?? false)
         {
             foreach (var op in uniqueUnary)
@@ -82,7 +92,8 @@ public class Tokenizer : ITokenizer
         //operators
         foreach (var op in _options.TokenPatterns.Operators ?? [])
         {
-            matches = Regex.Matches(expression, $@"\{op.Name}");
+            //matches = Regex.Matches(expression, $@"\{op.Name}");
+            matches = Regex.Matches(expression, Regex.Escape(op.Name));
             if (matches.Count != 0)
                 tokens.AddRange(matches.Select(m => new Token(TokenType.Operator, m)));
         }
@@ -90,7 +101,7 @@ public class Tokenizer : ITokenizer
         //sort by Match.Index (get "infix ordering")
         tokens.Sort();
 
-        //for each captured function we should remove one captured open parenthesis and one identifier! (the tokens must be sorted)
+        //for each captured function we remove one captured open parenthesis AND one identifier! (the tokens must be sorted)
         for (int i = tokens.Count - 2; i >= 1; i--)
         {
             //if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
@@ -152,7 +163,7 @@ public class Tokenizer : ITokenizer
         if (_logger is not null)
         {
             foreach (var token in tokens)
-                _logger.LogDebug("{token} ({type})", token.Match.Value, token.TokenType);
+                _logger.LogDebug("{token} ({type})", token.Text, token.TokenType);
         }
 
 
@@ -355,13 +366,15 @@ public class Tokenizer : ITokenizer
         int count = 0;
         foreach (char c in expression)
         {
-            if (c.ToString() == open)
+            //if (c.ToString() == open)
+            if(c==open)
             {
                 count++;
                 continue;
             }
 
-            if (c.ToString() != close) continue;
+            //if (c.ToString() != close) continue;
+            if(c != close) continue;
 
             count--;
             if (count < 0)
@@ -382,13 +395,16 @@ public class Tokenizer : ITokenizer
         {
             char c = expression[i];
 
-            if (c.ToString() == open)
+            //if (c.ToString() == open)
+            if (c == open)
             {
                 openPositions.Add(i);
                 continue;
             }
 
-            if (c.ToString() != close) continue;
+            //if (c.ToString() != close) continue;
+            if (c != close)
+                continue;
 
             if (openPositions.Count == 0)
             {

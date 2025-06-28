@@ -54,17 +54,17 @@ public class Node<T> : NodeBase
     /// <returns></returns>
     public int GetFunctionArgumentsCount(string argumentSeparator)
     {
-        if (Left is null && Right is null) return 0;
-
         if (Left is not null) throw new InvalidOperationException($"The function node '{Text}' cannot contain a non-null Left child node.");
+        
+        if (Right is null) return 0;
 
-        if (Right is not null && Right.Text != argumentSeparator) return 1;
+        if (Right.Text != argumentSeparator) return 1;
+        //if ((Right as Node<Token>).Value.TokenType != TokenType.ArgumentSeparator) return 1;
 
         //an argument separator exists, so we have at least 2 arguments
         int iArguments = 2;
 
-        //here Right is not null
-        NodeBase? leftNode = Right?.Left;
+        NodeBase? leftNode = Right.Left;
         while (leftNode != null)
         {
             if (leftNode.Text == argumentSeparator) iArguments++;
@@ -73,11 +73,19 @@ public class Node<T> : NodeBase
         return iArguments;
     }
 
+    //public object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
+    //{
+    //    int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
+    //    return GetFunctionArguments(argumentsCount, nodeValueDictionary);
+    //}
+
     public object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
     {
         int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
         return GetFunctionArguments(argumentsCount, nodeValueDictionary);
     }
+
+
 
     /// <summary>
     /// If we already know the number of arguments then we should call this function for better performance.
@@ -126,7 +134,6 @@ public class Node<T> : NodeBase
         arguments[count - 1] = nodeValueDictionary[(Right!.Right as Node<T>)!];
         return arguments;
     }
-
 
 
     public Node<T>[] GetFunctionArgumentNodes(string argumentSeparator)

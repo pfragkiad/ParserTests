@@ -78,11 +78,17 @@ internal class Program
         //ComplexTests();
 
         var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+
+        Debugger.Break();
     }
 
     private static void ComplexTests()
     {
         var cparser = App.GetCustomParser<ComplexParser>();
+        string expression = "cos(1+i)";
+        var tree = cparser.GetExpressionTree(expression);
+        tree.Print(withSlashes: false);
+
         Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
         Console.WriteLine(result);
         Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
@@ -93,12 +99,15 @@ internal class Program
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
-        MainTests();
+        //MainTests();
+       // ComplexTests();
+
+
         //return;
 
 
         //ItemTests
-        //CheckTypeTests();
+        CheckTypeTests();
 
 
 

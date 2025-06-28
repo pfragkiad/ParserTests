@@ -2,29 +2,24 @@
 
 public class Operator
 {
-#nullable disable
-    public string Name { get; set; }
-#nullable restore
+    public required string Name { get; init; }
 
-    public int? Priority { get; set; } = 0;
+    public required int Priority { get; init; }
 
-    public bool LeftToRight { get; set; } = true;
+    public bool LeftToRight { get; init; } = true;
 
-    public override string ToString() => Name;
+    public override string ToString() => Name.ToString();
+
 }
-
-
 
 public class UnaryOperator
 {
-#nullable disable
-    public string Name { get; set; }
-#nullable restore
+    public required string Name { get; init; }
 
-    public int? Priority { get; set; } = 0;
+    public required int Priority { get; init; } 
 
-    public bool Prefix { get; set; } = true;
+    public bool Prefix { get; init; } = true;
 
-    public override string ToString() => Name;
+    public override string ToString() => Name.ToString();
 
 }

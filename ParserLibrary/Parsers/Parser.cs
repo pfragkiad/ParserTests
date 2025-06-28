@@ -31,7 +31,7 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (function node)", token);
                 continue;
             }
@@ -39,7 +39,7 @@ public class Parser : ParserBase, IParser
             //from now on we deal with operators, literals and identifiers only
             if (ShouldPushToStack(stack, token))
             {
-                var tokenNode = PushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Push {token} to stack", token);
                 continue;
             }
@@ -113,7 +113,7 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
 
@@ -158,7 +158,7 @@ public class Parser : ParserBase, IParser
             //from now on we deal with operators, literals and identifiers only
             if (ShouldPushToStack(stack, token))
             {
-                var tokenNode = PushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //XTRA
                 V? value = default;
@@ -326,7 +326,7 @@ public class Parser : ParserBase, IParser
         return EvaluateLiteral(s).GetType();
     }
 
-    protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+    protected static object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
     unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
 
     protected (object LeftOperand, object RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
@@ -338,7 +338,7 @@ public class Parser : ParserBase, IParser
     protected Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
         functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
 
-    protected object GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
+    protected static object GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary) =>
         functionNode.GetFunctionArgument(nodeValueDictionary);
 
 
@@ -430,7 +430,7 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
                 object functionResult = EvaluateFunction(functionNode, nodeValueDictionary);
@@ -442,7 +442,7 @@ public class Parser : ParserBase, IParser
             //from now on we deal with operators, literals and identifiers only
             if (ShouldPushToStack(stack, token))
             {
-                var tokenNode = PushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //XTRA CALCULATION HERE
                 object? value = null;
@@ -495,7 +495,7 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = GetFunctionNode(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
                 var functionResult = EvaluateFunctionType(functionNode, nodeValueDictionary);
@@ -507,7 +507,7 @@ public class Parser : ParserBase, IParser
             //from now on we deal with operators, literals and identifiers only
             if (ShouldPushToStack(stack, token))
             {
-                var tokenNode = PushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
 
                 //XTRA CALCULATION HERE
                 object? value = null;
@@ -600,7 +600,7 @@ public class Parser : ParserBase, IParser
         return operatorNode;
     }
 
-    private Node<Token> GetFunctionNode(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    private Node<Token> CreateFunctionNodeAndPushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
         Node<Token> functionNode = new(token);
         //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
@@ -612,8 +612,6 @@ public class Parser : ParserBase, IParser
         nodeDictionary.Add(token, functionNode);
         //and push to the stack
         stack.Push(token);
-
-
         return functionNode;
     }
 
@@ -625,9 +623,9 @@ public class Parser : ParserBase, IParser
                token.TokenType == TokenType.Identifier;
     }
 
-    private Node<Token> PushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    private static Node<Token> CreateNodeAndPushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
-        var tokenNode = new Node<Token>(token);
+        Node<Token> tokenNode = new (token);
         nodeDictionary.Add(token, tokenNode);
         stack.Push(token);
         return tokenNode;
@@ -767,7 +765,7 @@ public class Parser : ParserBase, IParser
 
             if (token.Text == _options.TokenPatterns.ArgumentSeparator) continue;
 
-            var arguments = node.GetBinaryArgumentNodes();
+            var (LeftOperand, RightOperand) = node.GetBinaryArgumentNodes();
             //if at least one empty node then it is invalid
 
             var newCheckResult = new OperatorArgumentCheckResult
@@ -776,7 +774,7 @@ public class Parser : ParserBase, IParser
                 Position = token.Index + 1 //1-based index
             };
 
-            if (arguments.LeftOperand.Value!.IsNull || arguments.RightOperand.Value!.IsNull)
+            if (LeftOperand.Value!.IsNull || RightOperand.Value!.IsNull)
             {
                 InvalidOperators.Add(newCheckResult);
             }
