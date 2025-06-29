@@ -11,9 +11,9 @@ public class DefaultParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
     /// <param name="postfixTokens"></param>
     /// <param name="variables"></param>
     /// <returns></returns>
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
+    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        variables ??= new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
         if (!variables.ContainsKey("pi")) variables.Add("pi", Math.PI);
         if (!variables.ContainsKey("e")) variables.Add("e", Math.E);
@@ -28,70 +28,64 @@ public class DefaultParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
 
     #region Auxiliary functions to get operands
 
-    public double GetDoubleUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-        => Convert.ToDouble(
-            operatorNode.GetUnaryArgument(
-            _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-            nodeValueDictionary));
-    public (double Left, double Right) GetDoubleBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public static double GetDouble(object? value)
     {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        return (Left: Convert.ToDouble(LeftOperand),
-                 Right: Convert.ToDouble(RightOperand));
+        if (value is null) return 0.0;
+        if (value is double d) return d;
+        if (value is not IConvertible) return 0.0;
+        return Convert.ToDouble(value, CultureInfo.InvariantCulture);
     }
 
-    public double[] GetDoubleFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        return [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary).Select(a => Convert.ToDouble(a))];
-    }
+    public static (double Left, double Right) GetDoubleBinaryOperands(object? leftOperand, object? rightOperand) => (
+        Left: GetDouble(leftOperand),
+        Right: GetDouble(rightOperand)
+    );
 
+
+    public static double GetDoubleUnaryOperand(object? operand)
+        => GetDouble(operand);
+
+
+
+    public static double[] GetDoubleFunctionArguments(object?[] args) =>
+        [.. args.Select(GetDouble)];
+    
     #endregion
 
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        //double operand = Convert.ToDouble(nodeValueDictionary[
-        //    (_options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix ?
-        //    operatorNode.Right : operatorNode.Left) as Node<Token>]);
-
-        double operand = GetDoubleUnaryOperand(operatorNode, nodeValueDictionary);
-
-        return operatorNode.Text switch
+        double op = GetDoubleUnaryOperand(operand);
+        return operatorName switch
         {
-            "-" => -operand,
-            "+" => operand,
-            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary),
+            "-" => -op,
+            "+" => op,
+            _ => base.EvaluateUnaryOperator(operatorName, operand),
         };
     }
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        //double left = Convert.ToDouble(nodeValueDictionary[operatorNode.Left as Node<Token>]);
-        //double right = Convert.ToDouble(nodeValueDictionary[operatorNode.Right as Node<Token>]);
-        (double left, double right) = GetDoubleBinaryOperands(operatorNode, nodeValueDictionary);
+        var (left, right) = GetDoubleBinaryOperands(leftOperand, rightOperand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
             "+" => left + right,
             "-" => left - right,
             "*" => left * right,
             "/" => left / right,
             "^" => Math.Pow(left, right),
-            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary),
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand),
         };
     }
 
-    protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
     //HashSet<string> funcsWith2Args = new() { "atan2","atan2d", "logn","max","min","pow","round"};
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
-
-        double[] a = GetDoubleFunctionArguments(
-            //count:funcsWith2Args.Contains(functionName) ? 2 : 1,
-            functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(args);
+        const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
         return functionName switch
         {
@@ -127,7 +121,7 @@ public class DefaultParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
             "tan" => Math.Tan(a[0]),
             "tand" => Math.Tan(a[0] * TORAD),
             "tanh" => Math.Tanh(a[0]),
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+            _ => base.EvaluateFunction(functionName, args),
         };
     }
 

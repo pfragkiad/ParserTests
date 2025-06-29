@@ -12,7 +12,9 @@ public static class App
     //TODO: AddTokenizer, AddParser, ConfigureTokenizerOptions capability show
     //TODO: Serilog control via appsettings.json
 
-    public static IHost GetParserApp<TParser>(string configFile = "appsettings.json") where TParser : Parser
+    public static IHost GetParserApp<TParser>(
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -23,7 +25,7 @@ public static class App
            .ConfigureServices((context, services) =>
             {
                 services
-                .AddParserLibrary<TParser>(context);
+                .AddParserLibrary<TParser>(context,tokenizerSection);
             })
            .UseSerilog((context, configuration) =>
            {
@@ -35,7 +37,9 @@ public static class App
         return app;
     }
 
-    public static IHost GetTransientParserApp<TParser>(string configFile = "appsettings.json") where TParser : TransientParser
+    public static IHost GetTransientParserApp<TParser>(
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -46,7 +50,7 @@ public static class App
            .ConfigureServices((context, services) =>
            {
                services
-               .AddTransientParserLibrary<TParser>(context);
+               .AddTransientParserLibrary<TParser>(context, tokenizerSection);
            })
            .UseSerilog((context, configuration) =>
            {
@@ -62,16 +66,22 @@ public static class App
     #region Utility functions
 
 
-    public static IParser GetCustomParser<TParser>(string configFile = "appsettings.json") where TParser : Parser =>
-        GetParserApp<TParser>(configFile).Services.GetRequiredParser();
+    public static IParser GetCustomParser<TParser>(
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser =>
+        GetParserApp<TParser>(configFile,tokenizerSection).Services.GetRequiredParser();
 
-    public static ITransientParser GetCustomTransientParser<TParser>(string configFile = "appsettings.json") where TParser : TransientParser =>
-        GetTransientParserApp<TParser>(configFile).Services.GetRequiredTransientParser();
+    public static ITransientParser GetCustomTransientParser<TParser>(
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser =>
+        GetTransientParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredTransientParser();
 
-    public static IParser? GetDefaultParser(string configFile = "appsettings.json") =>
-        GetParserApp<DefaultParser>(configFile).Services.GetParser();
+    public static IParser? GetDefaultParser(
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
+        GetParserApp<DefaultParser>(configFile, tokenizerSection).Services.GetParser();
 
-    public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json") =>
+    public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json", string tokenizerSection = TokenizerOptions.TokenizerSection) =>
         GetParserApp<DefaultParser>(configFile).Services.GetRequiredParser();
 
     public static double Evaluate(string s, Dictionary<string, object>? variables = null)

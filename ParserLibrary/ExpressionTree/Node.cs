@@ -20,7 +20,7 @@ public class Node<T> : NodeBase
         }
     }
 
-    public object GetUnaryArgument(bool isPrefix, Dictionary<Node<T>, object> nodeValueDictionary)
+    public object? GetUnaryArgument(bool isPrefix, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         return nodeValueDictionary[
             ((isPrefix ? Right : Left) as Node<T>)!];
@@ -32,7 +32,7 @@ public class Node<T> : NodeBase
     }
 
 
-    public (object LeftOperand, object RightOperand) GetBinaryArguments(Dictionary<Node<T>, object> nodeValueDictionary)
+    public (object? LeftOperand, object? RightOperand) GetBinaryArguments(Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         return (LeftOperand: nodeValueDictionary[(this.Left as Node<T>)!],
                 RightOperand: nodeValueDictionary[(this.Right as Node<T>)!]);
@@ -43,7 +43,7 @@ public class Node<T> : NodeBase
                 RightOperand: (this.Right as Node<T>)!);
     }
 
-    public object GetFunctionArgument(Dictionary<Node<T>, object> nodeValueDictionary)
+    public object? GetFunctionArgument(Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         return nodeValueDictionary[(Right as Node<T>)!]; //a1  
     }
@@ -79,7 +79,7 @@ public class Node<T> : NodeBase
     //    return GetFunctionArguments(argumentsCount, nodeValueDictionary);
     //}
 
-    public object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
+    public object?[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
         return GetFunctionArguments(argumentsCount, nodeValueDictionary);
@@ -93,7 +93,7 @@ public class Node<T> : NodeBase
     /// <param name="count"></param>
     /// <param name="nodeValueDictionary"></param>
     /// <returns></returns>
-    public object[] GetFunctionArguments(int count, Dictionary<Node<T>, object> nodeValueDictionary)
+    public object?[] GetFunctionArguments(int count, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         if (count == 1) return [nodeValueDictionary[(Right as Node<T>)!]]; //a1
 

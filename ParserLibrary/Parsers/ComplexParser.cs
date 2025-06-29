@@ -4,9 +4,9 @@ namespace ParserLibrary.Parsers;
 
 public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
+    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        variables ??= [];
+        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
         //we define "constants" if they are not already defined
         if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
@@ -23,76 +23,58 @@ public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
 
     #region Auxiliary functions to get operands
 
-    public Complex GetComplexUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    private static Complex GetComplex(object? value)
     {
-        var arg = operatorNode.GetUnaryArgument(
-             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-             nodeValueDictionary);
+        if (value is null) return Complex.Zero;
+        if (value is double) return new Complex(Convert.ToDouble(value), 0);
+        if (value is not Complex) return Complex.Zero;
+        return (Complex)value;
+    }  
+    
 
-        if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
-        else return (Complex)arg;
-    }
+    public static (Complex Left, Complex Right) GetComplexBinaryOperands(object? leftOperand, object? rightOperand) => (
+        Left: GetComplex(leftOperand),
+        Right: GetComplex(rightOperand)
+    );
 
-    public (Complex Left, Complex Right) GetComplexBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+    public static Complex GetComplexUnaryOperand(object? operand) => GetComplex(operand);
 
-        return (Left: LeftOperand is double || LeftOperand is int ?
-            new Complex(Convert.ToDouble(LeftOperand), 0) : (Complex)LeftOperand,
-                 Right: RightOperand is double || RightOperand is int ?
-            new Complex(Convert.ToDouble(RightOperand), 0) : (Complex)RightOperand);
-    }
-
-    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        return [.. functionNode.GetFunctionArguments(
-            _options.TokenPatterns.ArgumentSeparator,
-            nodeValueDictionary).Select(arg =>
-     {
-         if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
-         else return (Complex)arg;
-     })];
-    }
+    public static Complex[] GetComplexFunctionArguments(object?[] args) =>
+        [.. args.Select(GetComplex)];
 
     #endregion
 
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
+        Complex op = GetComplexUnaryOperand(operand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
-            "-" => -operand,
-            "+" => operand,
-            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary),
+            "-" => -op,
+            "+" => op,
+            _ => base.EvaluateUnaryOperator(operatorName, operand),
         };
     }
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
-
-        return operatorNode.Text switch
+        var (Left, Right) = GetComplexBinaryOperands( leftOperand,rightOperand);
+        return operatorName switch
         {
-            "+" => Complex.Add(left, right),
-            "-" => left - right,
-            "*" => left * right,
-            "/" => left / right,
-            "^" => Complex.Pow(left, right),
-            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary),
+            "+" => Complex.Add(Left, Right),
+            "-" => Left - Right,
+            "*" => Left * Right,
+            "/" => Left / Right,
+            "^" => Complex.Pow(Left, Right),
+            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand),
         };
     }
 
-    protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
-
-    //HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
-
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
-
-        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
+        Complex[] a = ComplexParser.GetComplexFunctionArguments(args);
+        const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
         return functionName switch
         {
@@ -120,7 +102,7 @@ public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
             "tan" => Complex.Tan(a[0]),
             "tand" => Complex.Tan(a[0] * TORAD),
             "tanh" => Complex.Tanh(a[0]),
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+            _ => base.EvaluateFunction(functionName, args),
         };
     }
 

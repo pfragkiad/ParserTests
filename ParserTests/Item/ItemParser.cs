@@ -112,27 +112,28 @@ public class ItemParser(ILogger<Parser> logger,IOptions<TokenizerOptions> option
         return null;
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
-
-        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
-        //return functionNode.Text switch   
-        return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+        if (args[0] is not Item || args[1] is not int)
         {
-            "add" => (Item)a[0] + (int)a[1],
+            _logger.LogError("Invalid arguments for function '{functionName}': expected Item and int, got {arg0} and {arg1}", functionName, args[0]?.GetType(), args[1]?.GetType());
+            return null;
+        }
 
-            //at the end check for custom functions
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+        return functionName switch
+        {
+            "add" => (Item)args[0]! + (int)args[1]!,
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
+
 
 
     //needed when evaluating type ONLY
 
     protected override Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
     {
-        var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
+        //var args = GetFunctionArguments(functionNode, nodeValueDictionary);
 
         //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
         //return functionNode.Text switch   
