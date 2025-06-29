@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Parsers;
 
-public interface ITransientParser : IParserBase
+public interface ITransientParser : IParser
 {
 
     object Evaluate(string s, Dictionary<string, object>? variables = null);

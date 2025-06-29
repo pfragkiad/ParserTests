@@ -1,14 +1,79 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
-using System.Diagnostics;
 
 namespace ParserLibrary.Parsers;
 
-public class Parser : ParserBase, IParser
+public class Parser : Tokenizer, IParser
 {
-
-    public Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options)
+    public Parser(ILogger logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
     { }
+
+    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+
+    //needed for checking the function identifiers and arguments count in the expression tree
+    protected virtual Dictionary<string, int> MainFunctions => [];
+
+    public void RegisterFunction(string definition)
+    {
+        // Example: "myf(x,y) = 10*x+sin(y)"
+        var parts = definition.Split('=', 2);
+        if (parts.Length != 2)
+            throw new ArgumentException("Invalid function definition format.");
+
+        var header = parts[0].Trim();
+        var body = parts[1].Trim();
+
+        var nameAndParams = header.Split('(', 2);
+        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
+            throw new ArgumentException("Invalid function header format.");
+
+        var name = nameAndParams[0].Trim();
+
+        var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        _customFunctions[name] = (paramList, body);
+    }
+
+
+
+
+    public FunctionNamesCheckResult CheckFunctionNames(string expression)
+    {
+        //returns the names of the functions that are not registered
+        var tokens = GetInOrderTokens(expression);
+        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+
+        HashSet<string> matchedNames = [];
+        HashSet<string> unmatchedNames = [];
+        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Function))
+        {
+            if (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text))
+            { matchedNames.Add(t.Text); continue; }
+
+            unmatchedNames.Add(t.Text);
+        }
+
+        return new FunctionNamesCheckResult
+        {
+            MatchedNames = [.. matchedNames],
+            UnmatchedNames = [.. unmatchedNames]
+        };
+    }
+
+    public List<string> GetMatchedFunctionNames(string expression)
+    {
+        //returns the names of the functions that are registered
+        var tokens = GetInOrderTokens(expression);
+        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        return [.. tokens
+            .Where(t => t.TokenType == TokenType.Function &&
+                (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text)))
+            .Select(t => t.Text)
+            .Distinct()];
+    }
+
+    #region Expression trees
+
 
     public Tree<Token> GetExpressionTree(string s)
     {
@@ -31,22 +96,22 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (function node)", token);
                 continue;
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToStack(stack, token))
+            if (ShouldPushToExpressionStack(stack, token))
             {
-                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Push {token} to stack", token);
                 continue;
             }
 
             if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
-                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
+                Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (operator node)", token);
             }
             else
@@ -68,17 +133,25 @@ public class Parser : ParserBase, IParser
         return tree;
     }
 
-    public V Evaluate<V>(
-        string s,
-        Func<string, V>? literalParser = null,
-        Dictionary<string, V>? variables = null,
-        Dictionary<string, Func<V, V, V>>? binaryOperators = null,
-        Dictionary<string, Func<V, V>>? unaryOperators = null,
 
-        Dictionary<string, Func<V, V>>? funcs1Arg = null,
-        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
-        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
-        )
+
+
+    #endregion
+
+
+    #region Evaluation methods
+
+    public V Evaluate<V>(
+    string s,
+    Func<string, V>? literalParser = null,
+    Dictionary<string, V>? variables = null,
+    Dictionary<string, Func<V, V, V>>? binaryOperators = null,
+    Dictionary<string, Func<V, V>>? unaryOperators = null,
+
+    Dictionary<string, Func<V, V>>? funcs1Arg = null,
+    Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+    Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+    )
     {
         var inOrderTokens = GetInOrderTokens(s);
         var postfixTokens = GetPostfixTokens(inOrderTokens);
@@ -113,7 +186,7 @@ public class Parser : ParserBase, IParser
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
 
@@ -156,9 +229,9 @@ public class Parser : ParserBase, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToStack(stack, token))
+            if (Parser.ShouldPushToExpressionStack(stack, token))
             {
-                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA
                 V? value = default;
@@ -173,7 +246,7 @@ public class Parser : ParserBase, IParser
 
             if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
-                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
+                Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA
                 if (token.Text != _options.TokenPatterns.ArgumentSeparator)
@@ -214,129 +287,6 @@ public class Parser : ParserBase, IParser
         return nodeValueDictionary[root]!;
     }
 
-
-
-
-    #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
-
-
-    private object? EvaluateFunction(
-        Node<Token> functionNode,
-        Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        string functionName =
-            _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
-        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
-
-        //checks for custom functions registered with RegisterFunction method  
-        if (_customFunctions.TryGetValue(functionName, out var funcDef))
-        {
-            if (args.Length != funcDef.Parameters.Length)
-                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
-
-            // Build a variable dictionary for the function body
-            var localVars = new Dictionary<string, object?>(
-                _options.CaseSensitive ?
-                StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-            for (int i = 0; i < funcDef.Parameters.Length; i++)
-                localVars[funcDef.Parameters[i]] = args[i];
-
-            // Evaluate the function body with the local variables
-            return Evaluate(funcDef.Body, localVars);
-        }
-
-        //else check for hardcoded functions
-        return EvaluateFunction(functionName, args);
-    }
-
-    private Type EvaluateFunctionType(
-        Node<Token> functionNode,
-        Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        string functionName =
-            _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
-        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
-
-        if (_customFunctions.TryGetValue(functionName, out var funcDef))
-        {
-            if (args.Length != funcDef.Parameters.Length)
-                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
-
-            // Build a variable dictionary for the function body
-            var localVars = new Dictionary<string, object?>(
-                _options.CaseSensitive ?
-                StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-            for (int i = 0; i < funcDef.Parameters.Length; i++)
-                localVars[funcDef.Parameters[i]] = args[i];
-
-            // Evaluate the function body with the local variables
-            return EvaluateType(funcDef.Body, localVars);
-        }
-
-
-        //else check for hardcoded functions
-        return EvaluateFunctionType(functionName, args);
-
-    }
-
-
-    private object? EvaluateOperator(
-        Node<Token> operatorNode,
-        Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-
-        string operatorName =
-            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
-
-        return EvaluateOperator(operatorName, LeftOperand, RightOperand);
-    }
-
-    protected Type EvaluateOperatorType( //used only if we want to check the output type of the operator
-        Node<Token> operatorNode,
-        Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        string operatorName =
-            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
-        return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
-    }
-
-    private object? EvaluateUnaryOperator(
-        Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        string operatorName =
-            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
-
-        var operand = operatorNode.GetUnaryArgument(
-            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
-            nodeValueDictionary);
-
-        return EvaluateUnaryOperator(operatorName, operand);
-    }
-
-    private Type EvaluateUnaryOperatorType( //used only if we want to check the output type of the unary operator
-        Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
-    {
-        string operatorName =
-            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
-
-        var operand = operatorNode.GetUnaryArgument(
-            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
-            nodeValueDictionary);
-
-        return EvaluateUnaryOperatorType(operatorName, operand);
-    }
-
-    protected virtual Type EvaluateLiteralType(string s) //used only if we want to check the output type of the literal
-    {
-        //although this is the default documentation, it should practically be overriden based on literal type
-        var value = EvaluateLiteral(s);
-        return value is null ? typeof(object) : value.GetType();
-    }
-
     public object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
         var inOrderTokens = GetInOrderTokens(s);
@@ -344,135 +294,12 @@ public class Parser : ParserBase, IParser
 
         return Evaluate(postfixTokens, variables);
     }
-
     public Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
     {
         var inOrderTokens = GetInOrderTokens(s);
         var postfixTokens = GetPostfixTokens(inOrderTokens);
 
         return EvaluateType(postfixTokens, variables);
-    }
-
-    //public OneOf<T1, T2> Evaluate<T1, T2>(string s, Dictionary<string, OneOf<T1, T2>> variables)
-    //{
-    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-    //    //return based on the type of result
-    //    if (result is T1 t1) return t1;
-    //    if (result is T2 t2) return t2;
-    //    throw new InvalidOperationException("Could not evaluate return type.");
-    //}
-
-    //public OneOf<T1,T2,T3> Evaluate<T1, T2, T3>(string s, Dictionary<string, OneOf<T1, T2, T3>> variables)
-    //{
-    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-    //    //return based on the type of result
-    //    if (result is T1 t1) return t1;
-    //    if (result is T2 t2) return t2;
-    //    if (result is T3 t3) return t3;
-    //    throw new InvalidOperationException("Could not evaluate return type.");
-    //}
-
-    //public OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(string s, Dictionary<string, OneOf<T1, T2, T3, T4>> variables)
-    //{
-    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-    //    //return based on the type of result
-    //    if (result is T1 t1) return t1;
-    //    if (result is T2 t2) return t2;
-    //    if (result is T3 t3) return t3;
-    //    if (result is T4 t4) return t4;
-    //    throw new InvalidOperationException("Could not evaluate return type.");
-    //}
-
-    //public OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables)
-    //{
-    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-    //    //return based on the type of result
-    //    if (result is T1 t1) return t1;
-    //    if (result is T2 t2) return t2;
-    //    if (result is T3 t3) return t3;
-    //    if (result is T4 t4) return t4;
-    //    if (result is T5 t5) return t5;
-    //    throw new InvalidOperationException("Could not evaluate return type.");
-    //}
-
-    //public OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(string s, Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables)
-    //{
-    //    object result = Evaluate(s, variables.ToDictionary(kv => kv.Key, kv => (object)kv.Value));
-    //    //return based on the type of result
-    //    if (result is T1 t1) return t1;
-    //    if (result is T2 t2) return t2;
-    //    if (result is T3 t3) return t3;
-    //    if (result is T4 t4) return t4;
-    //    if (result is T5 t5) return t5;
-    //    if (result is T6 t6) return t6;
-    //    throw new InvalidOperationException("Could not evaluate return type.");
-    //}
-
-
-    protected virtual object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    {
-        _logger.LogDebug("Evaluating...");
-
-        //build expression tree from postfix 
-        Stack<Token> stack = new();
-        Dictionary<Token, Node<Token>> nodeDictionary = [];
-        //XTRA
-        Dictionary<Node<Token>, object?> nodeValueDictionary = [];
-
-        //https://www.youtube.com/watch?v=WHs-wSo33MM
-        foreach (var token in postfixTokens)
-        {
-            if (token.TokenType == TokenType.Function)
-            {
-                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
-
-                //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
-                object? functionResult = EvaluateFunction(functionNode, nodeValueDictionary);
-
-                nodeValueDictionary.Add(functionNode, functionResult);
-                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
-                continue;
-            }
-
-            //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToStack(stack, token))
-            {
-                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
-
-                //XTRA CALCULATION HERE
-                object? value = null;
-                if (token.TokenType == TokenType.Literal)
-                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
-                else if (token.TokenType == TokenType.Identifier && variables is not null)
-                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
-
-                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
-                continue;
-            }
-
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
-            {
-                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
-
-                //XTRA
-                if (token.Text != _options.TokenPatterns.ArgumentSeparator)
-                {
-                    var result =
-                        token.TokenType == TokenType.Operator ?
-                        EvaluateOperator(operatorNode, nodeValueDictionary) :
-                        EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-                    nodeValueDictionary.Add(operatorNode, result);
-                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
-                }
-                else
-                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
-            }
-        }
-
-        ThrowExceptionIfStackIsInvalid(stack);
-
-        var root = nodeDictionary[stack.Pop()];
-        return nodeValueDictionary[root];
     }
 
     protected virtual Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
@@ -482,15 +309,19 @@ public class Parser : ParserBase, IParser
         //build expression tree from postfix 
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
-        //XTRA
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
 
+        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
+    }
+
+    protected Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
         {
             if (token.TokenType == TokenType.Function)
             {
-                Node<Token> functionNode = CreateFunctionNodeAndPushToStack(stack, nodeDictionary, token);
+                Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
                 var functionResult = EvaluateFunctionType(functionNode, nodeValueDictionary);
@@ -500,9 +331,9 @@ public class Parser : ParserBase, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToStack(stack, token))
+            if (Parser.ShouldPushToExpressionStack(stack, token))
             {
-                var tokenNode = CreateNodeAndPushToStack(stack, nodeDictionary, token);
+                var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA CALCULATION HERE
                 object? value = null;
@@ -521,7 +352,7 @@ public class Parser : ParserBase, IParser
 
             if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
             {
-                Node<Token> operatorNode = GetOperatorNode(stack, nodeDictionary, token);
+                Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA
                 if (token.Text != _options.TokenPatterns.ArgumentSeparator)
@@ -544,21 +375,107 @@ public class Parser : ParserBase, IParser
         return (Type)nodeValueDictionary[root]!;
     }
 
-
-    #endregion
-
-    private void ThrowExceptionIfStackIsInvalid(Stack<Token> stack)
+    protected virtual object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        if (stack.Count > 1)
-        {
-            string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
-            _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
-            throw new InvalidOperationException(
-                string.Format("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {0}", stackItemsString));
-        }
+        //build expression tree from postfix 
+        Stack<Token> stack = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
+        Dictionary<Node<Token>, object?> nodeValueDictionary = [];
+        return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
     }
 
-    private Node<Token> GetOperatorNode(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    protected object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
+         _logger.LogDebug("Evaluating...");
+       //https://www.youtube.com/watch?v=WHs-wSo33MM
+        foreach (var token in postfixTokens)
+        {
+            if (token.TokenType == TokenType.Function)
+            {
+                Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+
+                //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
+                object? functionResult = EvaluateFunction(functionNode, nodeValueDictionary);
+
+                nodeValueDictionary.Add(functionNode, functionResult);
+                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                continue;
+            }
+
+            //from now on we deal with operators, literals and identifiers only
+            if (ShouldPushToExpressionStack(stack, token))
+            {
+                var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+
+                //XTRA CALCULATION HERE
+                object? value = null;
+                if (token.TokenType == TokenType.Literal)
+                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
+                else if (token.TokenType == TokenType.Identifier && variables is not null)
+                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
+
+                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                continue;
+            }
+
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            {
+                Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+
+                //XTRA
+                if (token.Text != _options.TokenPatterns.ArgumentSeparator)
+                {
+                    var result =
+                        token.TokenType == TokenType.Operator ?
+                        EvaluateOperator(operatorNode, nodeValueDictionary) :
+                        EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
+                    nodeValueDictionary.Add(operatorNode, result);
+                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                }
+                else
+                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+            }
+        }
+
+        ThrowExceptionIfStackIsInvalid(stack);
+
+        var root = nodeDictionary[stack.Pop()];
+        return nodeValueDictionary[root];
+    }
+
+    private Node<Token> CreateFunctionNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    {
+        Node<Token> functionNode = new(token);
+        //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
+        Token tokenInFunction = stack.Pop();
+        functionNode.Right = nodeDictionary[tokenInFunction];
+        _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
+
+        //remember the functionNode
+        nodeDictionary.Add(token, functionNode);
+        //and push to the stack
+        stack.Push(token);
+        return functionNode;
+    }
+
+    private static bool ShouldPushToExpressionStack(Stack<Token> stack, Token token)
+    {
+        return stack.Count == 0 ||
+               stack.Count == 1 && token.TokenType == TokenType.Operator ||
+               token.TokenType == TokenType.Literal ||
+               token.TokenType == TokenType.Identifier;
+    }
+
+    private static Node<Token> CreateNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    {
+        Node<Token> tokenNode = new(token);
+        nodeDictionary.Add(token, tokenNode);
+        stack.Push(token);
+        return tokenNode;
+
+    }
+
+    private Node<Token> CreateOperatorNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
         //else it is an operator (needs 2 items )
         Node<Token> operatorNode = new(token);
@@ -595,39 +512,218 @@ public class Parser : ParserBase, IParser
         return operatorNode;
     }
 
-    private Node<Token> CreateFunctionNodeAndPushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    private void ThrowExceptionIfStackIsInvalid(Stack<Token> stack)
     {
-        Node<Token> functionNode = new(token);
-        //this is the result of an expression (i.e. operator) or a comma operator for multiple arguments
-        Token tokenInFunction = stack.Pop();
-        functionNode.Right = nodeDictionary[tokenInFunction];
-        _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
-
-        //remember the functionNode
-        nodeDictionary.Add(token, functionNode);
-        //and push to the stack
-        stack.Push(token);
-        return functionNode;
+        if (stack.Count > 1)
+        {
+            string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
+            _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
+            throw new InvalidOperationException(
+                string.Format("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {0}", stackItemsString));
+        }
     }
 
-    private static bool ShouldPushToStack(Stack<Token> stack, Token token)
+    #endregion
+
+    #region NodeDictionary calculations
+
+    protected object? EvaluateOperator(
+        Node<Token> operatorNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        return stack.Count == 0 ||
-               stack.Count == 1 && token.TokenType == TokenType.Operator ||
-               token.TokenType == TokenType.Literal ||
-               token.TokenType == TokenType.Identifier;
+        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+
+        string operatorName =
+            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+
+        return EvaluateOperator(operatorName, LeftOperand, RightOperand);
     }
 
-    private static Node<Token> CreateNodeAndPushToStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
+    protected Type EvaluateOperatorType( //used only if we want to check the output type of the operator
+        Node<Token> operatorNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        Node<Token> tokenNode = new(token);
-        nodeDictionary.Add(token, tokenNode);
-        stack.Push(token);
-        return tokenNode;
+        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        string operatorName =
+            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+        return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
+    }
+
+    protected object? EvaluateUnaryOperator(
+        Node<Token> operatorNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
+        string operatorName =
+            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+
+        var operand = operatorNode.GetUnaryArgument(
+            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
+            nodeValueDictionary);
+
+        return EvaluateUnaryOperator(operatorName, operand);
+    }
+
+    protected Type EvaluateUnaryOperatorType( //used only if we want to check the output type of the unary operator
+        Node<Token> operatorNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
+        string operatorName =
+            _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+
+        var operand = operatorNode.GetUnaryArgument(
+            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
+            nodeValueDictionary);
+
+        return EvaluateUnaryOperatorType(operatorName, operand);
+    }
+
+
+    protected object? EvaluateFunction(
+        Node<Token> functionNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
+        string functionName =
+            _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
+        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
+
+        //checks for custom functions registered with RegisterFunction method  
+        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        {
+            if (args.Length != funcDef.Parameters.Length)
+                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
+
+            // Build a variable dictionary for the function body
+            var localVars = new Dictionary<string, object?>(
+                _options.CaseSensitive ?
+                StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < funcDef.Parameters.Length; i++)
+                localVars[funcDef.Parameters[i]] = args[i];
+
+            // Evaluate the function body with the local variables
+            return Evaluate(funcDef.Body, localVars);
+        }
+
+        //else check for hardcoded functions
+        return EvaluateFunction(functionName, args);
+    }
+
+    protected Type EvaluateFunctionType(
+        Node<Token> functionNode,
+        Dictionary<Node<Token>, object?> nodeValueDictionary)
+    {
+        string functionName =
+            _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
+        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
+
+        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        {
+            if (args.Length != funcDef.Parameters.Length)
+                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
+
+            // Build a variable dictionary for the function body
+            var localVars = new Dictionary<string, object?>(
+                _options.CaseSensitive ?
+                StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < funcDef.Parameters.Length; i++)
+                localVars[funcDef.Parameters[i]] = args[i];
+
+            // Evaluate the function body with the local variables
+            return EvaluateType(funcDef.Body, localVars);
+        }
+
+
+        //else check for hardcoded functions
+        return EvaluateFunctionType(functionName, args);
 
     }
 
-    #region Checks before evaluation (optional) [move to parserbase? no nodevalues are needed]
+
+
+
+
+
+
+    #endregion
+
+
+    #region Calculation definitions
+
+    protected virtual object? EvaluateLiteral(string s)
+    {
+        return new();
+    }
+
+    protected virtual Type EvaluateLiteralType(string s) //used only if we want to check the output type of the literal
+    {
+        //although this is the default documentation, it should practically be overriden based on literal type
+        var value = EvaluateLiteral(s);
+        return value is null ? typeof(object) : value.GetType();
+    }
+
+
+    protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
+    {
+        throw new InvalidOperationException($"Unknown operator ({operatorName})");
+    }
+    protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
+    {
+        throw new InvalidOperationException($"Unknown operator ({operatorName})");
+    }
+
+
+    protected virtual object? EvaluateUnaryOperator(string operatorName, object? operand)
+    {
+        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
+    }
+
+    protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand)
+    {
+        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
+    }
+
+
+    protected virtual object? EvaluateFunction(string functionName, object?[] args)
+    {
+        throw new InvalidOperationException($"Unknown function ({functionName})");
+    }
+
+
+    protected virtual Type EvaluateFunctionType(string functionName, object?[] args)
+    {
+        throw new InvalidOperationException($"Unknown function ({functionName})");
+    }
+
+    #endregion
+
+    #region Get arguments
+
+    private static object? GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
+
+    private static (object? LeftOperand, object? RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        binaryOperatorNode.GetBinaryArguments(nodeValueDictionary);
+
+    private static object? GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        functionNode.GetFunctionArgument(nodeValueDictionary);
+
+    private object?[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
+
+    private Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
+        functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
+
+
+
+    #endregion
+
+
+
+
+
+
+    #region Checks before evaluation (optional)
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
@@ -840,6 +936,7 @@ public class Parser : ParserBase, IParser
     }
 
     #endregion
+
 
 
 

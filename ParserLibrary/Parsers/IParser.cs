@@ -2,19 +2,27 @@
 
 namespace ParserLibrary.Parsers;
 
-public interface IParser : IParserBase
+public interface IParser : ITokenizer
 {
-    V Evaluate<V>(
-        string s,
-        Func<string, V>? literalParser = null,
-        Dictionary<string, V>? variables = null,
-        Dictionary<string, Func<V, V, V>>? binaryOperators = null,
-        Dictionary<string, Func<V, V>>? unaryOperators = null,
+    FunctionNamesCheckResult CheckFunctionNames(string expression);
+    List<string> GetMatchedFunctionNames(string expression);
+    void RegisterFunction(string definition);
 
-        Dictionary<string, Func<V, V>>? funcs1Arg = null,
-        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
-        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
-        );
+
+
+
+
+    V Evaluate<V>(
+    string s,
+    Func<string, V>? literalParser = null,
+    Dictionary<string, V>? variables = null,
+    Dictionary<string, Func<V, V, V>>? binaryOperators = null,
+    Dictionary<string, Func<V, V>>? unaryOperators = null,
+
+    Dictionary<string, Func<V, V>>? funcs1Arg = null,
+    Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
+    Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+    );
 
     object? Evaluate(string s, Dictionary<string, object?>? variables = null);
     Type EvaluateType(string s, Dictionary<string, object?>? variables = null);
@@ -49,7 +57,7 @@ public interface IParser : IParserBase
     Tree<Token> GetExpressionTree(string s);
 
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression);
-   
+
     EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression);
 
     InvalidOperatorsCheckResult CheckOperators(string expression);
