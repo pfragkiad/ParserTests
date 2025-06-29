@@ -141,20 +141,19 @@ public class Parser : Tokenizer, IParser
 
     #region Evaluation methods
 
-    public V Evaluate<V>(
-    string s,
-    Func<string, V>? literalParser = null,
-    Dictionary<string, V>? variables = null,
-    Dictionary<string, Func<V, V, V>>? binaryOperators = null,
-    Dictionary<string, Func<V, V>>? unaryOperators = null,
+    public V? Evaluate<V>(
+        string s,
+        Func<string, V>? literalParser = null,
+        Dictionary<string, V>? variables = null,
+        Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
+        Dictionary<string, Func<V?, V?>>? unaryOperators = null,
 
-    Dictionary<string, Func<V, V>>? funcs1Arg = null,
-    Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
-    Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+        Dictionary<string, Func<V?, V?>>? funcs1Arg = null,
+        Dictionary<string, Func<V?, V?, V?>>? funcs2Arg = null,
+        Dictionary<string, Func<V?, V?, V?, V?>>? funcs3Arg = null
     )
     {
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        var postfixTokens = GetPostfixTokens(s);
         return Evaluate(
             postfixTokens,
             literalParser, variables,
@@ -163,15 +162,15 @@ public class Parser : Tokenizer, IParser
             );
     }
 
-    protected V Evaluate<V>( //code is practically the same with building the expression tree
+    protected V? Evaluate<V>( //code is practically the same with building the expression tree
         List<Token> postfixTokens,
-        Func<string, V>? literalParser,
+        Func<string, V?>? literalParser,
         Dictionary<string, V>? variables = null,
-        Dictionary<string, Func<V, V, V>>? binaryOperators = null,
-        Dictionary<string, Func<V, V>>? unaryOperators = null,
-        Dictionary<string, Func<V, V>>? funcs1Arg = null,
-        Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
-        Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+        Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
+        Dictionary<string, Func<V?, V?>>? unaryOperators = null,
+        Dictionary<string, Func<V?, V?>>? funcs1Arg = null,
+        Dictionary<string, Func<V?, V?, V?>>? funcs2Arg = null,
+        Dictionary<string, Func<V?, V?, V?, V?>>? funcs3Arg = null
         )
     {
         _logger.LogDebug("Evaluating...");
@@ -191,10 +190,12 @@ public class Parser : Tokenizer, IParser
                 //EVALUATE FUNCTION 1d XTRA-------------------------------------------------------
 
                 //get function arguments
-                V[] args = [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
+                V?[] args = [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
                     //convert to generic nodeValueDictionary<string,object>
-                    nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value))
-                        .Select(v => (V)v)];
+                    nodeValueDictionary
+                    .Select(e => (e.Key, Value: (object?)e.Value))
+                    .ToDictionary(e => e.Key, e => e.Value))
+                    .Select(v => (V?)v)];
 
                 int l = args.Length;
                 V? functionResult = args.Length switch
@@ -208,24 +209,6 @@ public class Parser : Tokenizer, IParser
                 _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
 
-                //if (nodeValueDictionary.ContainsKey(functionNode.Right as Node<Token>))
-                //{
-                //    var arg1 = nodeValueDictionary[functionNode.Right as Node<Token>];
-                //    functionResult = funcs1Arg[token.Text](arg1);
-                //    nodeValueDictionary.Add(functionNode, functionResult);
-                //    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
-                //} //else it contains more than one arguments
-                //else //argument separator
-                //{
-                //    var separatorNode = functionNode.Right as Node<Token>;
-                //    var arg1 = nodeValueDictionary[separatorNode.Left as Node<Token>];
-                //    var arg2 = nodeValueDictionary[separatorNode.Right as Node<Token>];
-                //    functionResult = funcs2Arg[token.Text](arg1, arg2);
-                //    nodeValueDictionary.Add(functionNode, functionResult);
-                //    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
-                //}
-                //---------------------------------------------------------------------------------
-                //continue;
             }
 
             //from now on we deal with operators, literals and identifiers only
@@ -255,13 +238,18 @@ public class Parser : Tokenizer, IParser
                     if (token.TokenType == TokenType.Operator && binaryOperators is not null)//binary operator
                     {
                         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(
-                            nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
-                        result = binaryOperators[token.Text]((V)LeftOperand, (V)RightOperand);
+                            nodeValueDictionary
+                            .Select(e => (e.Key, Value: (object?)e.Value))
+                            .ToDictionary(e => e.Key, e => e.Value));
+                        result = binaryOperators[token.Text]((V?)LeftOperand, (V?)RightOperand);
                     }
                     else if (unaryOperators is not null) //unary operator
                     {
-                        V operand = (V)operatorNode.GetUnaryArgument(_options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix,
-                            nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
+                        V? operand = (V?)operatorNode.GetUnaryArgument(
+                            _options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix,
+                            nodeValueDictionary
+                            .Select(e => (e.Key, Value: (object?)e.Value))
+                            .ToDictionary(e => e.Key, e => e.Value));
                         result = unaryOperators[token.Text](operand);
                     }
                     //var result =
@@ -287,18 +275,15 @@ public class Parser : Tokenizer, IParser
         return nodeValueDictionary[root]!;
     }
 
-    public object? Evaluate(string s, Dictionary<string, object?>? variables = null)
+    public virtual object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
-
+        var postfixTokens = GetPostfixTokens(s);
         return Evaluate(postfixTokens, variables);
     }
-    public Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
-    {
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
 
+    public virtual Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    {
+        var postfixTokens = GetPostfixTokens(s);
         return EvaluateType(postfixTokens, variables);
     }
 
@@ -331,7 +316,7 @@ public class Parser : Tokenizer, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToExpressionStack(stack, token))
+            if (ShouldPushToExpressionStack(stack, token))
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
@@ -343,7 +328,7 @@ public class Parser : Tokenizer, IParser
                 {
                     if (variables[token.Text] is Type) //useful for custom functions
                         nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
-                    else nodeValueDictionary.Add(tokenNode, value = variables[token.Text].GetType());
+                    else nodeValueDictionary.Add(tokenNode, value = variables[token.Text]?.GetType());
                 }
 
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);

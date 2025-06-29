@@ -74,35 +74,39 @@ public class CustomTypeTransientParser(ILogger<Parser> logger, IOptions<Tokenize
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
 
-    protected override object EvaluateOperator(Node<Token> operatorNode)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (object LeftOperand, object RightOperand) = GetBinaryArguments(operatorNode);
 
-        if (operatorNode.Text == "+")
+        if (operatorName == "+")
         {
-            _logger.LogDebug("Adding with + operator ${left} and ${right}", LeftOperand, RightOperand);
+            //ADDED:
+            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
 
 
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
-            if (LeftOperand is Item && RightOperand is Item)
-                return (Item)LeftOperand + (Item)RightOperand;
+            if (leftOperand is Item left && rightOperand is Item right)
+                return left + right;
 
-            return LeftOperand is Item ? (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+            return leftOperand is Item ?
+                (Item)leftOperand + (int)rightOperand! : (int)leftOperand! + (Item)rightOperand!;
         }
 
-        return base.EvaluateOperator(operatorNode);
+
+        return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        var a = GetFunctionArguments(functionNode);
-
-        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
-        //return functionNode.Text switch
-        return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+        if (args[0] is not Item || args[1] is not int)
         {
-            "add" => (Item)a[0] + (int)a[1],
-            _ => base.EvaluateFunction(functionNode)
+            _logger.LogError("Invalid arguments for function {FunctionName}: {Args}", functionName, args);
+            throw new ArgumentException($"Invalid arguments for function {functionName}");
+        }
+
+        return functionName switch
+        {
+            "add" => (Item)args[0]! + (int)args[1]!,
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 

@@ -47,38 +47,44 @@ public class IntParser(ILogger<Parser> logger,  IOptions<TokenizerOptions> optio
     }
 }
 
-public class IntTransientParser : TransientParser
+public class IntTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : TransientParser(logger, options)
 {
-    public IntTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
-    { }
-
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        var operands = GetBinaryArguments(operatorNode);
-        int left = (int)operands.LeftOperand, right = (int)operands.RightOperand;
+        if (leftOperand is not int || rightOperand is not int)
+        {
+            _logger.LogError("Invalid operands for operator {OperatorName}: {LeftOperand}, {RightOperand}", operatorName, leftOperand, rightOperand);
+            throw new ArgumentException($"Invalid operands for operator {operatorName}");
+        }
 
-        return operatorNode.Text switch
+        int left = (int)leftOperand, right = (int)rightOperand;
+        return operatorName switch
         {
             "+" => left + right,
             "*" => left * right,
             "^" => (int)Math.Pow(left, right),
-            _ => base.EvaluateOperator(operatorNode)
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand)
         };
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        int arg = (int)GetFunctionArgument(functionNode);
+        if (args.Length == 0 || args[0] is not int)
+        {
+            _logger.LogError("Invalid arguments for function {FunctionName}: {Args}", functionName, args);
+            throw new ArgumentException($"Invalid arguments for function {functionName}");
+        }
 
-        return functionNode.Text.ToLower() switch
+        int arg = (int)args[0]!;
+        return functionName.ToLower() switch
         {
             "tan" => 10 * arg,
             "sin" => 2 * arg,
-            _ => base.EvaluateFunction(functionNode)
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 }

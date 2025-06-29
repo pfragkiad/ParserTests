@@ -84,9 +84,9 @@ public static class App
     public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json", string tokenizerSection = TokenizerOptions.TokenizerSection) =>
         GetParserApp<DefaultParser>(configFile).Services.GetRequiredParser();
 
-    public static double Evaluate(string s, Dictionary<string, object>? variables = null)
+    public static double Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
-        return (double)GetParserApp<DefaultParser>().Services.GetRequiredParser().Evaluate(s, variables);
+        return (double?)GetParserApp<DefaultParser>().Services.GetRequiredParser().Evaluate(s, variables) ?? 0.0;
     }
 
     #endregion

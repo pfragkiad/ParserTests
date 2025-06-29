@@ -9,22 +9,20 @@ public interface IParser : ITokenizer
     void RegisterFunction(string definition);
 
 
+    V? Evaluate<V>(
+        string s,
+        Func<string, V>? literalParser = null,
+        Dictionary<string, V>? variables = null,
+        Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
+        Dictionary<string, Func<V?, V?>>? unaryOperators = null,
 
-
-
-    V Evaluate<V>(
-    string s,
-    Func<string, V>? literalParser = null,
-    Dictionary<string, V>? variables = null,
-    Dictionary<string, Func<V, V, V>>? binaryOperators = null,
-    Dictionary<string, Func<V, V>>? unaryOperators = null,
-
-    Dictionary<string, Func<V, V>>? funcs1Arg = null,
-    Dictionary<string, Func<V, V, V>>? funcs2Arg = null,
-    Dictionary<string, Func<V, V, V, V>>? funcs3Arg = null
+        Dictionary<string, Func<V?, V?>>? funcs1Arg = null,
+        Dictionary<string, Func<V?, V?, V?>>? funcs2Arg = null,
+        Dictionary<string, Func<V?, V?, V?, V?>>? funcs3Arg = null
     );
 
     object? Evaluate(string s, Dictionary<string, object?>? variables = null);
+
     Type EvaluateType(string s, Dictionary<string, object?>? variables = null);
 
     //OneOf<T1, T2> Evaluate<T1, T2>(

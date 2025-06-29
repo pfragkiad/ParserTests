@@ -89,9 +89,9 @@ internal class Program
         var tree = cparser.GetExpressionTree(expression);
         tree.Print(withSlashes: false);
 
-        Complex result = (Complex)cparser.Evaluate("(1+3*i)/(2-3*i)");
+        Complex result = (Complex?)cparser.Evaluate("(1+3*i)/(2-3*i)") ?? Complex.Zero;
         Console.WriteLine(result);
-        Complex result2 = (Complex)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } });
+        Complex result2 = (Complex?)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } }) ?? Complex.Zero;
         Console.WriteLine(result2);
     }
 
@@ -148,10 +148,10 @@ internal class Program
             });
 
 
-        object[] results = [result, result2, result3, result4];
+        object?[] results = [result, result2, result3, result4];
         //object[] results  = [result4]; //, result2, result3, result4];
         foreach (var r in results)
-            Console.WriteLine($"Result: {r}, Type: {r.GetType()}");
+            Console.WriteLine($"Result: {r}, Type: {r?.GetType()}");
 
         //now call EvaluateType for all results
         var resultType = parser.EvaluateType("a + add(b,4) + 5",

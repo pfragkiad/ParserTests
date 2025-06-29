@@ -24,33 +24,26 @@ public class TransientParser : Parser, ITransientParser
 
     #region 
 
-    public object? Evaluate(string s, Dictionary<string, object?>? variables = null)
+    public void Reset()
     {
-        //these properties are reset for each evaluation!
         nodeValueDictionary = [];
         nodeDictionary = [];
         stack = new Stack<Token>();
-
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
-
-        return Evaluate(postfixTokens, variables);
     }
 
-    public Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        Reset();
 
-        return EvaluateType(postfixTokens, variables);
+        var postfixTokens = GetPostfixTokens(s);
+        return base.Evaluate(postfixTokens, variables,stack,nodeDictionary,nodeValueDictionary);
     }
 
-    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null) =>
-        base.Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
-
-    protected override Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables = null) =>
-        base.EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
-  
+    public override Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    {
+        var postfixTokens = GetPostfixTokens(s);
+        return base.EvaluateType(postfixTokens, variables, stack, nodeDictionary,nodeValueDictionary);
+    }
 
 
     #endregion
