@@ -14,30 +14,29 @@ public class FunctionsOperandsParser : DefaultParser
     {
     }
 
-
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        double operand = GetDoubleUnaryOperand(operatorNode, nodeValueDictionary);
+        double op = GetDoubleUnaryOperand(operand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
-            "!" => operand * 2, //prefix custom
-            "*" => operand * 3, //prefix custom
-            "%" => operand + 2, //postfix custom
-            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary)
+            "!" => op * 2, //prefix custom
+            "*" => op * 3, //prefix custom
+            "%" => op + 2, //postfix custom
+            _ => base.EvaluateUnaryOperator(operatorName, operand)
         };
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
-
-        return functionName switch
+        double[] a = GetDoubleFunctionArguments(args);
+        return functionName.ToLower() switch
         {
             "add" => a[0] + 2 * a[1],
             "add3" => a[0] + 2 * a[1] + 3 * a[2],
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
+
+
 }

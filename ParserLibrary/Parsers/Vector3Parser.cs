@@ -3,11 +3,11 @@
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger,  options)
+public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
+    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        variables ??= [];
+        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
         if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
         if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
@@ -32,54 +32,46 @@ public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
     public static bool IsNumeric(object arg) =>
            arg is double || arg is int || arg is float;
 
-    public static Vector3 GetVector3(object arg) =>
-            IsNumeric(arg) ? DoubleToVector3(arg) : (Vector3)arg;
-
-    public Vector3 GetVector3UnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public static Vector3 GetVector3(object? arg)
     {
-        var arg = operatorNode.GetUnaryArgument(
-             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-             nodeValueDictionary);
-
-        return GetVector3(arg);
+        if (arg is null) return Vector3.Zero;
+        if (IsNumeric(arg)) return DoubleToVector3(arg);
+        if (arg is Vector3 v) return v;
+        return Vector3.Zero;
     }
 
-    public (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+    public static Vector3 GetVector3UnaryOperand(object? operand) =>
+        GetVector3(operand);
 
-        return (Left: GetVector3(LeftOperand),
-                 Right: GetVector3(RightOperand));
-    }
+    public static (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(object? leftOperand, object? rightOperand) => (
+        Left: GetVector3(leftOperand),
+        Right: GetVector3(rightOperand)
+    );
 
-    public Vector3[] GetVector3FunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        return [.. functionNode
-            .GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary)
-            .Select(arg => GetVector3(arg))];
-    }
+    public static Vector3[] GetVector3FunctionArguments(object?[] args) =>
+        [.. args.Select(GetVector3)];
 
     #endregion
 
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        Vector3 operand = GetVector3UnaryOperand(operatorNode, nodeValueDictionary);
+        Vector3 op = GetVector3UnaryOperand(operand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
-            "-" => -operand,
-            "+" => operand,
-            "!" => Vector3.Normalize(operand),
-            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary)
+            "-" => -op,
+            "+" => op,
+            "!" => Vector3.Normalize(op),
+            _ => base.EvaluateUnaryOperator(operatorName, operand)
         };
     }
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(operatorNode, nodeValueDictionary);
+        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(leftOperand,rightOperand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
             "+" => left + right,
             "-" => left - right,
@@ -87,15 +79,13 @@ public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
             "/" => left / right,
             "^" => Vector3.Cross(left, right),
             "@" => Vector3.Dot(left, right),
-            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary)
+            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand)
         };
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
-
-        Vector3[] a = GetVector3FunctionArguments( functionNode, nodeValueDictionary);
+        Vector3[] a = GetVector3FunctionArguments(args);
 
         return functionName switch
         {
@@ -113,7 +103,7 @@ public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
                             (float)Math.Round(a[0].X, (int)a[1].X),
                             (float)Math.Round(a[0].Y, (int)a[1].X),
                             (float)Math.Round(a[0].Z, (int)a[1].X)),
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary),
+            _ => base.EvaluateFunction(functionName, args),
         };
     }
 
