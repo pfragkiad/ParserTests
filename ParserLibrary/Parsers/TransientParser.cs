@@ -28,7 +28,7 @@ public class TransientParser : Parser, ITransientParser
     {
         nodeValueDictionary = [];
         nodeDictionary = [];
-        stack = new Stack<Token>();
+        stack = []; 
     }
 
     public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)

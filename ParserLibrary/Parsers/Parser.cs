@@ -4,8 +4,12 @@ namespace ParserLibrary.Parsers;
 
 public class Parser : Tokenizer, IParser
 {
-    public Parser(ILogger logger, IOptions<TokenizerOptions> options)
+    public Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
+    { }
+
+    protected Parser(ILogger logger, IOptions<TokenizerOptions> options)
+    : base(logger, options)
     { }
 
     protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
