@@ -23,7 +23,9 @@ public class TransientParser : ParserBase, ITransientParser
     { }
 
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
-    protected virtual object EvaluateFunction(Node<Token> functionNode)
+
+    #region Functions
+     protected virtual object EvaluateFunction(Node<Token> functionNode)
     {
         //checks only for custom functions registered with RegisterFunction method  
         var functionName = functionNode.Value!.Text;
@@ -65,7 +67,10 @@ public class TransientParser : ParserBase, ITransientParser
         //    functionResult = funcs2Arg[token.Text](arg1, arg2);
         //}
     }
+  #endregion
 
+
+ 
     protected virtual Type EvaluateFunctionType(Node<Token> functionNode)
     {
         //checks only for custom functions registered with RegisterFunction method  

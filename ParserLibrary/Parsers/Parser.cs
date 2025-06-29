@@ -220,13 +220,6 @@ public class Parser : ParserBase, IParser
     #region Evaluation virtual functions for Custom Evaluation Classes (Parsers derived from Parser class)
 
 
-    #region Functions
-
-    protected virtual object? EvaluateFunction(string functionName, object?[] args)
-    {
-        throw new InvalidOperationException($"Unknown function ({functionName})");
-    }
-
     private object? EvaluateFunction(
         Node<Token> functionNode,
         Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -255,17 +248,6 @@ public class Parser : ParserBase, IParser
 
         //else check for hardcoded functions
         return EvaluateFunction(functionName, args);
-    }
-
-
-    #endregion
-
-
-    #region Function types
-
-    protected virtual Type EvaluateFunctionType(string functionName, object?[] args)
-    {
-        throw new InvalidOperationException($"Unknown function ({functionName})");
     }
 
     private Type EvaluateFunctionType(
@@ -300,17 +282,6 @@ public class Parser : ParserBase, IParser
     }
 
 
-    #endregion
-
-
-    #region Operators
-
-    protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
-    {
-        throw new InvalidOperationException($"Unknown operator ({operatorName})");
-    }
-
-
     private object? EvaluateOperator(
         Node<Token> operatorNode,
         Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -323,16 +294,6 @@ public class Parser : ParserBase, IParser
         return EvaluateOperator(operatorName, LeftOperand, RightOperand);
     }
 
-    #endregion
-
-
-    #region Operator types
-
-    protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
-    {
-        throw new InvalidOperationException($"Unknown operator ({operatorName})");
-    }
-
     protected Type EvaluateOperatorType( //used only if we want to check the output type of the operator
         Node<Token> operatorNode,
         Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -342,16 +303,6 @@ public class Parser : ParserBase, IParser
             _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
         return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
     }
-
-    #endregion
-
-    #region Unary operator
-    protected virtual object? EvaluateUnaryOperator(
-        string operatorName, object? operand)
-    {
-        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
-    }
-
 
     private object? EvaluateUnaryOperator(
         Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -364,16 +315,6 @@ public class Parser : ParserBase, IParser
             nodeValueDictionary);
 
         return EvaluateUnaryOperator(operatorName, operand);
-    }
-
-    #endregion
-
-
-    #region Unary operator types
-
-    protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand)
-    {
-        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
     }
 
     private Type EvaluateUnaryOperatorType( //used only if we want to check the output type of the unary operator
@@ -389,34 +330,12 @@ public class Parser : ParserBase, IParser
         return EvaluateUnaryOperatorType(operatorName, operand);
     }
 
-    #endregion
-
-    protected virtual object? EvaluateLiteral(string s)
-    {
-        return new();
-    }
-
     protected virtual Type EvaluateLiteralType(string s) //used only if we want to check the output type of the literal
     {
-        return EvaluateLiteral(s).GetType();
+        //although this is the default documentation, it should practically be overriden based on literal type
+        var value = EvaluateLiteral(s);
+        return value is null ? typeof(object) : value.GetType();
     }
-
-    protected static object? GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
-
-    protected static (object? LeftOperand, object? RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        binaryOperatorNode.GetBinaryArguments(nodeValueDictionary);
-
-    protected object?[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
-
-    protected Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
-        functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
-
-    protected static object? GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        functionNode.GetFunctionArgument(nodeValueDictionary);
-
-
 
     public object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {

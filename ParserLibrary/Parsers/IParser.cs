@@ -51,6 +51,9 @@ public interface IParser : IParserBase
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression);
    
     EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression);
+
     InvalidOperatorsCheckResult CheckOperators(string expression);
+
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression);
+
 }

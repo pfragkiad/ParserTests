@@ -69,4 +69,70 @@ public class ParserBase  : Tokenizer, IParserBase
             .Select(t => t.Text)
             .Distinct()];
     }
+
+
+    #region Overrides for all parsers
+
+    protected virtual object? EvaluateFunction(string functionName, object?[] args)
+    {
+        throw new InvalidOperationException($"Unknown function ({functionName})");
+    }
+
+    protected virtual Type EvaluateFunctionType(string functionName, object?[] args)
+    {
+        throw new InvalidOperationException($"Unknown function ({functionName})");
+    }
+
+    protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
+    {
+        throw new InvalidOperationException($"Unknown operator ({operatorName})");
+    }
+
+    protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
+    {
+        throw new InvalidOperationException($"Unknown operator ({operatorName})");
+    }
+
+    protected virtual object? EvaluateUnaryOperator(string operatorName, object? operand)
+    {
+        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
+    }
+
+    protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand)
+    {
+        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
+    }
+
+    protected virtual object? EvaluateLiteral(string s)
+    {
+        return new();
+    }
+
+
+
+
+
+
+    #endregion
+
+    #region Get arguments
+
+    protected static object? GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+    unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
+
+    protected static (object? LeftOperand, object? RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        binaryOperatorNode.GetBinaryArguments(nodeValueDictionary);
+
+    protected static object? GetFunctionArgument(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        functionNode.GetFunctionArgument(nodeValueDictionary);
+
+    protected object?[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
+        functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
+
+    protected Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
+        functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
+
+
+
+    #endregion
 }
