@@ -118,7 +118,7 @@ public class Node<T> : NodeBase
         ];
 
         //generic case for arguments >=5
-        object[] arguments = new object[count];
+        object?[] arguments = new object?[count];
         var leftFarNode = Right;
         for (int iDepth = 0; iDepth <= count - 2; iDepth++)
             leftFarNode = leftFarNode!.Left;

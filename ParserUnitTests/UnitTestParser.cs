@@ -17,7 +17,7 @@ public class UnitTestParser
         IParser parser = parserApp.Services.GetRequiredParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
-        int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } });
+        int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } })!;
 
         Assert.Equal<int>(860, result);
     }
@@ -42,7 +42,7 @@ public class UnitTestParser
         IParser parser = app.Services.GetRequiredParser();
 
         string s = "5.0+sin(2,3.0)";
-        double result = (double)parser.Evaluate(s);
+        double result = (double)parser.Evaluate(s)!;
 
         Assert.Equal(5.0 + 2 * 3.0, result);
     }
@@ -66,7 +66,7 @@ public class UnitTestParser
     {
         var app = App.GetParserApp<FunctionsOperandsParser>();
         IParser parser = app.Services.GetRequiredParser();
-        double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } });
+        double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } })!;
         Assert.Equal(expected, result);
 
     }
@@ -76,7 +76,7 @@ public class UnitTestParser
     {
         var parser = App.GetCustomParser<SimpleFunctionParser>();
         double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
-            new() { { "g", 3 } }); // will return 8 + 5 + 2 * 3 + 3 * 3.0
+            new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
 
         Assert.Equal(8 + 5 + 2 * 3 + 3 * 3.0, result);
     }
@@ -89,7 +89,7 @@ public class UnitTestParser
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }
-            });
+            })!;
 
         Assert.Equal("foo bar 12", result.ToString());
     }
@@ -133,11 +133,11 @@ public class UnitTestParser
         //var tree = cparser.GetExpressionTree(expression);
         //tree.Print(withSlashes: false);
 
-        var result = (Complex)cparser.Evaluate(expression);
+        var result = (Complex)cparser.Evaluate(expression)!;
 
         Assert.Equal(Complex.Cos(new Complex(1, 1)), result);
 
-        result = (Complex)cparser.Evaluate("cos( (1+i)/(8+9))");
+        result = (Complex)cparser.Evaluate("cos( (1+i)/(8+9))")!;
         Assert.Equal(Complex.Cos(new Complex(1, 1) / (8 + 9)), result);
     }
 

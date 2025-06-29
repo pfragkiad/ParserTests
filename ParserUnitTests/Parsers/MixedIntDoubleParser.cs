@@ -6,23 +6,14 @@ namespace ParserUnitTests.Parsers;
 public class MixedIntDoubleParser(
     ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text;
-
-        switch (functionName)
+        return functionName switch
         {
-            case "sin":
-                {
-                    //var separatorNode = functionNode.Right;
-                    ////get 2 operands first as integer, second as double
-                    //int v1 = (int)nodeValueDictionary[(Node<Token>)separatorNode.Left];
-                    //double v2 = (double)nodeValueDictionary[(Node<Token>)separatorNode.Right];
-                    var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
-                    return (int)a[0] * (double)a[1];
-                }
-            default: return new();
-        }
+            "sin" => (int)args[0]! * (double)args[1]!,
+            _ => base.EvaluateFunction(functionName, args)
+        };
+
     }
 
     protected override object EvaluateLiteral(string s)
@@ -33,22 +24,23 @@ public class MixedIntDoubleParser(
         return double.Parse(s, CultureInfo.InvariantCulture);
     }
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        string operatorName = operatorNode.Text;
-        switch (operatorName)
+        if (leftOperand is null || rightOperand is null)
         {
-            case "+":
-                {
-                    //object v1 = nodeValueDictionary[(Node<Token>)operatorNode.Left];
-                    //object v2 = nodeValueDictionary[(Node<Token>)operatorNode.Right];
-                    var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-
-                    if (LeftOperand is int && RightOperand is int) return (int)LeftOperand + (int)RightOperand;
-                    if (LeftOperand is double && RightOperand is double) return (double)LeftOperand + (double)RightOperand;
-                    break;
-                }
+            _logger.LogError("Invalid operands for operator {OperatorName}: {LeftOperand}, {RightOperand}", operatorName, leftOperand, rightOperand);
+            throw new ArgumentException($"Invalid operands for operator {operatorName}");
         }
-        return new();
+
+        dynamic l = leftOperand as dynamic;
+        dynamic r = rightOperand as dynamic;
+
+        return operatorName switch
+        {
+
+            "+" => l + r,
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand)
+        };
     }
+   
 }

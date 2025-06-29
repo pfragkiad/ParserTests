@@ -11,33 +11,38 @@ public class IntParser(ILogger<Parser> logger,  IOptions<TokenizerOptions> optio
         => int.Parse(s);
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        //int left = (int)nodeValueDictionary[operatorNode.Left as Node<Token>];
-        //int right = (int)nodeValueDictionary[operatorNode.Right as Node<Token>];
+        if(leftOperand is not int || rightOperand is not int)
+        {
+            _logger.LogError("Invalid operands for operator {OperatorName}: {LeftOperand}, {RightOperand}", operatorName, leftOperand, rightOperand);
+            throw new ArgumentException($"Invalid operands for operator {operatorName}");
+        }
 
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        int left = (int)operands.LeftOperand, right = (int)operands.RightOperand;
-
-        return operatorNode.Text switch
+        int left = (int)leftOperand, right = (int)rightOperand;
+        return operatorName switch
         {
             "+" => left + right,
             "*" => left * right,
             "^" => (int)Math.Pow(left, right),
-            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary)
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand)
         };
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        //int right = (int)nodeValueDictionary[functionNode.Right as Node<Token>];
-        int arg = (int)functionNode.GetFunctionArgument(nodeValueDictionary);
+        if (args.Length == 0 || args[0] is not int)
+        {
+            _logger.LogError("Invalid arguments for function {FunctionName}: {Args}", functionName, args);
+            throw new ArgumentException($"Invalid arguments for function {functionName}");
+        }
 
-        return functionNode.Text.ToLower() switch
+        int arg = (int)args[0]!; 
+        return functionName.ToLower() switch
         {
             "tan" => 10 * arg,
             "sin" => 2 * arg,
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 }

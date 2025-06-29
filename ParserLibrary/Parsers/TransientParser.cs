@@ -9,7 +9,7 @@ public class TransientParser : ParserBase, ITransientParser
 {
 
     //created for simplifying and caching dictionaries
-    protected internal Dictionary<Node<Token>, object> nodeValueDictionary = [];
+    protected internal Dictionary<Node<Token>, object?> nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> nodeDictionary = [];
     protected Stack<Token> stack = new();
 
@@ -34,7 +34,7 @@ public class TransientParser : ParserBase, ITransientParser
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
             // Build a variable dictionary for the function body
-            var localVars = new Dictionary<string, object>();
+            var localVars = new Dictionary<string, object?>();
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 
@@ -127,20 +127,20 @@ public class TransientParser : ParserBase, ITransientParser
     }
 
 
-    protected object GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode) =>
+    protected object? GetUnaryArgument(bool isPrefix, Node<Token> unaryOperatorNode) =>
         unaryOperatorNode.GetUnaryArgument(isPrefix, nodeValueDictionary);
 
-    protected (object LeftOperand, object RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode) =>
+    protected (object? LeftOperand, object? RightOperand) GetBinaryArguments(Node<Token> binaryOperatorNode) =>
         binaryOperatorNode.GetBinaryArguments(nodeValueDictionary);
 
-    protected object[] GetFunctionArguments(Node<Token> functionNode) =>
+    protected object?[] GetFunctionArguments(Node<Token> functionNode) =>
         functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
 
-    protected object GetFunctionArgument(Node<Token> functionNode) =>
+    protected object? GetFunctionArgument(Node<Token> functionNode) =>
         functionNode.GetFunctionArgument(nodeValueDictionary);
 
 
-    public object Evaluate(string s, Dictionary<string, object>? variables = null)
+    public object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
         //these properties are reset for each evaluation!
         nodeValueDictionary = [];
@@ -161,7 +161,7 @@ public class TransientParser : ParserBase, ITransientParser
         return EvaluateType(postfixTokens, variables);
     }
 
-    protected virtual object Evaluate(List<Token> postfixTokens, Dictionary<string, object>? variables = null)
+    protected virtual object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
         _logger.LogDebug("Evaluating...");
 

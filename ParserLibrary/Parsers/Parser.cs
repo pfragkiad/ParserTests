@@ -182,13 +182,13 @@ public class Parser : ParserBase, IParser
                     if (token.TokenType == TokenType.Operator && binaryOperators is not null)//binary operator
                     {
                         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(
-                            nodeValueDictionary.Select(e => (e.Key, Value: (object)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
+                            nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
                         result = binaryOperators[token.Text]((V)LeftOperand, (V)RightOperand);
                     }
                     else if (unaryOperators is not null) //unary operator
                     {
                         V operand = (V)operatorNode.GetUnaryArgument(_options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix,
-                            nodeValueDictionary.Select(e => (e.Key, Value: (object)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
+                            nodeValueDictionary.Select(e => (e.Key, Value: (object?)e.Value!)).ToDictionary(e => e.Key, e => e.Value));
                         result = unaryOperators[token.Text](operand);
                     }
                     //var result =
@@ -622,7 +622,7 @@ public class Parser : ParserBase, IParser
         ThrowExceptionIfStackIsInvalid(stack);
 
         var root = nodeDictionary[stack.Pop()];
-        return (Type)nodeValueDictionary[root];
+        return (Type)nodeValueDictionary[root]!;
     }
 
 

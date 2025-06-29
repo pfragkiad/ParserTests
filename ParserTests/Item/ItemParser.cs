@@ -19,98 +19,45 @@ public class ItemParser(ILogger<Parser> logger,IOptions<TokenizerOptions> option
         return double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
     }
 
-
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-
-        if (operatorNode.Text == "+")
+        if (leftOperand is null || rightOperand is null)
         {
-            //ADDED:
-            _logger.LogDebug("Adding with + operator ${left} and ${right}", LeftOperand, RightOperand);
-
-
-            ////we manage all combinations of Item/Item, Item/int, int/Item combinations here
-            ////use scopes to allow left/right names with different types
-            //{
-            //    if (LeftOperand is Item left && RightOperand is Item right)
-            //        return left + right;
-            //}
-
-            //{
-            //    if (LeftOperand is Item left && RightOperand is double right)
-            //        return left + right;
-            //}
-
-            //{
-            //    if (LeftOperand is double left && RightOperand is Item right)
-            //        return left + right;
-            //}
-
-            //{
-            //    if (LeftOperand is int left && RightOperand is Item right)
-            //        return left + right;
-            //}
-
-            //{
-            //    if (LeftOperand is Item left && RightOperand is int right)
-            //        return left + right;
-            //}
-
-            dynamic left = LeftOperand, right = RightOperand;
-            return left + right;
-
-
-#pragma warning disable CS8603 // Possible null reference return.
-            return null;
-#pragma warning restore CS8603 // Possible null reference return.
-                              //return LeftOperand is Item ? (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+            _logger.LogError("Invalid operands for operator {OperatorName}: {LeftOperand}, {RightOperand}", operatorName, leftOperand, rightOperand);
+            throw new ArgumentException($"Invalid operands for operator {operatorName}");
         }
 
-        return base.EvaluateOperator(operatorNode, nodeValueDictionary);
+        if (operatorName == "+")
+        {
+            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
+
+            dynamic left = leftOperand!, right = rightOperand!;
+            return left + right;
+        }
+
+        return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
     }
 
-    //needed when evaluating type ONLY
-    protected override Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        bool isLeftInt = leftOperand as Type == typeof(int);
+        bool isRightInt = rightOperand as Type == typeof(int);
+        bool isLeftNumeric = leftOperand as Type == typeof(int) || leftOperand as Type == typeof(double);
+        bool isRightNumeric = rightOperand as Type == typeof(int) || rightOperand as Type == typeof(double);
+        bool isLeftItem = leftOperand is Type t && t == typeof(Item);
+        bool isRightItem = rightOperand is Type t2 && t2 == typeof(Item);
 
-
-        /*
-    public static Item operator +(int v1, Item v2) =>
-        new() { Name = v2.Name, Value = v2.Value + v1 };
-
-    public static Item operator +(Item v2, int v1) =>
-        new() { Name = v2.Name, Value = v2.Value + v1 };
-
-
-    //check return as double
-    public static double operator +(Item v2, double v1) =>
-        v2.Value + v1;
-
-    public static double operator +(double v1, Item v2) =>
-        v2.Value + v1;
-
-    public static Item operator +(Item v1, Item v2) =>
-        new() { Name = $"{v1.Name} {v2.Name}", Value = v2.Value + v1.Value };
-         */
-        bool isLeftInt = LeftOperand as Type == typeof(int);
-        bool isRightInt = RightOperand as Type == typeof(int);
-        bool isLeftNumeric = LeftOperand as Type == typeof(int) || LeftOperand as Type == typeof(double);
-        bool isRightNumeric = RightOperand as Type == typeof(int) || RightOperand as Type == typeof(double);
-        bool isLeftItem = LeftOperand is Type t && t == typeof(Item);
-        bool isRightItem = RightOperand is Type t2 && t2 == typeof(Item);
-
-        if (operatorNode.Text == "+")
+        if (operatorName == "+")
         {
             if (isLeftInt && isRightInt) return typeof(int);
-            if(isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
+            if (isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
             if (isLeftItem && isRightItem) return typeof(Item);
-            if(isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
+            if (isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
             if (isLeftItem || isRightItem) return typeof(double); //Item + double or double + Item returns double
         }
-        return null;
+        return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
     }
+
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
@@ -127,25 +74,15 @@ public class ItemParser(ILogger<Parser> logger,IOptions<TokenizerOptions> option
         };
     }
 
-
-
-    //needed when evaluating type ONLY
-
-    protected override Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override Type EvaluateFunctionType(string functionName, object?[] args)
     {
-        //var args = GetFunctionArguments(functionNode, nodeValueDictionary);
-
-        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
-        //return functionNode.Text switch   
-        return (_options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text) switch
+        return functionName switch
         {
             "add" => typeof(Item),
-
-            //at the end check for custom functions
-            _ => base.EvaluateFunctionType(functionNode, nodeValueDictionary)
+            _ => base.EvaluateFunctionType(functionName, args)
         };
-    }
 
+    }
 }
 
 

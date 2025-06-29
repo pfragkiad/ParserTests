@@ -85,7 +85,8 @@ Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 
 
 ## `DefaultParser` examples #2 (custom functions)
 
-That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
+hat was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
+Note that the syntax has been simplified comparing to the previous API versions.
 
 ```cs
 private class SimpleFunctionParser : DefaultParser
@@ -94,15 +95,15 @@ private class SimpleFunctionParser : DefaultParser
     {
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        double[] a = GetDoubleFunctionArguments(functionNode, nodeValueDictionary);
+        double[] a = GetDoubleFunctionArguments(args);
 
-        return functionNode.Text.ToLower() switch
+        return functionName switch
         {
             "add3" => a[0] + 2 * a[1] + 3 * a[2],
             //for all other functions use the base class stuff (DefaultParser)
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 }
@@ -174,14 +175,11 @@ using System.Numerics;
 
 namespace ParserLibrary.Parsers;
 
-public class ComplexParser : Parser
+public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    public ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
-    { }
-
-    protected override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        if (variables is null) variables = new();
+        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
         //we define "constants" if they are not already defined
         if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
@@ -198,111 +196,88 @@ public class ComplexParser : Parser
 
     #region Auxiliary functions to get operands
 
-    public Complex GetComplexUnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    private static Complex GetComplex(object? value)
     {
-        var arg = operatorNode.GetUnaryArgument(
-             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-             nodeValueDictionary);
+        if (value is null) return Complex.Zero;
+        if (value is double) return new Complex(Convert.ToDouble(value), 0);
+        if (value is not Complex) return Complex.Zero;
+        return (Complex)value;
+    }  
+    
 
-        if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
-        else return (Complex)arg;
-    }
+    public static (Complex Left, Complex Right) GetComplexBinaryOperands(object? leftOperand, object? rightOperand) => (
+        Left: GetComplex(leftOperand),
+        Right: GetComplex(rightOperand)
+    );
 
-    public (Complex Left, Complex Right) GetComplexBinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+    public static Complex GetComplexUnaryOperand(object? operand) => GetComplex(operand);
 
-        return (Left: operands.LeftOperand is double || operands.LeftOperand is int ?
-            new Complex(Convert.ToDouble(operands.LeftOperand), 0) : (Complex)operands.LeftOperand,
-                 Right: operands.RightOperand is double || operands.RightOperand is int ?
-            new Complex(Convert.ToDouble(operands.RightOperand), 0) : (Complex)operands.RightOperand);
-    }
-
-    public Complex[] GetComplexFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        return functionNode.GetFunctionArguments(
-            _options.TokenPatterns.ArgumentSeparator,
-            nodeValueDictionary).Select(arg =>
-     {
-         if (arg is double || arg is int) return new Complex(Convert.ToDouble(arg), 0);
-         else return (Complex)arg;
-     }).ToArray();
-    }
+    public static Complex[] GetComplexFunctionArguments(object?[] args) =>
+        [.. args.Select(GetComplex)];
 
     #endregion
 
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        Complex operand = GetComplexUnaryOperand(operatorNode, nodeValueDictionary);
+        Complex op = GetComplexUnaryOperand(operand);
 
-        switch (operatorNode.Text)
+        return operatorName switch
         {
-            case "-": return -operand;
-            case "+": return operand;
-            default: return base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
-        }
+            "-" => -op,
+            "+" => op,
+            _ => base.EvaluateUnaryOperator(operatorName, operand),
+        };
     }
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (Complex left, Complex right) = GetComplexBinaryOperands(operatorNode, nodeValueDictionary);
-
-        switch (operatorNode.Text)
+        var (Left, Right) = GetComplexBinaryOperands( leftOperand,rightOperand);
+        return operatorName switch
         {
-            case "+": return Complex.Add(left, right);
-            case "-": return left - right;
-            case "*": return left * right;
-            case "/": return left / right;
-            case "^": return Complex.Pow(left, right);
-            default: return base.EvaluateOperator(operatorNode, nodeValueDictionary);
-
-        }
+            "+" => Complex.Add(Left, Right),
+            "-" => Left - Right,
+            "*" => Left * Right,
+            "/" => Left / Right,
+            "^" => Complex.Pow(Left, Right),
+            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand),
+        };
     }
 
-    protected const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
-
-    //HashSet<string> funcsWith2Args = new() { "logn", "pow", "round" };
-
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
+        Complex[] a = ComplexParser.GetComplexFunctionArguments(args);
+        const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
-        Complex[] a = GetComplexFunctionArguments(functionNode, nodeValueDictionary);
-
-        switch (functionName)
+        return functionName switch
         {
-            case "abs": return Complex.Abs(a[0]);
-            case "acos": return Complex.Acos(a[0]);
-            case "acosd": return Complex.Acos(a[0]) * TODEG;
-            case "asin": return Complex.Asin(a[0]);
-            case "asind": return Complex.Asin(a[0]) * TODEG;
-            case "atan": return Complex.Atan(a[0]);
-            case "atand": return Complex.Atan(a[0]) * TODEG;
-            case "cos": return Complex.Cos(a[0]);
-            case "cosd": return Complex.Cos(a[0] * TORAD);
-            case "cosh": return Complex.Cosh(a[0]);
-            case "exp": return Complex.Exp(a[0]);
-            case "log":
-            case "ln": return Complex.Log(a[0]);
-            case "log10": return Complex.Log10(a[0]);
-            case "log2": return Complex.Log(a[0]) / Complex.Log(2);
-            case "logn": return Complex.Log(a[0]) / Complex.Log(a[1]);
-            case "pow": return Complex.Pow(a[0], a[1]);
-            case "round": return new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real));
-            case "sin": return Complex.Sin(a[0]);
-            case "sind": return Complex.Sin(a[0] * TORAD);
-            case "sinh": return Complex.Sinh(a[0]);
-            case "sqr":
-            case "sqrt": return Complex.Sqrt(a[0]);
-            case "tan": return Complex.Tan(a[0]);
-            case "tand": return Complex.Tan(a[0] * TORAD);
-            case "tanh": return Complex.Tanh(a[0]);
-        }
-
-        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+            "abs" => Complex.Abs(a[0]),
+            "acos" => Complex.Acos(a[0]),
+            "acosd" => Complex.Acos(a[0]) * TODEG,
+            "asin" => Complex.Asin(a[0]),
+            "asind" => Complex.Asin(a[0]) * TODEG,
+            "atan" => Complex.Atan(a[0]),
+            "atand" => Complex.Atan(a[0]) * TODEG,
+            "cos" => Complex.Cos(a[0]),
+            "cosd" => Complex.Cos(a[0] * TORAD),
+            "cosh" => Complex.Cosh(a[0]),
+            "exp" => Complex.Exp(a[0]),
+            "log" or "ln" => Complex.Log(a[0]),
+            "log10" => Complex.Log10(a[0]),
+            "log2" => Complex.Log(a[0]) / Complex.Log(2),
+            "logn" => Complex.Log(a[0]) / Complex.Log(a[1]),
+            "pow" => Complex.Pow(a[0], a[1]),
+            "round" => new Complex(Math.Round(a[0].Real, (int)a[1].Real), Math.Round(a[0].Imaginary, (int)a[1].Real)),
+            "sin" => Complex.Sin(a[0]),
+            "sind" => Complex.Sin(a[0] * TORAD),
+            "sinh" => Complex.Sinh(a[0]),
+            "sqr" or "sqrt" => Complex.Sqrt(a[0]),
+            "tan" => Complex.Tan(a[0]),
+            "tand" => Complex.Tan(a[0] * TORAD),
+            "tanh" => Complex.Tanh(a[0]),
+            _ => base.EvaluateFunction(functionName, args),
+        };
     }
-
 }
 ```
 
@@ -338,14 +313,11 @@ namespace ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser : Parser
+ppublic class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    public Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
-    { }
-
-    protect override object Evaluate(List<Token> postfixTokens, Dictionary<string, object> variables = null)
+    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     {
-        if (variables is null) variables = new();
+        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
         if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
         if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
@@ -364,60 +336,52 @@ public class Vector3Parser : Parser
     #region Auxiliary functions to get operands
 
     public static Vector3 DoubleToVector3(object arg)
-        => new Vector3(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
+        => new(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
 
 
     public static bool IsNumeric(object arg) =>
            arg is double || arg is int || arg is float;
 
-    public static Vector3 GetVector3(object arg) =>
-            IsNumeric(arg) ? DoubleToVector3(arg) : (Vector3)arg;
-
-    public Vector3 GetVector3UnaryOperand(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    public static Vector3 GetVector3(object? arg)
     {
-        var arg = operatorNode.GetUnaryArgument(
-             _options.TokenPatterns.UnaryOperatorDictionary[operatorNode.Text].Prefix,
-             nodeValueDictionary);
-
-        return GetVector3(arg);
+        if (arg is null) return Vector3.Zero;
+        if (IsNumeric(arg)) return DoubleToVector3(arg);
+        if (arg is Vector3 v) return v;
+        return Vector3.Zero;
     }
 
-    public (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        var operands = operatorNode.GetBinaryArguments(nodeValueDictionary);
+    public static Vector3 GetVector3UnaryOperand(object? operand) =>
+        GetVector3(operand);
 
-        return (Left: GetVector3(operands.LeftOperand),
-                 Right: GetVector3(operands.RightOperand));
-    }
+    public static (Vector3 Left, Vector3 Right) GetVector3BinaryOperands(object? leftOperand, object? rightOperand) => (
+        Left: GetVector3(leftOperand),
+        Right: GetVector3(rightOperand)
+    );
 
-    public Vector3[] GetVector3FunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-    {
-        return functionNode
-            .GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary)
-            .Select(arg => GetVector3(arg)).ToArray();
-    }
+    public static Vector3[] GetVector3FunctionArguments(object?[] args) =>
+        [.. args.Select(GetVector3)];
 
     #endregion
 
-    protected override object EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {
-        Vector3 operand = GetVector3UnaryOperand(operatorNode, nodeValueDictionary);
+        Vector3 op = GetVector3UnaryOperand(operand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
-            "-" => -operand,
-            "+" => operand,
-            "!" => Vector3.Normalize(operand),
-            _ => base.EvaluateUnaryOperator(operatorNode, nodeValueDictionary)
+            "-" => -op,
+            "+" => op,
+            "!" => Vector3.Normalize(op),
+            _ => base.EvaluateUnaryOperator(operatorName, operand)
         };
     }
 
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(operatorNode, nodeValueDictionary);
+        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(leftOperand,rightOperand);
 
-        return operatorNode.Text switch
+        return operatorName switch
         {
             "+" => left + right,
             "-" => left - right,
@@ -425,36 +389,34 @@ public class Vector3Parser : Parser
             "/" => left / right,
             "^" => Vector3.Cross(left, right),
             "@" => Vector3.Dot(left, right),
-            _ => base.EvaluateOperator(operatorNode, nodeValueDictionary)
+            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand)
         };
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string functionName = functionNode.Text.ToLower();
-        Vector3[] a = GetVector3FunctionArguments( functionNode, nodeValueDictionary);
+        Vector3[] a = GetVector3FunctionArguments(args);
 
-        switch (functionName)
+        return functionName switch
         {
-            case "abs": return Vector3.Abs(a[0]);
-            case "cross": return Vector3.Cross(a[0], a[1]);
-            case "dot": return Vector3.Dot(a[0], a[1]);
-            case "dist": return Vector3.Distance(a[0], a[1]);
-            case "dist2": return Vector3.DistanceSquared(a[0], a[1]);
-            case "lerp": return Vector3.Lerp(a[0], a[1], a[2].X);
-            case "length": return a[0].Length();
-            case "length2": return a[0].LengthSquared();
-            case "norm": return Vector3.Normalize(a[0]);
-            case "sqr":
-            case "sqrt": return Vector3.SquareRoot(a[0]);
-            case "round":
-                return new Vector3(
-                (float)Math.Round(a[0].X, (int)a[1].X),
-                (float)Math.Round(a[0].Y, (int)a[1].X),
-                (float)Math.Round(a[0].Z, (int)a[1].X));
-        }
-        return base.EvaluateFunction(functionNode, nodeValueDictionary);
+            "abs" => Vector3.Abs(a[0]),
+            "cross" => Vector3.Cross(a[0], a[1]),
+            "dot" => Vector3.Dot(a[0], a[1]),
+            "dist" => Vector3.Distance(a[0], a[1]),
+            "dist2" => Vector3.DistanceSquared(a[0], a[1]),
+            "lerp" => Vector3.Lerp(a[0], a[1], a[2].X),
+            "length" => a[0].Length(),
+            "length2" => a[0].LengthSquared(),
+            "norm" => Vector3.Normalize(a[0]),
+            "sqr" or "sqrt" => Vector3.SquareRoot(a[0]),
+            "round" => new Vector3(
+                            (float)Math.Round(a[0].X, (int)a[1].X),
+                            (float)Math.Round(a[0].Y, (int)a[1].X),
+                            (float)Math.Round(a[0].Z, (int)a[1].X)),
+            _ => base.EvaluateFunction(functionName, args),
+        };
     }
+
 }
 ```
 
@@ -521,31 +483,39 @@ public class CustomTypeParser : Parser
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
 
-    protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
 
-        //we assume that the + operator is supported 
-        if (operatorNode.Text == "+")
+        if (operatorName == "+")
         {
-            //we manage all combinations of Item/Item, Item/int, int/Item combinations here
-            if (LeftOperand is Item && RightOperand is Item)
-                return (Item)LeftOperand + (Item)RightOperand;
+            //ADDED:
+            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
 
-            return LeftOperand is Item ?  (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+
+            //we manage all combinations of Item/Item, Item/int, int/Item combinations here
+            if (leftOperand is Item left && rightOperand is Item right)
+                return left + right;
+
+            return leftOperand is Item ?
+                (Item)leftOperand + (int)rightOperand! : (int)leftOperand! + (Item)rightOperand!;
         }
 
-        return base.EvaluateOperator(operatorNode, nodeValueDictionary);
+
+        return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        var a = functionNode.GetFunctionArguments(count: 2, nodeValueDictionary);
-
-        return functionNode.Text switch
+        if (args[0] is not Item || args[1] is not int)
         {
-            "add" => (Item)a[0] + (int)a[1],
-            _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
+            _logger.LogError("Invalid arguments for function {FunctionName}: {Args}", functionName, args);
+            throw new ArgumentException($"Invalid arguments for function {functionName}");
+        }
+
+        return functionName switch
+        {
+            "add" => (Item)args[0]! + (int)args[1]!,
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 
@@ -563,6 +533,8 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     });
 Console.WriteLine(result); // foo bar 12
 ```
+
+<!--
 
 ### `CustomTypeTransientParser` and the `NodeValueDictionary`
 
@@ -632,6 +604,8 @@ Assert.Equal("foo bar 12", result.ToString());
 
 ## _more examples to follow **soon**..._
 
+-->
+
 # Customizing ParserLibrary
 
 ## `appsettings.json` configuration file
@@ -671,7 +645,6 @@ Operators with higher `priority` have higher precedence for the calculations. Th
       "openParenthesis": "(",
       "closeParenthesis": ")",
       "argumentSeparator": ",",
-
       "unary": [
         {
           "name": "-",
@@ -759,40 +732,6 @@ var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
 
 Note, that in both cases above, the `appsettings.json` is also read (if found). The `parsersettings.json` file has higher priority, in case there are some conflicting options.
 
-An example of using the internal fields `_options` of type `TokenizerOptions` and `_logger` of type `ILogger` can be shown below, by modifying the `CustomTypeParser` slightly modifying the example above:
-```cs
-...
-protected override object EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-{
-    (object LeftOperand, object RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-
-    if (operatorNode.Text == "+")
-    {
-        //ADDED:
-        _logger.LogDebug("Adding with + operator {left} and {right}", LeftOperand, RightOperand);
-
-        if (LeftOperand is Item && RightOperand is Item)
-            return (Item)LeftOperand + (Item)RightOperand;
-
-        return LeftOperand is Item ?  (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
-    }
-
-    return base.EvaluateOperator(operatorNode, nodeValueDictionary);
-}
-
-protected override object EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object> nodeValueDictionary)
-{
-    var a = functionNode.GetFunctionArguments(2, nodeValueDictionary);
-
-    //return functionNode.Text switch
-    //MODIFIED: use the CaseSensitive property from the options in the configuration files
-    return _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower() switch
-    {
-        "add" => (Item)a[0] + (int)a[1],
-        _ => base.EvaluateFunction(functionNode, nodeValueDictionary)
-    };
-}
-```
 
 If you want to extend your own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method. This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
 ```cs
@@ -921,7 +860,7 @@ The following constants are also defined _unless_ the same names are overriden b
 - `pi`: the number π (see [π](https://en.wikipedia.org/wiki/Pi))
 - `e`: the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
 
-## `VectorParser`
+## `Vector3Parser`
 
 The `Vector3Parser` class for the moment accepts the followig operators:
 - `+`: plus sign (unary) and plus (binary)
