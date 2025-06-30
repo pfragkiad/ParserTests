@@ -6,7 +6,7 @@ public class Tokenizer : ITokenizer
 {
     protected readonly ILogger _logger;
     protected readonly TokenizerOptions _options;
-    protected Operator? ArgumentOperator; 
+    protected Operator? ArgumentOperator;
 
     public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options)
     {
@@ -28,34 +28,65 @@ public class Tokenizer : ITokenizer
 
 
     //The second property contains the number of arguments needed by each corresponding function.
-    public List<Token> GetInOrderTokens(string expression)
+    public List<Token> GetInfixTokens(string expression)
     {
         //inspiration: https://gwerren.com/Blog/Posts/simpleCSharpTokenizerUsingRegex
 
         _logger.LogDebug("Retrieving infix tokens...");
 
         List<Token> tokens = [];
-
+        MatchCollection matches;
         //ONLY IDENTIFIERS AND LITERALS NEED REGEX MATCHING!
 
+        //open parenthesis with identifier (for functions)
+        string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
+        matches =
+            _options.CaseSensitive ?
+            Regex.Matches(expression, functionPattern) :
+            Regex.Matches(expression, functionPattern, RegexOptions.IgnoreCase);
+        // Track function call positions to avoid duplicate parentheses
+        // Track function names to avoid adding them as identifiers later
+        HashSet<string> functionNames = [];
+        HashSet<int> functionParenthesisPositions = [];
+        if (matches.Count != 0)
+        {
+            //  tokens.AddRange(matches.Select(m => new Token(TokenType.Function, m)));
+            foreach (Match m in matches.Cast<Match>())
+            {
+                Group idGroup = m.Groups["identifier"];
+                Group parGroup = m.Groups["par"];
+
+                // Create function token
+                tokens.Add(new Token(TokenType.Function, idGroup.Value, idGroup.Index));
+
+                // Store function name to avoid adding it as an identifier later
+                functionNames.Add(idGroup.Value.Trim());
+
+                // Mark the parenthesis position as part of a function
+                functionParenthesisPositions.Add(parGroup.Index);
+            }
+        }
+
         //identifiers
-        var matches =
+        matches =
             _options.CaseSensitive ?
             Regex.Matches(expression, _options.TokenPatterns.Identifier!) :
             Regex.Matches(expression, _options.TokenPatterns.Identifier!, RegexOptions.IgnoreCase);
         if (matches.Count > 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m)));
+        {
+            //tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m))); 
+            // Only add identifiers that aren't already in the functionNames collection
+            tokens.AddRange(matches
+                .Where(m => !functionNames.Contains(m.Value.Trim()))
+                .Select(m => new Token(TokenType.Identifier, m)));
+        }
 
         //literals
         matches = Regex.Matches(expression, _options.TokenPatterns.Literal!);
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
-        //open parenthesis with identifier (for functions)
-        string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
-        matches = Regex.Matches(expression, functionPattern);
-        if (matches.Count != 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.Function, m)));
+
 
         ////open parenthesis
         //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
@@ -68,7 +99,8 @@ public class Tokenizer : ITokenizer
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
-            if (c == _options.TokenPatterns.OpenParenthesis)
+            //if (c == _options.TokenPatterns.OpenParenthesis)
+            if (c == _options.TokenPatterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
             else if (c == _options.TokenPatterns.CloseParenthesis)
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
@@ -107,23 +139,24 @@ public class Tokenizer : ITokenizer
         //sort by Match.Index (get "infix ordering")
         tokens.Sort();
 
-        //for each captured function we remove one captured open parenthesis AND one identifier! (the tokens must be sorted)
-        for (int i = tokens.Count - 2; i >= 1; i--)
-        {
-            //if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
-            //{
-            //    tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-            //    tokens.RemoveAt(i - 1); //this is the plain identifier
-            //    i--; //current token index is i-1, so counter is readjusted
-            //}
-            if (tokens[i].TokenType == TokenType.Function)
-            {
-                tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-                tokens.RemoveAt(i); //remove this identifier and keep the plain one without the parenthesis
-                tokens[i - 1].TokenType = TokenType.Function; //this is the plain identifier
-                i--; //current token index is i-1, so counter is readjusted
-            }
-        }
+        ////for each captured function we remove one captured open parenthesis AND one identifier! (the tokens must be sorted)
+        ////this should be refactored - 
+        //for (int i = tokens.Count - 2; i >= 1; i--)
+        //{
+        //    //if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
+        //    //{
+        //    //    tokens.RemoveAt(i + 1); //this is the plain open parenthesis
+        //    //    tokens.RemoveAt(i - 1); //this is the plain identifier
+        //    //    i--; //current token index is i-1, so counter is readjusted
+        //    //}
+        //    if (tokens[i].TokenType == TokenType.Function)
+        //    {
+        //        tokens.RemoveAt(i + 1); //this is the plain open parenthesis
+        //        tokens.RemoveAt(i); //remove this identifier and keep the plain one without the parenthesis
+        //        tokens[i - 1].TokenType = TokenType.Function; //this is the plain identifier
+        //        i--; //current token index is i-1, so counter is readjusted
+        //    }
+        //}
 
         //search for unary operators (assuming they are the same with binary operators)
         var potentialUnaryOperators = tokens.Where(t =>
@@ -146,21 +179,22 @@ public class Tokenizer : ITokenizer
                     previousTokenType == TokenType.OpenParenthesis ||
                     previousTokenType == TokenType.Function)
                     token.TokenType = TokenType.OperatorUnary;
-            }
-            else //unary.postfix (needs testing)
-            {
-                //if the previous token is an operator then the latter is a unary!
-                TokenType? nextTokenType = tokenIndex < tokens.Count - 1 ? tokens[tokenIndex + 1].TokenType : null;
-                if (tokenIndex == tokens.Count - 1 ||
-                    nextTokenType == TokenType.Operator ||
-                    nextTokenType == TokenType.ArgumentSeparator ||
-                    //the previous unary operator must not be prefix!
-                    nextTokenType == TokenType.OperatorUnary &&
-                        !_options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex + 1].Text].Prefix ||
-                    nextTokenType == TokenType.ClosedParenthesis)
-                    token.TokenType = TokenType.OperatorUnary;
 
+                continue;
             }
+
+            //unary.postfix (needs testing)
+
+            //if the previous token is an operator then the latter is a unary!
+            TokenType? nextTokenType = tokenIndex < tokens.Count - 1 ? tokens[tokenIndex + 1].TokenType : null;
+            if (tokenIndex == tokens.Count - 1 ||
+                nextTokenType == TokenType.Operator ||
+                nextTokenType == TokenType.ArgumentSeparator ||
+                //the previous unary operator must not be prefix!
+                nextTokenType == TokenType.OperatorUnary &&
+                    !_options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex + 1].Text].Prefix ||
+                nextTokenType == TokenType.ClosedParenthesis)
+                token.TokenType = TokenType.OperatorUnary;
         }
 
         //now we need to convert to postfix
@@ -294,10 +328,10 @@ public class Tokenizer : ITokenizer
                 if (currentHead.TokenType == TokenType.OpenParenthesis ||
                     currentHead.TokenType == TokenType.Function)
                 {
-                     message = "Push to stack (open parenthesis or function) -> {token}";
+                    message = "Push to stack (open parenthesis or function) -> {token}";
                     break;
 
-                   //this is equivalent to having an empty stack
+                    //this is equivalent to having an empty stack
                     //operatorStack.Push(token);
                     //_logger.LogDebug("Push to stack (after open parenthesis) -> {token}", token);
                     //LogState();
@@ -340,12 +374,12 @@ public class Tokenizer : ITokenizer
             }
 
             operatorStack.Push(token);
-            if(operatorStack.Count==1) //if it was an empty stack
+            if (operatorStack.Count == 1) //if it was an empty stack
                 message = "Push to stack (empty stack) -> {token}";
             _logger.LogDebug(message, token);
             LogState();
 
-           //NextToken:;
+            //NextToken:;
         }
 
         //add dummy node if the expression ends with an operator
@@ -363,7 +397,7 @@ public class Tokenizer : ITokenizer
                 _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Index})");
             }
-            
+
             if (stackToken.TokenType == TokenType.Function)
             {
                 _logger.LogError("Unmatched function open parenthesis. A closed parenthesis should follow.");
@@ -380,8 +414,7 @@ public class Tokenizer : ITokenizer
 
     public List<Token> GetPostfixTokens(string expression)
     {
-        //returns the postfix tokens of the expression
-        var infixTokens = GetInOrderTokens(expression);
+        var infixTokens = GetInfixTokens(expression);
         return GetPostfixTokens(infixTokens);
     }
 
@@ -456,7 +489,7 @@ public class Tokenizer : ITokenizer
     public List<string> GetVariableNames(string expression)
     {
         //returns the identifiers in the expression
-        var tokens = GetInOrderTokens(expression);
+        var tokens = GetInfixTokens(expression);
         return [.. tokens
             .Where(t => t.TokenType == TokenType.Identifier)
             .Select(t => t.Text)
@@ -466,7 +499,7 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression,
         string[] ignorePrefixes, string[] ignorePostfixes)
     {
-        var tokens = GetInOrderTokens(expression);
+        var tokens = GetInfixTokens(expression);
 
         HashSet<string> matchedNames = [];
         HashSet<string> unmatchedNames = [];
@@ -502,7 +535,7 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
     {
         //returns the identifiers in the expression
-        var tokens = GetInOrderTokens(expression);
+        var tokens = GetInfixTokens(expression);
         HashSet<string> matchedNames = [];
         HashSet<string> unmatchedNames = [];
         HashSet<string> ignoredNames = [];

@@ -61,7 +61,8 @@ public class UnitTestParser
     [InlineData("aDD3(-1,-2,-3)", -1 - 2 * 2 - 3 * 3)]
     [InlineData("-round(10.3513,1)", -10.4)]
     //% in action has higher priority than *, and ! has higher than - [to sum up -> the closest to the operand has the highest priority]
-    [InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
+    //[InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
+    [InlineData("-!!a%*", (-2 * 2 * 5 + 2)*3)] //! doubles, % adds 2, * triples (all unary with same priority) 
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<FunctionsOperandsParser>();

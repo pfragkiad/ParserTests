@@ -44,7 +44,7 @@ public class Parser : Tokenizer, IParser
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
         //returns the names of the functions that are not registered
-        var tokens = GetInOrderTokens(expression);
+        var tokens = GetInfixTokens(expression);
         //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
 
         HashSet<string> matchedNames = [];
@@ -67,7 +67,7 @@ public class Parser : Tokenizer, IParser
     public List<string> GetMatchedFunctionNames(string expression)
     {
         //returns the names of the functions that are registered
-        var tokens = GetInOrderTokens(expression);
+        var tokens = GetInfixTokens(expression);
         //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
         return [.. tokens
             .Where(t => t.TokenType == TokenType.Function &&
@@ -81,9 +81,7 @@ public class Parser : Tokenizer, IParser
 
     public Tree<Token> GetExpressionTree(string s)
     {
-        var inOrderTokens = GetInOrderTokens(s);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
-
+        var postfixTokens = GetPostfixTokens(s);
         return GetExpressionTree(postfixTokens);
     }
 
@@ -716,8 +714,8 @@ public class Parser : Tokenizer, IParser
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         //returns the names of the functions that are registered but have empty arguments
-        var inOrderTokens = GetInOrderTokens(expression);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        //var inOrderTokens = GetInfixTokens(expression);
+        var postfixTokens = GetPostfixTokens(expression);
         var tree = GetExpressionTree(postfixTokens);
 
 
@@ -759,8 +757,8 @@ public class Parser : Tokenizer, IParser
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
         //returns the names of the functions that are registered but have invalid argument count
-        var inOrderTokens = GetInOrderTokens(expression);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        //var inOrderTokens = GetInfixTokens(expression);
+        var postfixTokens = GetPostfixTokens(expression);
 
         var tree = GetExpressionTree(postfixTokens);
 
@@ -829,8 +827,8 @@ public class Parser : Tokenizer, IParser
     public InvalidOperatorsCheckResult CheckOperators(string expression)
     {
         //returns the names of the functions that are registered but have empty arguments
-        var inOrderTokens = GetInOrderTokens(expression);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+       // var inOrderTokens = GetInfixTokens(expression);
+        var postfixTokens = GetPostfixTokens(expression);
         var tree = GetExpressionTree(postfixTokens);
 
 
@@ -874,8 +872,8 @@ public class Parser : Tokenizer, IParser
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
         // Parse expression and build the tree
-        var inOrderTokens = GetInOrderTokens(expression);
-        var postfixTokens = GetPostfixTokens(inOrderTokens);
+        //var inOrderTokens = GetInfixTokens(expression);
+        var postfixTokens = GetPostfixTokens(expression);
         var tree = GetExpressionTree(postfixTokens);
 
         List<int> validPositions = [];
