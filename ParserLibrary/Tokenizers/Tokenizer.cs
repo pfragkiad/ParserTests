@@ -6,6 +6,7 @@ public class Tokenizer : ITokenizer
 {
     protected readonly ILogger _logger;
     protected readonly TokenizerOptions _options;
+    protected Operator? ArgumentOperator; 
 
     public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options)
     {
@@ -72,8 +73,13 @@ public class Tokenizer : ITokenizer
             else if (c == _options.TokenPatterns.CloseParenthesis)
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
             //else if (c == _options.TokenPatterns.ArgumentSeparator)
-            //    tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));   
+            //    tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
+
+        //allow any string as argument separator
+        matches = Regex.Matches(expression, Regex.Escape(_options.TokenPatterns.ArgumentSeparator!));
+        if (matches.Count != 0)
+            tokens.AddRange(matches.Select(m => new Token(TokenType.ArgumentSeparator, m)));
 
 
         //match unary operators that do NOT coincide with binary operators
@@ -113,7 +119,7 @@ public class Tokenizer : ITokenizer
             if (tokens[i].TokenType == TokenType.Function)
             {
                 tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-                tokens.RemoveAt(i); //remote this identifier and keep the plain one without the parenthesis
+                tokens.RemoveAt(i); //remove this identifier and keep the plain one without the parenthesis
                 tokens[i - 1].TokenType = TokenType.Function; //this is the plain identifier
                 i--; //current token index is i-1, so counter is readjusted
             }
@@ -133,6 +139,7 @@ public class Tokenizer : ITokenizer
                 TokenType? previousTokenType = tokenIndex > 0 ? tokens[tokenIndex - 1].TokenType : null;
                 if (tokenIndex == 0 ||
                     previousTokenType == TokenType.Operator ||
+                    previousTokenType == TokenType.ArgumentSeparator ||
                     //the previous unary operator must not be prefix!
                     previousTokenType == TokenType.OperatorUnary &&
                         _options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex - 1].Text].Prefix ||
@@ -146,6 +153,7 @@ public class Tokenizer : ITokenizer
                 TokenType? nextTokenType = tokenIndex < tokens.Count - 1 ? tokens[tokenIndex + 1].TokenType : null;
                 if (tokenIndex == tokens.Count - 1 ||
                     nextTokenType == TokenType.Operator ||
+                    nextTokenType == TokenType.ArgumentSeparator ||
                     //the previous unary operator must not be prefix!
                     nextTokenType == TokenType.OperatorUnary &&
                         !_options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex + 1].Text].Prefix ||
@@ -186,13 +194,14 @@ public class Tokenizer : ITokenizer
 
         var operators = _options.TokenPatterns.OperatorDictionary;
         var unary = _options.TokenPatterns.UnaryOperatorDictionary;
+        var argumentOperator = _options.TokenPatterns.ArgumentSeparatorOperator;
 
         _logger.LogDebug("Retrieving postfix tokens...");
 
         //foreach (var token in infixTokens)
-        for(int iToken =0; iToken < infixTokens.Count; iToken++)
+        for (int iToken = 0; iToken < infixTokens.Count; iToken++)
         {
-            var token = infixTokens[iToken];
+            Token token = infixTokens[iToken];
             //if(token.Text == "asd") Debugger.Break();
 
             if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
@@ -200,26 +209,29 @@ public class Tokenizer : ITokenizer
                 postfixTokens.Add(token);
                 _logger.LogDebug("Push to postfix expression -> {token}", token);
                 LogState();
+                continue;
             }
-            else if (token.TokenType == TokenType.OpenParenthesis
+
+            if (token.TokenType == TokenType.OpenParenthesis
                 || token.TokenType == TokenType.Function) //XTRA!
             {
                 operatorStack.Push(token);
                 _logger.LogDebug("Push to stack (open parenthesis) -> {token}", token);
                 LogState();
+                continue;
             }
-            else if (token.TokenType == TokenType.ClosedParenthesis)
+
+            if (token.TokenType == TokenType.ClosedParenthesis)
             {
                 _logger.LogDebug("Pop stack until open parenthesis is found (close parenthesis) -> {token}", token);
 
                 //check if previous token is a binary operator (including argument separator)
                 //this will save the expression tree from having a non-empty stack
-                if ( iToken>0 &&  infixTokens[iToken-1].TokenType == TokenType.Operator )
+                if (iToken > 0 && infixTokens[iToken - 1].TokenType == TokenType.Operator)
                 {
                     //add null token to postfix expression
                     postfixTokens.Add(Token.Null);
                 }
-
 
                 //pop all operators until we find open parenthesis
                 do
@@ -236,92 +248,109 @@ public class Tokenizer : ITokenizer
                     LogState();
                     if (stackToken.TokenType == TokenType.Function) break;
                 } while (true);
+                continue;
             }
 
-            else  //operator or unary operator
+
+            //here we have operator or unary operator or argument separator
+            Operator? currentOperator = null;
+            UnaryOperator? currentUnaryOperator = null;
+
+            if (token.TokenType == TokenType.Operator)
+                currentOperator = operators[token.Text]!;
+            else if (token.TokenType == TokenType.ArgumentSeparator)
+                currentOperator = argumentOperator;
+            else if (token.TokenType == TokenType.OperatorUnary)
+                currentUnaryOperator = unary[token.Text!];
+
+
+            //ADD NULL OPERAND IF NEEDED-----------------------
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.ArgumentSeparator)
+            {
+                //check if previous token is a binary operator (including argument separator)
+                //this will save the expression tree from having a non-empty stack
+                TokenType? previousTokenType = iToken > 0 ? infixTokens[iToken - 1].TokenType : null;
+
+                if (previousTokenType is null
+                    || previousTokenType == TokenType.Operator
+                    || previousTokenType == TokenType.ArgumentSeparator
+                    || previousTokenType == TokenType.OpenParenthesis
+                    || previousTokenType == TokenType.Function)
+                {
+                    //add null token to postfix expression
+                    postfixTokens.Add(Token.Null);
+                }
+            }
+            //-------------------------------------------------
+
+
+            //if (currentUnaryOperator?.Name == "%") Debugger.Break();
+
+            string message = "";
+            while (operatorStack.Count != 0)
             {
 
-                Operator? currentOperator = null;
-                UnaryOperator? currentUnaryOperator = null;
-
-                if (token.TokenType == TokenType.Operator)
-                    currentOperator = operators[token.Text]!;
-                else if (token.TokenType == TokenType.OperatorUnary)
-                    currentUnaryOperator = unary[token.Text!];
-
-                if(token.TokenType== TokenType.Operator )
+                Token currentHead = operatorStack.Peek();
+                if (currentHead.TokenType == TokenType.OpenParenthesis ||
+                    currentHead.TokenType == TokenType.Function)
                 {
-                    //check if previous token is a binary operator (including argument separator)
-                    //this will save the expression tree from having a non-empty stack
-                    TokenType? previousTokenType = iToken>0 ?  infixTokens[iToken - 1].TokenType : null ;
+                     message = "Push to stack (open parenthesis or function) -> {token}";
+                    break;
 
-                    if (previousTokenType is null || previousTokenType == TokenType.Operator || previousTokenType == TokenType.OpenParenthesis || previousTokenType == TokenType.Function)
-                    {
-                        //add null token to postfix expression
-                        postfixTokens.Add(Token.Null);
-                    }
+                   //this is equivalent to having an empty stack
+                    //operatorStack.Push(token);
+                    //_logger.LogDebug("Push to stack (after open parenthesis) -> {token}", token);
+                    //LogState();
+                    //goto NextToken;
                 }
 
-                //if (currentUnaryOperator?.Name == "%") Debugger.Break();
+                Operator? currentHeadOperator = null;
+                UnaryOperator? currentHeadUnaryOperator = null;
+                if (currentHead.TokenType == TokenType.Operator)
+                    currentHeadOperator = operators[currentHead.Text]!;
+                else if (currentHead.TokenType == TokenType.ArgumentSeparator)
+                    currentHeadOperator = argumentOperator;
+                else if (currentHead.TokenType == TokenType.OperatorUnary)
+                    currentHeadUnaryOperator = unary[currentHead.Text!];
 
-                while (operatorStack.Count != 0)
+                int? currentHeadPriority = currentHeadOperator?.Priority ?? currentHeadUnaryOperator?.Priority;
+
+                //for higher priority push to the stack!
+                if (currentOperator is not null
+                   && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
+                   ||
+                   currentUnaryOperator is not null
+                   && (currentUnaryOperator.Priority > currentHeadPriority || currentUnaryOperator.Priority == currentHeadPriority && currentUnaryOperator.Prefix))
                 {
-
-                    Token currentHead = operatorStack.Peek();
-                    if (currentHead.TokenType == TokenType.OpenParenthesis ||
-                        currentHead.TokenType == TokenType.Function)
-                    {
-                        //this is equivalent to having an empty stack
-                        operatorStack.Push(token);
-                        _logger.LogDebug("Push to stack (after open parenthesis) -> {token}", token);
-                        LogState();
-                        goto NextToken;
-                    }
-
-                    Operator? currentHeadOperator = null;
-                    UnaryOperator? currentHeadUnaryOperator = null;
-                    if (currentHead.TokenType == TokenType.Operator)
-                        currentHeadOperator = operators[currentHead.Text]!;
-                    else if (currentHead.TokenType == TokenType.OperatorUnary)
-                        currentHeadUnaryOperator = unary[currentHead.Text!];
-
-                    int? currentHeadPriority = currentHeadOperator?.Priority ?? currentHeadUnaryOperator?.Priority;
-
-                    //for higher priority push to the stack!
-                    if (currentOperator is not null
-                       && (currentOperator.Priority > currentHeadPriority || currentOperator.Priority == currentHeadPriority && !currentOperator.LeftToRight)
-                       ||
-                       currentUnaryOperator is not null
-                       && (currentUnaryOperator.Priority > currentHeadPriority || currentUnaryOperator.Priority == currentHeadPriority && currentUnaryOperator.Prefix))
-                    {
-                        operatorStack.Push(token);
-                        _logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
-                        LogState();
-                        goto NextToken;
-                    }
-
-                    var stackToken = operatorStack.Pop();
-                    postfixTokens.Add(stackToken);
-
-                    //remove op from stack and put to postfix  
-                    _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
-                    LogState();
-
+                    message = "Push to stack (op with high priority) -> {token}";
+                    break;
+                    //operatorStack.Push(token);
+                    //_logger.LogDebug("Push to stack (op with high priority) -> {token}", token);
+                    //LogState();
+                    //goto NextToken;
                 }
 
-                //if the stack is empty just push the operator
-                operatorStack.Push(token);
-                _logger.LogDebug("Push to stack (empty stack) -> {token}", token);
+                //current priority has lower priority so we pop the stack
+                var stackToken = operatorStack.Pop();
+                postfixTokens.Add(stackToken);
+
+                //remove op from stack and put to postfix  
+                _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
                 LogState();
             }
 
+            operatorStack.Push(token);
+            if(operatorStack.Count==1) //if it was an empty stack
+                message = "Push to stack (empty stack) -> {token}";
+            _logger.LogDebug(message, token);
+            LogState();
 
-            NextToken:;
+           //NextToken:;
         }
 
         //add dummy node if the expression ends with an operator
         var lastToken = infixTokens[^1];
-        if(lastToken.TokenType == TokenType.Operator)
+        if (lastToken.TokenType == TokenType.Operator || lastToken.TokenType == TokenType.ArgumentSeparator)
             postfixTokens.Add(Token.Null);
 
 
@@ -329,13 +358,13 @@ public class Tokenizer : ITokenizer
         while (operatorStack.Count != 0)
         {
             var stackToken = operatorStack.Pop();
-            if (stackToken.TokenType == TokenType.OpenParenthesis ||
-                stackToken.TokenType == TokenType.Function)
+            if (stackToken.TokenType == TokenType.OpenParenthesis)
             {
                 _logger.LogError("Unmatched open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched open parenthesis (open parenthesis at {stackToken.Index})");
             }
-            if (stackToken.TokenType == TokenType.Function) //XTRA
+            
+            if (stackToken.TokenType == TokenType.Function)
             {
                 _logger.LogError("Unmatched function open parenthesis. A closed parenthesis should follow.");
                 throw new InvalidOperationException($"Unmatched function open parenthesis (open parenthesis at {stackToken.Index})");
@@ -367,14 +396,14 @@ public class Tokenizer : ITokenizer
         foreach (char c in expression)
         {
             //if (c.ToString() == open)
-            if(c==open)
+            if (c == open)
             {
                 count++;
                 continue;
             }
 
             //if (c.ToString() != close) continue;
-            if(c != close) continue;
+            if (c != close) continue;
 
             count--;
             if (count < 0)

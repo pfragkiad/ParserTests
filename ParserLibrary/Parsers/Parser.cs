@@ -106,23 +106,23 @@ public class Parser : Tokenizer, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (ShouldPushToExpressionStack(stack, token))
+            //if (ShouldPushToExpressionStack(stack, token))
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Push {token} to stack", token);
                 continue;
             }
 
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
             {
                 Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 _logger.LogDebug("Pushing {token} from stack (operator node)", token);
+                continue;
             }
-            else
-            {
-                _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
-                throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
-            }
+
+            _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
+            throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
@@ -216,7 +216,8 @@ public class Parser : Tokenizer, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (Parser.ShouldPushToExpressionStack(stack, token))
+            //if (Parser.ShouldPushToExpressionStack(stack, token))
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
@@ -231,12 +232,13 @@ public class Parser : Tokenizer, IParser
                 continue;
             }
 
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
             {
                 Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA
-                if (token.Text != _options.TokenPatterns.ArgumentSeparator)
+                //if (token.Text[0] != _options.TokenPatterns.ArgumentSeparator)
+                if (token.TokenType != TokenType.ArgumentSeparator)
                 {
                     V? result = default;
                     if (token.TokenType == TokenType.Operator && binaryOperators is not null)//binary operator
@@ -256,12 +258,7 @@ public class Parser : Tokenizer, IParser
                             .ToDictionary(e => e.Key, e => e.Value));
                         result = unaryOperators[token.Text](operand);
                     }
-                    //var result =
-                    //        operators[token.Text](
-                    //            nodeValueDictionary[operatorNode.Left as Node<Token>],
-                    //            nodeValueDictionary[operatorNode.Right as Node<Token>]);
-                    //if (nodeValueDictionary.ContainsKey(operatorNode.Right as Node<Token>) && nodeValueDictionary.ContainsKey(operatorNode.Left as Node<Token>))
-                    //  );
+
                     nodeValueDictionary.Add(operatorNode, result);
                     _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
@@ -320,7 +317,8 @@ public class Parser : Tokenizer, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (ShouldPushToExpressionStack(stack, token))
+            //if (ShouldPushToExpressionStack(stack, token))
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
@@ -339,12 +337,12 @@ public class Parser : Tokenizer, IParser
                 continue;
             }
 
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
             {
                 Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
                 //XTRA
-                if (token.Text != _options.TokenPatterns.ArgumentSeparator)
+                if (token.TokenType != TokenType.ArgumentSeparator)
                 {
                     var result =
                         token.TokenType == TokenType.Operator ?
@@ -375,8 +373,8 @@ public class Parser : Tokenizer, IParser
 
     protected object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-         _logger.LogDebug("Evaluating...");
-       //https://www.youtube.com/watch?v=WHs-wSo33MM
+        _logger.LogDebug("Evaluating...");
+        //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
         {
             if (token.TokenType == TokenType.Function)
@@ -392,7 +390,8 @@ public class Parser : Tokenizer, IParser
             }
 
             //from now on we deal with operators, literals and identifiers only
-            if (ShouldPushToExpressionStack(stack, token))
+            //if (ShouldPushToExpressionStack(stack, token))
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
@@ -407,12 +406,12 @@ public class Parser : Tokenizer, IParser
                 continue;
             }
 
-            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary)
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
             {
                 Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
 
-                //XTRA
-                if (token.Text != _options.TokenPatterns.ArgumentSeparator)
+                //if (token.Text[0] != _options.TokenPatterns.ArgumentSeparator)
+                if (token.TokenType != TokenType.ArgumentSeparator)
                 {
                     var result =
                         token.TokenType == TokenType.Operator ?
@@ -447,13 +446,13 @@ public class Parser : Tokenizer, IParser
         return functionNode;
     }
 
-    private static bool ShouldPushToExpressionStack(Stack<Token> stack, Token token)
-    {
-        return stack.Count == 0 ||
-               stack.Count == 1 && token.TokenType == TokenType.Operator ||
-               token.TokenType == TokenType.Literal ||
-               token.TokenType == TokenType.Identifier;
-    }
+    //private static bool ShouldPushToExpressionStack(Stack<Token> stack, Token token)
+    //{
+    //    return //stack.Count == 0 ||
+    //           //stack.Count == 1 && token.TokenType == TokenType.Operator ||
+    //           token.TokenType == TokenType.Literal ||
+    //           token.TokenType == TokenType.Identifier;
+    //}
 
     private static Node<Token> CreateNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
@@ -469,7 +468,7 @@ public class Parser : Tokenizer, IParser
         //else it is an operator (needs 2 items )
         Node<Token> operatorNode = new(token);
 
-        if (token.TokenType == TokenType.Operator)
+        if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.ArgumentSeparator)
         {
             //pop the 2 items on the current stack
             Token rightToken = stack.Pop(), leftToken = stack.Pop();
@@ -774,7 +773,7 @@ public class Parser : Tokenizer, IParser
             if (node.Value!.TokenType != TokenType.Function) continue;
 
             string functionName = node.Value.Text;
-            int actualArgumentsCount = node.GetFunctionArgumentsCount(_options.TokenPatterns.ArgumentSeparator);
+            int actualArgumentsCount = node.GetFunctionArgumentsCount(_options.TokenPatterns.ArgumentSeparator.ToString());
 
             if (_customFunctions.TryGetValue(node.Value.Text, out var funcDef))
             {
@@ -843,7 +842,8 @@ public class Parser : Tokenizer, IParser
             var node = entry.Value;
             if (token.TokenType != TokenType.Operator) continue;
 
-            if (token.Text == _options.TokenPatterns.ArgumentSeparator) continue;
+            //if (token.Text == _options.TokenPatterns.ArgumentSeparator) continue;
+            if (token.TokenType == TokenType.ArgumentSeparator) continue;
 
             var (LeftOperand, RightOperand) = node.GetBinaryArgumentNodes();
             //if at least one empty node then it is invalid
@@ -888,7 +888,10 @@ public class Parser : Tokenizer, IParser
             var node = entry.Value;
 
             // Only check tokens that are argument separators
-            if (token.TokenType != TokenType.Operator || token.Text != _options.TokenPatterns.ArgumentSeparator)
+            if (token.TokenType != TokenType.Operator ||
+                //token.Text[0] != _options.TokenPatterns.ArgumentSeparator
+                token.TokenType != TokenType.ArgumentSeparator
+                )
                 continue;
 
             // Find the parent node of this argument separator
@@ -901,7 +904,9 @@ public class Parser : Tokenizer, IParser
                 if ((parentNode.Left == node || parentNode.Right == node) &&
                     (parentEntry.Key.TokenType == TokenType.Function ||
                      (parentEntry.Key.TokenType == TokenType.Operator &&
-                      parentEntry.Key.Text == _options.TokenPatterns.ArgumentSeparator)))
+                      //parentEntry.Key.Text[0] == _options.TokenPatterns.ArgumentSeparator
+                      parentEntry.Key.TokenType == TokenType.ArgumentSeparator
+                      )))
                 {
                     // Valid: Parent is either a function or an argument separator
                     validPositions.Add(token.Index + 1); // 1-based index

@@ -10,6 +10,7 @@ public class Operator
 
     public override string ToString() => Name.ToString();
 
+
 }
 
 public class UnaryOperator

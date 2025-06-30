@@ -13,6 +13,15 @@ public class TokenPatterns //NOT records here!
 
     public string ArgumentSeparator { get; set; } = ",";
 
+    //This is a special operator with the lowest priority.
+    public Operator ArgumentSeparatorOperator =>
+        new()
+        {
+            Name = ArgumentSeparator,
+            Priority = _operators.Min(o=>o.Priority)-1,
+            LeftToRight = true
+        };
+
 
     //------------------------------------------------------
 
