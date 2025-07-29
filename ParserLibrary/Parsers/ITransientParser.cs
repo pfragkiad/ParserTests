@@ -2,5 +2,8 @@
 
 public interface ITransientParser : IParser
 {
-    void Reset();
+    object? Evaluate(Dictionary<string, object?>? variables = null);
+
+
+    Type EvaluateType(Dictionary<string, object?>? variables = null);
 }

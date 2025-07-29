@@ -1,4 +1,5 @@
 ﻿using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers;
 
@@ -9,41 +10,90 @@ public class TransientParser : Parser, ITransientParser
 {
 
     //created for simplifying and caching dictionaries
-    protected internal Dictionary<Node<Token>, object?> nodeValueDictionary = [];
-    protected Dictionary<Token, Node<Token>> nodeDictionary = [];
-    protected Stack<Token> stack = new();
+    protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
+    protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
+    protected Stack<Token> _stack = new();
 
 
-    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options) 
-        :base(logger, options)
-    {  }
 
-    protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options)
-    : base(logger, options)
-    { }
+    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options, string expression) 
+        :base(logger, options) 
+    { 
+        Expresion = expression;
+    }
+
+    //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
+    //: base(logger, options)
+    //{ 
+    
+    //}
 
     #region 
 
-    public void Reset()
+
+    #region Expression fields
+
+    protected List<Token> _infixTokens = [];
+    protected List<Token> _postfixTokens = [];  
+
+
+    private string? _expression;
+    public string? Expresion
     {
-        nodeValueDictionary = [];
-        nodeDictionary = [];
-        stack = []; 
+        get => _expression;
+        set
+        {
+            Reset();
+
+            _expression = value;
+            if (string.IsNullOrWhiteSpace(_expression)) return;
+
+            //parses all tokens
+            _infixTokens = GetInfixTokens(value!);
+            _postfixTokens = GetPostfixTokens(_infixTokens);
+        }
+    }
+    #endregion
+
+
+    protected void Reset()
+    {
+        _infixTokens = [];
+        _postfixTokens = [];
+
+        _nodeValueDictionary = [];
+        _nodeDictionary = [];
+        _stack = []; 
     }
 
-    public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)
-    {
-        Reset();
+    //public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)
+    //{
+    //    Reset();
 
-        var postfixTokens = GetPostfixTokens(s);
-        return base.Evaluate(postfixTokens, variables,stack,nodeDictionary,nodeValueDictionary);
+    //    var postfixTokens = GetPostfixTokens(s);
+    //    return base.Evaluate(postfixTokens, variables,stack,nodeDictionary,nodeValueDictionary);
+    //}
+
+    //public override Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    //{
+    //    var postfixTokens = GetPostfixTokens(s);
+    //    return base.EvaluateType(postfixTokens, variables, stack, nodeDictionary,nodeValueDictionary);
+    //}
+
+    public object? Evaluate(Dictionary<string, object?>? variables = null)
+    {
+        return base.Evaluate(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
     }
 
-    public override Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    public Type EvaluateType(Dictionary<string, object?>? variables = null)
     {
-        var postfixTokens = GetPostfixTokens(s);
-        return base.EvaluateType(postfixTokens, variables, stack, nodeDictionary,nodeValueDictionary);
+        return base.EvaluateType(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
     }
+
+    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
+        base.CheckEmptyFunctionArguments(_nodeDictionary);
+
+
 
 
     #endregion

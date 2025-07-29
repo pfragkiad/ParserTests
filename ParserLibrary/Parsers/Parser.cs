@@ -38,9 +38,6 @@ public class Parser : Tokenizer, IParser
         _customFunctions[name] = (paramList, body);
     }
 
-
-
-
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
         //returns the names of the functions that are not registered
@@ -273,6 +270,8 @@ public class Parser : Tokenizer, IParser
         Node<Token> root = nodeDictionary[stack.Pop()];
         return nodeValueDictionary[root]!;
     }
+
+
 
     public virtual object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
@@ -705,23 +704,20 @@ public class Parser : Tokenizer, IParser
     #endregion
 
 
-
-
-
-
     #region Checks before evaluation (optional)
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
-        //returns the names of the functions that are registered but have empty arguments
-        //var inOrderTokens = GetInfixTokens(expression);
-        var postfixTokens = GetPostfixTokens(expression);
-        var tree = GetExpressionTree(postfixTokens);
+        var tree = GetExpressionTree(expression);
+        return CheckEmptyFunctionArguments(tree.NodeDictionary);
+    }
 
 
+    protected EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(Dictionary<Token, Node<Token>> nodeDictionary)
+    {
         List<FunctionArgumentCheckResult> ValidFunctions = [];
         List<FunctionArgumentCheckResult> InvalidFunctions = [];
-        foreach (var entry in tree.NodeDictionary)
+        foreach (var entry in nodeDictionary)
         {
             var token = entry.Key;
             var node = entry.Value;
@@ -753,19 +749,19 @@ public class Parser : Tokenizer, IParser
         };
     }
 
-
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
-        //returns the names of the functions that are registered but have invalid argument count
-        //var inOrderTokens = GetInfixTokens(expression);
-        var postfixTokens = GetPostfixTokens(expression);
+        var tree = GetExpressionTree(expression);
+        return CheckFunctionArgumentsCount(tree.NodeDictionary);
+    }
 
-        var tree = GetExpressionTree(postfixTokens);
 
+    protected FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(Dictionary<Token, Node<Token>> nodeDictionary)
+    {
         HashSet<FunctionArgumentCheckResult> validFunctions = [];
         HashSet<FunctionArgumentCheckResult> invalidFunctions = [];
 
-        foreach (var entry in tree.NodeDictionary)
+        foreach (var entry in nodeDictionary)
         {
             var node = entry.Value;
             if (node.Value!.TokenType != TokenType.Function) continue;
@@ -824,17 +820,18 @@ public class Parser : Tokenizer, IParser
         };
     }
 
+
     public InvalidOperatorsCheckResult CheckOperators(string expression)
     {
-        //returns the names of the functions that are registered but have empty arguments
-       // var inOrderTokens = GetInfixTokens(expression);
-        var postfixTokens = GetPostfixTokens(expression);
-        var tree = GetExpressionTree(postfixTokens);
+        var tree = GetExpressionTree(expression);
+        return CheckOperators(tree.NodeDictionary);
+    }
 
-
+    protected static InvalidOperatorsCheckResult CheckOperators(Dictionary<Token, Node<Token>> nodeDictionary)
+    {
         List<OperatorArgumentCheckResult> ValidOperators = [];
         List<OperatorArgumentCheckResult> InvalidOperators = [];
-        foreach (var entry in tree.NodeDictionary)
+        foreach (var entry in nodeDictionary)
         {
             var token = entry.Key;
             var node = entry.Value;
@@ -869,18 +866,22 @@ public class Parser : Tokenizer, IParser
         };
     }
 
+
+
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
-        // Parse expression and build the tree
-        //var inOrderTokens = GetInfixTokens(expression);
-        var postfixTokens = GetPostfixTokens(expression);
-        var tree = GetExpressionTree(postfixTokens);
+        var tree = GetExpressionTree(expression);
+        return Parser.CheckOrphanArgumentSeparators(tree.NodeDictionary);
+    }
 
+
+    protected static InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary)
+    {
         List<int> validPositions = [];
         List<int> invalidPositions = [];
 
         // Traverse the tree and check for argument separators that have a parent other than argument separator or a function
-        foreach (var entry in tree.NodeDictionary)
+        foreach (var entry in nodeDictionary)
         {
             var token = entry.Key;
             var node = entry.Value;
@@ -894,7 +895,7 @@ public class Parser : Tokenizer, IParser
 
             // Find the parent node of this argument separator
             var parentFound = false;
-            foreach (var parentEntry in tree.NodeDictionary)
+            foreach (var parentEntry in nodeDictionary)
             {
                 var parentNode = parentEntry.Value;
 

@@ -36,10 +36,11 @@ public class Tokenizer : ITokenizer
 
         List<Token> tokens = [];
         MatchCollection matches;
-        //ONLY IDENTIFIERS AND LITERALS NEED REGEX MATCHING!
+
+        TokenPatterns tokenPatterns = _options.TokenPatterns;
 
         //open parenthesis with identifier (for functions)
-        string functionPattern = $@"(?<identifier>{_options.TokenPatterns.Identifier}\s*)(?<par>\{_options.TokenPatterns.OpenParenthesis})";
+        string functionPattern = $@"(?<identifier>{tokenPatterns.Identifier}\s*)(?<par>\{tokenPatterns.OpenParenthesis})";
         matches =
             _options.CaseSensitive ?
             Regex.Matches(expression, functionPattern) :
@@ -70,8 +71,8 @@ public class Tokenizer : ITokenizer
         //identifiers
         matches =
             _options.CaseSensitive ?
-            Regex.Matches(expression, _options.TokenPatterns.Identifier!) :
-            Regex.Matches(expression, _options.TokenPatterns.Identifier!, RegexOptions.IgnoreCase);
+            Regex.Matches(expression, tokenPatterns.Identifier!) :
+            Regex.Matches(expression, tokenPatterns.Identifier!, RegexOptions.IgnoreCase);
         if (matches.Count > 0)
         {
             //tokens.AddRange(matches.Select(m => new Token(TokenType.Identifier, m))); 
@@ -82,42 +83,31 @@ public class Tokenizer : ITokenizer
         }
 
         //literals
-        matches = Regex.Matches(expression, _options.TokenPatterns.Literal!);
+        matches = Regex.Matches(expression, tokenPatterns.Literal!);
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
 
-
-        ////open parenthesis
-        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.OpenParenthesis}");
-        //if (matches.Count != 0)
-        //    tokens.AddRange(matches.Select(m => new Token(TokenType.OpenParenthesis, m)));
-        ////close parenthesis
-        //matches = Regex.Matches(expression, $@"\{_options.TokenPatterns.CloseParenthesis}");
-        //if (matches.Count != 0)
-        //    tokens.AddRange(matches.Select(m => new Token(TokenType.ClosedParenthesis, m)));
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
             //if (c == _options.TokenPatterns.OpenParenthesis)
-            if (c == _options.TokenPatterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
+            if (c == tokenPatterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
-            else if (c == _options.TokenPatterns.CloseParenthesis)
+            else if (c == tokenPatterns.CloseParenthesis)
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
-            //else if (c == _options.TokenPatterns.ArgumentSeparator)
-            //    tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
 
         //allow any string as argument separator
-        matches = Regex.Matches(expression, Regex.Escape(_options.TokenPatterns.ArgumentSeparator!));
+        matches = Regex.Matches(expression, Regex.Escape(tokenPatterns.ArgumentSeparator!));
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.ArgumentSeparator, m)));
 
 
         //match unary operators that do NOT coincide with binary operators
         var uniqueUnary =
-            _options.TokenPatterns.Unary.Where(u => !_options.TokenPatterns.OperatorDictionary.ContainsKey(u.Name));
-        if (uniqueUnary?.Any() ?? false)
+            tokenPatterns.Unary.Where(u => !tokenPatterns.OperatorDictionary.ContainsKey(u.Name));
+        if (uniqueUnary.Any())
         {
             foreach (var op in uniqueUnary)
             {
@@ -128,7 +118,7 @@ public class Tokenizer : ITokenizer
         }
 
         //operators
-        foreach (var op in _options.TokenPatterns.Operators ?? [])
+        foreach (var op in tokenPatterns.Operators ?? [])
         {
             //matches = Regex.Matches(expression, $@"\{op.Name}");
             matches = Regex.Matches(expression, Regex.Escape(op.Name));
@@ -160,23 +150,34 @@ public class Tokenizer : ITokenizer
 
         //search for unary operators (assuming they are the same with binary operators)
         var potentialUnaryOperators = tokens.Where(t =>
-        t.TokenType == TokenType.Operator && _options.TokenPatterns.Unary!.Any(u => u.Name == t.Text));
-        foreach (var token in potentialUnaryOperators)
+        t.TokenType == TokenType.Operator && tokenPatterns.Unary.Any(u => u.Name == t.Text));
+        //foreach (var token in potentialUnaryOperators)
+        for (int i = 0; i < tokens.Count; i++)
         {
-            int tokenIndex = tokens.IndexOf(token);
-            var unary = _options.TokenPatterns.Unary!.First(u => u.Name == token.Text);
+            var token = tokens[i];
 
-            if (unary.Prefix)
+            // Only process operators that could be unary
+            if (token.TokenType != TokenType.Operator ||
+                !tokenPatterns.Unary.Any(u => u.Name == token.Text))
+                continue;
+
+            //int i = tokens.IndexOf(token);
+            var unaryOp = tokenPatterns.Unary.First(u => u.Name == token.Text);
+
+
+            if (unaryOp.Prefix)
             {
+                var prevToken = i > 0 ? tokens[i - 1] : null;
+
                 //if the previous token is an operator then the latter is a unary!
-                TokenType? previousTokenType = tokenIndex > 0 ? tokens[tokenIndex - 1].TokenType : null;
-                if (tokenIndex == 0 ||
+                TokenType? previousTokenType = i > 0 ? prevToken!.TokenType : null;
+                if (i == 0 ||
                     previousTokenType == TokenType.Operator ||
                     previousTokenType == TokenType.ArgumentSeparator ||
                     //the previous unary operator must not be prefix!
-                    previousTokenType == TokenType.OperatorUnary &&
-                        _options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex - 1].Text].Prefix ||
-                    previousTokenType == TokenType.OpenParenthesis ||
+                    previousTokenType == TokenType.OperatorUnary 
+                        //&&  _options.TokenPatterns.UnaryOperatorDictionary[prevToken!.Text].Prefix 
+                    || previousTokenType == TokenType.OpenParenthesis ||
                     previousTokenType == TokenType.Function)
                     token.TokenType = TokenType.OperatorUnary;
 
@@ -184,16 +185,16 @@ public class Tokenizer : ITokenizer
             }
 
             //unary.postfix (needs testing)
-
             //if the previous token is an operator then the latter is a unary!
-            TokenType? nextTokenType = tokenIndex < tokens.Count - 1 ? tokens[tokenIndex + 1].TokenType : null;
-            if (tokenIndex == tokens.Count - 1 ||
+            var nextToken = i < tokens.Count - 1 ? tokens[i + 1] : null;
+            TokenType? nextTokenType = i < tokens.Count - 1 ? nextToken!.TokenType : null;
+            if (i == tokens.Count - 1 ||
                 nextTokenType == TokenType.Operator ||
                 nextTokenType == TokenType.ArgumentSeparator ||
                 //the previous unary operator must not be prefix!
-                nextTokenType == TokenType.OperatorUnary &&
-                    !_options.TokenPatterns.UnaryOperatorDictionary[tokens[tokenIndex + 1].Text].Prefix ||
-                nextTokenType == TokenType.ClosedParenthesis)
+                nextTokenType == TokenType.OperatorUnary
+                    //&& !_options.TokenPatterns.UnaryOperatorDictionary[nextToken!.Text].Prefix
+                || nextTokenType == TokenType.ClosedParenthesis)
                 token.TokenType = TokenType.OperatorUnary;
         }
 
@@ -417,6 +418,8 @@ public class Tokenizer : ITokenizer
         var infixTokens = GetInfixTokens(expression);
         return GetPostfixTokens(infixTokens);
     }
+
+    
 
     #region Utility methods
 
