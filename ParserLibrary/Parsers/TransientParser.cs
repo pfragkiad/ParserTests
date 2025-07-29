@@ -16,16 +16,16 @@ public class TransientParser : Parser, ITransientParser
 
 
 
-    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options, string expression) 
-        :base(logger, options) 
-    { 
+    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options, string expression)
+        : base(logger, options)
+    {
         Expresion = expression;
     }
 
     //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
     //: base(logger, options)
     //{ 
-    
+
     //}
 
     #region 
@@ -34,7 +34,7 @@ public class TransientParser : Parser, ITransientParser
     #region Expression fields
 
     protected List<Token> _infixTokens = [];
-    protected List<Token> _postfixTokens = [];  
+    protected List<Token> _postfixTokens = [];
 
 
     private string? _expression;
@@ -63,7 +63,7 @@ public class TransientParser : Parser, ITransientParser
 
         _nodeValueDictionary = [];
         _nodeDictionary = [];
-        _stack = []; 
+        _stack = [];
     }
 
     //public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)
@@ -80,21 +80,25 @@ public class TransientParser : Parser, ITransientParser
     //    return base.EvaluateType(postfixTokens, variables, stack, nodeDictionary,nodeValueDictionary);
     //}
 
-    public object? Evaluate(Dictionary<string, object?>? variables = null)
-    {
-        return base.Evaluate(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
-    }
+    public object? Evaluate(Dictionary<string, object?>? variables = null) =>
+        Evaluate(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
 
-    public Type EvaluateType(Dictionary<string, object?>? variables = null)
-    {
-        return base.EvaluateType(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
-    }
+    public Type EvaluateType(Dictionary<string, object?>? variables = null) =>
+        EvaluateType(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
+
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
-        base.CheckEmptyFunctionArguments(_nodeDictionary);
+        CheckEmptyFunctionArguments(_nodeDictionary);
+
+    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
+        CheckFunctionArgumentsCount(_nodeDictionary);
+
+    public InvalidOperatorsCheckResult CheckOperators() =>
+        CheckOperators(_nodeDictionary);
 
 
-
+    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
+        CheckOrphanArgumentSeparators(_nodeDictionary);
 
     #endregion
 
