@@ -68,7 +68,7 @@ public class CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions>
 
 }
 
-public class CustomTypeTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : TransientParser(logger, options)
+public class CustomTypeStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
 {
 
     //we assume that literals are integer numbers only

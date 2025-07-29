@@ -23,13 +23,14 @@ public class UnitTestParser
     }
 
     [Fact]
-    public void TestCustomIntTransientParser()
+    public void TestCustomIntStatefulParser()
     {
-        var parserApp = App.GetTransientParserApp<IntTransientParser>();
-        ITransientParser parser = parserApp.Services.GetRequiredTransientParser();
+        var parserApp = App.GetStatefulParserApp<IntStatefulParser>();
+        IStatefulParser parser = parserApp.Services.GetRequiredStatefulParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
-        int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } });
+        parser.Expression = expr;
+        int result = (int)parser.Evaluate(new() { { "a", 8 }, { "asd", 10 } });
 
         Assert.Equal<int>(860, result);
     }
@@ -96,25 +97,26 @@ public class UnitTestParser
     }
 
     [Fact]
-    public void TestCustomTypeTransientParser()
+    public void TestCustomTypeStatefulParser()
     {
         //Sample adding the library to our own host
         //var app = Host
         //    .CreateDefaultBuilder()
         //    .ConfigureServices((context, services) =>
         //     {
-        //         services.AddTransientParserLibrary<CustomTypeTransientParser>(context);
+        //         services.AddStatefulParserLibrary<CustomTypeStatefulParser>(context);
         //     }).Build();
-        //var parser = app.Services.GetTransientParser();
+        //var parser = app.Services.GetStatefulParser();
 
         //or 
-        //var app = App.GetTransientParserApp<CustomTypeTransientParser>();
-        //var parser = app.Services.GetTransientParser();
+        //var app = App.GetStatefulParserApp<CustomTypeStatefulParser>();
+        //var parser = app.Services.GetStatefulParser();
 
         //or
-        var parser = App.GetCustomTransientParser<CustomTypeTransientParser>();
+        var parser = App.GetCustomStatefulParser<CustomTypeStatefulParser>();
+        parser.Expression = "a + add(b,4) + 5";
 
-        Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+        Item result = (Item)parser.Evaluate(
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }

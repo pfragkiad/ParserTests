@@ -338,7 +338,6 @@ ppublic class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> o
     public static Vector3 DoubleToVector3(object arg)
         => new(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
 
-
     public static bool IsNumeric(object arg) =>
            arg is double || arg is int || arg is float;
 
@@ -446,7 +445,7 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #3: `CustomTypeParser` and the `CustomTypeTransientParser`
+## Custom parser examples #3: `CustomTypeParser` and the `CustomTypeStatefulParser`
 
 Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
 
@@ -471,6 +470,7 @@ public class Item
 
 }
 ```
+
 A custom parser that uses custom types derives from the ```Parser``` class. Because the ```Parser``` class does not assume any type in advance, we should override the ```EvaluateLiteral``` function which is used to parse the integer numbers in the string. In the following example we define the `+` operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so it is easier to write its implementation:
 
 ```cs
@@ -534,77 +534,72 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-<!--
-
-### `CustomTypeTransientParser` and the `NodeValueDictionary`
+### `CustomTypeStatefulParser` and the `NodeValueDictionary`
 
 We can see from the example of the `CustomTypeParser`, that each function carries a `nodeValueDictionary` argument. An expected remark, is why this happens. All `Parser` subclasses are expected to be used as singletons, so to guarantee the thread-safe operations they are state-less. Being stateless, means that if we want a lot of parallel requests to be handled by the same `Parser` instance, then each expression has to store its own version of `nodeValueDictionary`. The latter is literally a `Dictionary` which stores the values, which have been evaluated at each stage of the parsing.
+
 In case, we want one of the following 2 cases:
 * a `Parser` instance per expression
 * a `Parser` that handles only non-parallel requests (such as the case of a terminal console),
-then the `NodeValueDictionary` could possibly be stored as an internal field and simplify the subclass definition. That's why the library contains another Parser variant named `TransientParser`. Subclasses of `TransientParser` (which implement the `ITransientParser` interface), are typically created with transient scope (not singleton), in order to avoid any conflict. All `TransientParser` instances come with state and have the `nodeValueDictionary` as an internal protected member. The example below, shows how we would implement a `TransientParser` for the same `Item`. The syntax of the `CustomTypeTransientParser` is simpler than the syntax of the `CustomTypeParser`, because it practically omits passing the `nodeValueDictionary` for each function call. Let's see how:
+
+then the `NodeValueDictionary` could possibly be stored as an internal field and simplify the subclass definition. That's why the library contains another Parser variant named `StatefulParser`. Subclasses of `StatefulParser` (which implement the `IStatefulParser` interface), are typically created with transient scope (not singleton), in order to avoid any conflict. All `StatefulParser` instances come with state and have the `nodeValueDictionary` as an internal protected member. The example below, shows how we would implement a `StatefulParser` for the same `Item`. The syntax of the `CustomTypeStatefulParser` is simpler than the syntax of the `CustomTypeParser`, because it practically omits passing the `nodeValueDictionary` for each function call. Let's see how:
 
 ```cs
-public class CustomTypeTransientParser : TransientParser
+public class CustomTypeStatefulParser : StatefulParser
 {
-    public CustomTypeTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) :
-        base(logger, options)
+    public CustomTypeStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) :
+        base(logger, options, expression)
     { }
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
 
-    protected override object EvaluateOperator(Node<Token> operatorNode)
+    protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (object LeftOperand, object RightOperand) = GetBinaryArguments(operatorNode);
-
-        if (operatorNode.Text == "+")
+        if (operatorName == "+")
         {
-            _logger.LogDebug("Adding with + operator ${left} and ${right}", LeftOperand, RightOperand);
+            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
 
-            
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
-            if (LeftOperand is Item && RightOperand is Item)
-                return (Item)LeftOperand + (Item)RightOperand;
+            if (leftOperand is Item left && rightOperand is Item right)
+                return left + right;
 
-            return LeftOperand is Item ? (Item)LeftOperand + (int)RightOperand : (int)LeftOperand + (Item)RightOperand;
+            return leftOperand is Item ?
+                (Item)leftOperand + (int)rightOperand! : (int)leftOperand! + (Item)rightOperand!;
         }
 
-        return base.EvaluateOperator(operatorNode);
+        return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
     }
 
-    protected override object EvaluateFunction(Node<Token> functionNode)
+    protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        var a = GetFunctionArguments(functionNode);
-
         //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
-        //return functionNode.Text switch
-        return _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text switch
+        string actualFunctionName = _options.CaseSensitive ? functionName : functionName.ToLower();
+        
+        return actualFunctionName switch
         {
-            "add" => (Item)a[0] + (int)a[1],
-            _ => base.EvaluateFunction(functionNode)
+            "add" => (Item)args[0]! + (int)args[1]!,
+            _ => base.EvaluateFunction(functionName, args)
         };
     }
 }
 ```
 
-In order to use the `TransientParser` we call the `GetCustomTransientParser` instead of the `GetCustomParser` function as shown below. Other than that, the syntax of the `Evaluate` function call is unchanged:
+In order to use the `StatefulParser` we call the `GetCustomStatefulParser` instead of the `GetCustomParser` function as shown below. Note that the `StatefulParser` requires the expression to be provided during construction. Other than that, the syntax of the `Evaluate` function call is simplified as it doesn't require the expression parameter:
 
 ```cs
-var parser = App.GetCustomTransientParser<CustomTypeTransientParser>();
+var parser = App.GetCustomStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
 
-Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+Item result = (Item)parser.Evaluate(
     new() {
         {"a", new Item { Name="foo", Value = 3}  },
         {"b", new Item { Name="bar"}  }
     });
 
-Assert.Equal("foo bar 12", result.ToString());
+Console.WriteLine(result); // foo bar 12
 ```
 
 ## _more examples to follow **soon**..._
-
--->
 
 # Customizing ParserLibrary
 
@@ -804,7 +799,7 @@ and the following functions:
 - `logn(x,n)`: Base n logarithm
 - `max(x,y)`: Maximum
 - `min(x,y)`: Minimum
-- `pow(x,y)`: Power function (x^y)
+- `pow(x,y): Power function (x^y)
 - `round(x,y)`: Round to y decimal digits
 - `sin(x)`: Sine (x in radians)
 - `sind(x)`: Sine (x in degrees)
@@ -953,6 +948,7 @@ Note, that we are not using any generic types for the node values. The array of 
 
 
 ### _more documentation to follow **soon**..._
+
 
 
 

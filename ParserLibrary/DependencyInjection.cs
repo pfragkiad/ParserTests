@@ -19,15 +19,15 @@ public static class DependencyInjection
                     .AddTokenizer()
                     .AddParser<TParser>();
     }
-    public static IServiceCollection AddTransientParserLibrary<TParser>(
+    public static IServiceCollection AddStatefulParserLibrary<TParser>(
         this IServiceCollection services,
         HostBuilderContext context,
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser
     {
         return services
                     .ConfigureTokenizerOptions(context, tokenizerSection)
                     .AddTokenizer()
-                    .AddTransientParser<TParser>();
+                    .AddStatefulParser<TParser>();
     }
     public static IServiceCollection ConfigureTokenizerOptions(
         this IServiceCollection services,
@@ -47,13 +47,13 @@ public static class DependencyInjection
 
     public static IParser GetRequiredParser(this IServiceProvider services) => services.GetRequiredService<IParser>();
 
-    public static IServiceCollection AddTransientParser<TParser>(this IServiceCollection services) where TParser : TransientParser
-            => services.AddTransient<ITransientParser, TParser>();
+    public static IServiceCollection AddStatefulParser<TParser>(this IServiceCollection services) where TParser : StatefulParser
+            => services.AddTransient<IStatefulParser, TParser>();
 
 
-    public static ITransientParser? GetTransientParser(this IServiceProvider services) => services.GetService<ITransientParser>();
+    public static IStatefulParser? GetStatefulParser(this IServiceProvider services) => services.GetService<IStatefulParser>();
 
-    public static ITransientParser GetRequiredTransientParser(this IServiceProvider services) => services.GetRequiredService<ITransientParser>();
+    public static IStatefulParser GetRequiredStatefulParser(this IServiceProvider services) => services.GetRequiredService<IStatefulParser>();
 
     #endregion
 

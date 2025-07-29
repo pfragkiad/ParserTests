@@ -1,5 +1,4 @@
-﻿
-using ParserLibrary.Parsers;
+﻿using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 
 namespace ParserUnitTests.Parsers;
@@ -47,7 +46,7 @@ public class IntParser(ILogger<Parser> logger,  IOptions<TokenizerOptions> optio
     }
 }
 
-public class IntTransientParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : TransientParser(logger, options)
+public class IntStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);

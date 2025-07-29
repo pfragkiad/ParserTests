@@ -37,9 +37,9 @@ public static class App
         return app;
     }
 
-    public static IHost GetTransientParserApp<TParser>(
+    public static IHost GetStatefulParserApp<TParser>(
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -50,7 +50,7 @@ public static class App
            .ConfigureServices((context, services) =>
            {
                services
-               .AddTransientParserLibrary<TParser>(context, tokenizerSection);
+               .AddStatefulParserLibrary<TParser>(context, tokenizerSection);
            })
            .UseSerilog((context, configuration) =>
            {
@@ -71,10 +71,10 @@ public static class App
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser =>
         GetParserApp<TParser>(configFile,tokenizerSection).Services.GetRequiredParser();
 
-    public static ITransientParser GetCustomTransientParser<TParser>(
+    public static IStatefulParser GetCustomStatefulParser<TParser>(
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : TransientParser =>
-        GetTransientParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredTransientParser();
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
+        GetStatefulParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredStatefulParser();
 
     public static IParser? GetDefaultParser(
         string configFile = "appsettings.json",

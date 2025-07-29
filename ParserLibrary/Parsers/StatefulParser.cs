@@ -6,20 +6,23 @@ namespace ParserLibrary.Parsers;
 /// <summary>
 /// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.
 /// </summary>
-public class TransientParser : Parser, ITransientParser
+public class StatefulParser : Parser, IStatefulParser
 {
 
     //created for simplifying and caching dictionaries
     protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
-    protected Stack<Token> _stack = new();
+    protected Stack<Token> _stack =[];
 
+    protected List<Token> _infixTokens = [];
+    protected List<Token> _postfixTokens = [];
 
-
-    public TransientParser(ILogger<TransientParser> logger, IOptions<TokenizerOptions> options, string expression)
+    public StatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string? expression = null)
         : base(logger, options)
     {
-        Expresion = expression;
+        //assign expression if not null or whitespace
+        if (!string.IsNullOrWhiteSpace(expression))
+            Expression = expression;
     }
 
     //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
@@ -33,12 +36,9 @@ public class TransientParser : Parser, ITransientParser
 
     #region Expression fields
 
-    protected List<Token> _infixTokens = [];
-    protected List<Token> _postfixTokens = [];
-
 
     private string? _expression;
-    public string? Expresion
+    public string? Expression
     {
         get => _expression;
         set
@@ -66,19 +66,20 @@ public class TransientParser : Parser, ITransientParser
         _stack = [];
     }
 
-    //public override object? Evaluate(string s, Dictionary<string, object?>? variables = null)
-    //{
-    //    Reset();
+    //also resets the internal expression
+    public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
+    {
+        Expression = expression;
+        return Evaluate(variables);
+    }
 
-    //    var postfixTokens = GetPostfixTokens(s);
-    //    return base.Evaluate(postfixTokens, variables,stack,nodeDictionary,nodeValueDictionary);
-    //}
+    //also resets the internal expression
 
-    //public override Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
-    //{
-    //    var postfixTokens = GetPostfixTokens(s);
-    //    return base.EvaluateType(postfixTokens, variables, stack, nodeDictionary,nodeValueDictionary);
-    //}
+    public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
+    {
+        Expression = expression;
+        return EvaluateType(variables);
+    }
 
     public object? Evaluate(Dictionary<string, object?>? variables = null) =>
         Evaluate(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
@@ -99,6 +100,9 @@ public class TransientParser : Parser, ITransientParser
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
         CheckOrphanArgumentSeparators(_nodeDictionary);
+
+
+
 
     #endregion
 

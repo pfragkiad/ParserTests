@@ -1,7 +1,9 @@
 ﻿namespace ParserLibrary.Parsers;
 
-public interface ITransientParser : IParser
+public interface IStatefulParser : IParser
 {
+    string? Expression { get; set; }
+
     object? Evaluate(Dictionary<string, object?>? variables = null);
 
 
