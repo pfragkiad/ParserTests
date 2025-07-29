@@ -12,19 +12,22 @@ public static class DependencyInjection
         return services
                     .ConfigureTokenizerOptions(context, tokenizerSection)
                     .AddTokenizer()
-                    .AddParser<TParser>();
+                    .AddParser<TParser>()
+                    .AddStatefulParserFactory();
     }
-    public static IServiceCollection AddStatefulParserLibrary<TParser>(
+
+    public static IServiceCollection AddStatefulParserLibrary<TStatefulParser>( //to be removed in future
         this IServiceCollection services,
         HostBuilderContext context,
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TStatefulParser : StatefulParser
     {
         return services
                     .ConfigureTokenizerOptions(context, tokenizerSection)
                     .AddTokenizer()
-                    .AddStatefulParser<TParser>()
+                    .AddStatefulParser<TStatefulParser>()
                     .AddStatefulParserFactory();
     }
+
     public static IServiceCollection ConfigureTokenizerOptions(
         this IServiceCollection services,
         HostBuilderContext context,
@@ -36,7 +39,7 @@ public static class DependencyInjection
     public static ITokenizer? GetTokenizer(this IServiceProvider services) => services.GetService<ITokenizer>();
 
     public static IServiceCollection AddParser<TParser>(this IServiceCollection services) where TParser : Parser
-             => services.AddScoped<IParser, TParser>();
+             => services.AddSingleton<IParser, TParser>();
 
 
     public static IParser? GetParser(this IServiceProvider services) => services.GetService<IParser>();
@@ -47,7 +50,7 @@ public static class DependencyInjection
             => services.AddTransient<IStatefulParser, TParser>();
 
     public static IServiceCollection AddStatefulParserFactory(this IServiceCollection services) =>
-        services.AddScoped<IStatefulParserFactory, StatefulParserFactory>();
+        services.AddSingleton<IStatefulParserFactory, StatefulParserFactory>();
 
     public static IStatefulParser? GetStatefulParser(this IServiceProvider services) => services.GetService<IStatefulParser>();
 

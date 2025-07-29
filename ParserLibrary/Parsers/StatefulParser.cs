@@ -23,26 +23,26 @@ public class StatefulParserFactory : IStatefulParserFactory
     /// <summary>
     /// Creates a new StatefulParser instance with the specified expression
     /// </summary>
-    /// <typeparam name="TParser">The type of StatefulParser to create</typeparam>
+    /// <typeparam name="TStatefulParser">The type of StatefulParser to create</typeparam>
     /// <param name="expression">The expression to parse</param>
     /// <returns>A new StatefulParser instance configured with the expression</returns>
-    public TParser Create<TParser>(string expression) where TParser : StatefulParser
+    public TStatefulParser Create<TStatefulParser>(string expression) where TStatefulParser : StatefulParser
     {
         try
         {
             // Create the parser instance using reflection since we need to pass the expression to the constructor
-            var parserInstance = (TParser)Activator.CreateInstance(typeof(TParser), 
-                _serviceProvider.GetRequiredService<ILogger<TParser>>(), 
+            var parserInstance = (TStatefulParser)Activator.CreateInstance(typeof(TStatefulParser), 
+                _serviceProvider.GetRequiredService<ILogger<TStatefulParser>>(), 
                 _options, 
                 expression)!;
 
-            _logger.LogDebug("Created StatefulParser of type {ParserType} with expression: {Expression}", typeof(TParser).Name, expression);
+            _logger.LogDebug("Created StatefulParser of type {ParserType} with expression: {Expression}", typeof(TStatefulParser).Name, expression);
             
             return parserInstance;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create StatefulParser of type {ParserType} with expression: {Expression}", typeof(TParser).Name, expression);
+            _logger.LogError(ex, "Failed to create StatefulParser of type {ParserType} with expression: {Expression}", typeof(TStatefulParser).Name, expression);
             throw;
         }
     }
