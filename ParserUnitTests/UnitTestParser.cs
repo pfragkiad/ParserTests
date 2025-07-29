@@ -126,6 +126,41 @@ public class UnitTestParser
     }
 
     [Fact]
+    public void TestStatefulParserFactory()
+    {
+        // Test the new factory approach
+        var parser = App.CreateStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
+
+        Item result = (Item)parser.Evaluate(
+            new() {
+                {"a", new Item { Name="foo", Value = 3}  },
+                {"b", new Item { Name="bar"}  }
+            });
+
+        Assert.Equal("foo bar 12", result.ToString());
+    }
+
+    [Fact]
+    public void TestStatefulParserFactoryWithDifferentExpressions()
+    {
+        // Create multiple parsers with different expressions using the factory
+        var parser1 = App.CreateStatefulParser<CustomTypeStatefulParser>("a + 10");
+        var parser2 = App.CreateStatefulParser<CustomTypeStatefulParser>("b * 5");
+
+        var variables = new Dictionary<string, object?> 
+        { 
+            {"a", new Item { Name="test1", Value = 5 }}, 
+            {"b", new Item { Name="test2", Value = 3 }} 
+        };
+
+        var result1 = (Item)parser1.Evaluate(variables);
+        var result2 = (Item)parser2.Evaluate(variables);
+
+        Assert.Equal("test1 15", result1.ToString());
+        Assert.Equal("test2 15", result2.ToString()); // 3 * 5 = 15
+    }
+
+    [Fact]
     public void TestComplexParser()
     {
         //Complex c1 = new(1, 1);

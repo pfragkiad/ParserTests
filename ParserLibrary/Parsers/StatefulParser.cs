@@ -1,7 +1,52 @@
-﻿using ParserLibrary.Tokenizers;
+﻿using Microsoft.Extensions.DependencyInjection;
+using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers;
+
+/// <summary>
+/// Factory for creating StatefulParser instances with expressions
+/// </summary>
+public class StatefulParserFactory : IStatefulParserFactory
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<StatefulParserFactory> _logger;
+    private readonly IOptions<TokenizerOptions> _options;
+
+    public StatefulParserFactory(IServiceProvider serviceProvider, ILogger<StatefulParserFactory> logger, IOptions<TokenizerOptions> options)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _options = options;
+    }
+
+    /// <summary>
+    /// Creates a new StatefulParser instance with the specified expression
+    /// </summary>
+    /// <typeparam name="TParser">The type of StatefulParser to create</typeparam>
+    /// <param name="expression">The expression to parse</param>
+    /// <returns>A new StatefulParser instance configured with the expression</returns>
+    public TParser Create<TParser>(string expression) where TParser : StatefulParser
+    {
+        try
+        {
+            // Create the parser instance using reflection since we need to pass the expression to the constructor
+            var parserInstance = (TParser)Activator.CreateInstance(typeof(TParser), 
+                _serviceProvider.GetRequiredService<ILogger<TParser>>(), 
+                _options, 
+                expression)!;
+
+            _logger.LogDebug("Created StatefulParser of type {ParserType} with expression: {Expression}", typeof(TParser).Name, expression);
+            
+            return parserInstance;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create StatefulParser of type {ParserType} with expression: {Expression}", typeof(TParser).Name, expression);
+            throw;
+        }
+    }
+}
 
 /// <summary>
 /// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.

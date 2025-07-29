@@ -76,6 +76,20 @@ public static class App
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
         GetStatefulParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredStatefulParser();
 
+    /// <summary>
+    /// Creates a StatefulParser with the specified expression using the factory pattern
+    /// </summary>
+    /// <typeparam name="TParser">The type of StatefulParser to create</typeparam>
+    /// <param name="expression">The expression to parse</param>
+    /// <param name="configFile">Configuration file path</param>
+    /// <param name="tokenizerSection">Tokenizer configuration section</param>
+    /// <returns>A StatefulParser instance configured with the expression</returns>
+    public static TParser CreateStatefulParser<TParser>(
+        string expression,
+        string configFile = "appsettings.json",
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
+        GetStatefulParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredStatefulParserFactory().Create<TParser>(expression);
+
     public static IParser? GetDefaultParser(
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) =>
