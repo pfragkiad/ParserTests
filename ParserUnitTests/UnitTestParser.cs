@@ -25,8 +25,9 @@ public class UnitTestParser
     [Fact]
     public void TestCustomIntStatefulParser()
     {
-        var parserApp = App.GetStatefulParserApp<IntStatefulParser>();
-        IStatefulParser parser = parserApp.Services.GetRequiredStatefulParser();
+        var parserApp = App.GetStatefulParserApp();
+        var factory = parserApp.Services.GetRequiredStatefulParserFactory();    
+        var parser = factory.Create<IntStatefulParser>("a+tan(8+5) + sin(321+asd*2^2)"); //returns 860
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
         parser.Expression = expr;
@@ -86,7 +87,7 @@ public class UnitTestParser
     [Fact]
     public void TestCustomTypeParser()
     {
-        var parser = App.GetCustomParser<CustomTypeParser>();
+        var parser = App.GetCustomParser<ItemParser>();
         Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
@@ -113,8 +114,7 @@ public class UnitTestParser
         //var parser = app.Services.GetStatefulParser();
 
         //or
-        var parser = App.GetCustomStatefulParser<CustomTypeStatefulParser>();
-        parser.Expression = "a + add(b,4) + 5";
+        var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
 
         Item result = (Item)parser.Evaluate(
             new() {
@@ -129,7 +129,7 @@ public class UnitTestParser
     public void TestStatefulParserFactory()
     {
         // Test the new factory approach
-        var parser = App.CreateStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
+        var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
 
         Item result = (Item)parser.Evaluate(
             new() {
@@ -144,8 +144,8 @@ public class UnitTestParser
     public void TestStatefulParserFactoryWithDifferentExpressions()
     {
         // Create multiple parsers with different expressions using the factory
-        var parser1 = App.CreateStatefulParser<CustomTypeStatefulParser>("a + 10");
-        var parser2 = App.CreateStatefulParser<CustomTypeStatefulParser>("b * 5");
+        var parser1 = App.CreateStatefulParser<ItemStatefulParser>("a + 10");
+        var parser2 = App.CreateStatefulParser<ItemStatefulParser>("b * 5");
 
         var variables = new Dictionary<string, object?> 
         { 

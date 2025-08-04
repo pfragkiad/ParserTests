@@ -25,7 +25,7 @@ public static class App
            .ConfigureServices((context, services) =>
             {
                 services
-                .AddParserLibrary<TParser>(context,tokenizerSection);
+                .AddParserLibrary<TParser>(context, tokenizerSection);
             })
            .UseSerilog((context, configuration) =>
            {
@@ -37,9 +37,9 @@ public static class App
         return app;
     }
 
-    public static IHost GetStatefulParserApp<TParser>(
+    public static IHost GetStatefulParserApp(
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser
+        string tokenizerSection = TokenizerOptions.TokenizerSection)
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -50,7 +50,7 @@ public static class App
            .ConfigureServices((context, services) =>
            {
                services
-               .AddStatefulParserLibrary<TParser>(context, tokenizerSection);
+               .AddStatefulParserLibrary(context, tokenizerSection);
            })
            .UseSerilog((context, configuration) =>
            {
@@ -69,34 +69,30 @@ public static class App
     public static IParser GetCustomParser<TParser>(
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser =>
-        GetParserApp<TParser>(configFile,tokenizerSection).Services.GetRequiredParser();
+        GetParserApp<TParser>(configFile, tokenizerSection)
+            .Services
+            .GetRequiredParser();
 
-    public static IStatefulParser GetCustomStatefulParser<TParser>(
-        string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
-        GetStatefulParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredStatefulParser();
-
-    /// <summary>
-    /// Creates a StatefulParser with the specified expression using the factory pattern
-    /// </summary>
-    /// <typeparam name="TParser">The type of StatefulParser to create</typeparam>
-    /// <param name="expression">The expression to parse</param>
-    /// <param name="configFile">Configuration file path</param>
-    /// <param name="tokenizerSection">Tokenizer configuration section</param>
-    /// <returns>A StatefulParser instance configured with the expression</returns>
-    public static TParser CreateStatefulParser<TParser>(
+    public static IStatefulParser CreateStatefulParser<TParser>(
         string expression,
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
-        GetStatefulParserApp<TParser>(configFile, tokenizerSection).Services.GetRequiredStatefulParserFactory().Create<TParser>(expression);
+        GetStatefulParserApp(configFile, tokenizerSection)
+            .Services
+            .GetRequiredStatefulParserFactory()
+            .Create<TParser>(expression);
 
     public static IParser? GetDefaultParser(
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) =>
-        GetParserApp<DefaultParser>(configFile, tokenizerSection).Services.GetParser();
+            GetParserApp<DefaultParser>(configFile, tokenizerSection)
+            .Services
+            .GetParser();
 
     public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json", string tokenizerSection = TokenizerOptions.TokenizerSection) =>
-        GetParserApp<DefaultParser>(configFile).Services.GetRequiredParser();
+        GetParserApp<DefaultParser>(configFile)
+        .Services
+        .GetRequiredParser();
 
     public static double Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
@@ -106,7 +102,7 @@ public static class App
     #endregion
 
 
- 
+
     private static void Tests()
     {
         //#1a

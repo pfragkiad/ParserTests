@@ -534,9 +534,7 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-### `CustomTypeStatefulParser` and the `NodeValueDictionary`
-
-We can see from the example of the `CustomTypeParser`, that each function carries a `nodeValueDictionary` argument. An expected remark, is why this happens. All `Parser` subclasses are expected to be used as singletons, so to guarantee the thread-safe operations they are state-less. Being stateless, means that if we want a lot of parallel requests to be handled by the same `Parser` instance, then each expression has to store its own version of `nodeValueDictionary`. The latter is literally a `Dictionary` which stores the values, which have been evaluated at each stage of the parsing.
+### `CustomTypeStatefulParser` and the `StatefulParserFactory`
 
 In case, we want one of the following 2 cases:
 * a `Parser` instance per expression
@@ -585,10 +583,13 @@ public class CustomTypeStatefulParser : StatefulParser
 }
 ```
 
-In order to use the `StatefulParser` we call the `GetCustomStatefulParser` instead of the `GetCustomParser` function as shown below. Note that the `StatefulParser` requires the expression to be provided during construction. Other than that, the syntax of the `Evaluate` function call is simplified as it doesn't require the expression parameter:
+#### Using the StatefulParserFactory
+
+The recommended way to create `StatefulParser` instances is through the `StatefulParserFactory`, which properly handles dependency injection and provides the expression during construction. The factory pattern ensures that each parser instance is created with the correct dependencies and expression:
 
 ```cs
-var parser = App.GetCustomStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
+// Using the factory pattern (recommended)
+var parser = App.CreateStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
 
 Item result = (Item)parser.Evaluate(
     new() {
@@ -599,355 +600,28 @@ Item result = (Item)parser.Evaluate(
 Console.WriteLine(result); // foo bar 12
 ```
 
-## _more examples to follow **soon**..._
-
-# Customizing ParserLibrary
-
-## `appsettings.json` configuration file
-
-The `appsettings.json` configuration file is crucial, when the user wants to have precise control over the tokenizer and the logger as well.
-The library is configured to use Serilog for debugging and informational purposes. The Serilog section (see [Serilog configuration](https://github.com/serilog/serilog-settings-configuration) for more) typically can be configured to output to the Console and/or to an external file. In order to show less messages in the case below, we can use `"Information"` instead of `"Debug"` for the `Console` output. The logger can be accessed via the `_logger` field in every `Parser` subclass, so we can output debug/informational/critical messages to the screen/to a file in a controlled manner. The `_logger` field is of type `ILogger`, so Serilog is not the only type of logger that can be used (although it is recommended).
-The tokenizer options include the following properties:
- - `caseSensitive` : if false, then the tokenizer/parser should be case insensitive
- - `tokenPatterns` : this includes the regular expression patterns or simple string characters for identifying any token
-   - `identifier` : regular expression to identify variable and function names as tokens
-   - `literal` : regular expresssion to identify all literal -typically numeric- values
-   - `openParenthesis`, `closeParenthesis`, `argumentSeparator` : the characters which correspond to the parenthesis pair and the argument separator
-   - `unary` : the unary array defines all unary operators. The priority of unary operator priority is in general higher than the binary operators
-   - `operators` : the operators array defines all binary operators. All binary operators are left-to-right by default except if specified otherwise (just like the exponent operator `'^'`)
-Operators with higher `priority` have higher precedence for the calculations. The priority is overriden as always via the use of parentheses, which are identified as defined above.
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": "Debug",
-    "WriteTo": [
-      {
-        "Name": "Console",
-        "Args": {
-          "restrictedToMinimumLevel": "Debug"
-        }
-      }
-    ]
-  },
-
-  "tokenizer":  {
-    "version": "1.0",
-    "caseSensitive": false,
-    "tokenPatterns": {
-      "identifier": "[A-Za-z_]\\w*",
-      "literal": "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
-      "openParenthesis": "(",
-      "closeParenthesis": ")",
-      "argumentSeparator": ",",
-      "unary": [
-        {
-          "name": "-",
-          "priority": 3,
-          "prefix": true
-        },
-        {
-          "name": "+",
-          "priority": 3,
-          "prefix": true
-        },
-        {
-          "name": "!",
-          "priority": 3,
-          "prefix": true
-        },
-        {
-          "name": "%",
-          "priority": 3,
-          "prefix": false
-        },
-        {
-          "name": "*",
-          "priority": 3,
-          "prefix": false
-        }
-      ],
-      "operators": [
-        {
-          "name": ",",
-          "priority": 0
-        },
-        {
-          "name": "+",
-          "priority": 1
-        },
-        {
-          "name": "-",
-          "priority": 1
-        },
-        {
-          "name": "*",
-          "priority": 2
-        },
-        {
-          "name": "/",
-          "priority": 2
-        },
-        {
-          "name": "^",
-          "priority": 4,
-          "lefttoright": false
-        },
-        {
-          "name": "@",
-          "priority": 4
-        }
-      ]
-    }
-  }
-}
-
-```
-
-The `appsettings.json` file should exist in the same folder with the executable, so be sure that the file is set to be copied to the output directory. For example, inside the project file, the following block should be included:
-
-```xml
-<ItemGroup>
-    <EmbeddedResource Include="appsettings.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-</ItemGroup>
-```
-
-Note that we are not bound to use the specific name for the configuration file. For example, we might want to keep the `appsettings.json` file for the logger configuration, and have another file `parsersettings.json` for the tokenizer (which should be also in the same directory with the executable). In order to define the `parsersettings.json` file, we define it as an argument when retrieving the `IHost` app instance, or immediately the `IParser` parser instance via the following calls:
+Alternatively, if you need direct access to the factory:
 
 ```cs
-var app = App.GetParserApp<DefaultParser>("parsersettings.json");
-var parser = app.Services.GetParser();
+// Manual access to the factory
+var app = App.GetStatefulParserApp();
+var factory = app.Services.GetRequiredStatefulParserFactory();
+var parser = factory.Create<CustomTypeStatefulParser>("a + add(b,4) + 5");
 
-//or to immediately get the parser
+Item result = (Item)parser.Evaluate(
+    new() {
+        {"a", new Item { Name="foo", Value = 3}  },
+        {"b", new Item { Name="bar"}  }
+    });
 
-var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
+Console.WriteLine(result); // foo bar 12
 ```
 
-Note, that in both cases above, the `appsettings.json` is also read (if found). The `parsersettings.json` file has higher priority, in case there are some conflicting options.
-
-
-If you want to extend your own `IHostBuilder` then this is easily feasible via the `AddParserLibrary` extension method. This includes the `ITokenizer`, the `IParser` and the `TokenizerOptions`. Examples of using the extension methods are given below:
-```cs
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using ParserLibrary;
-...
- IHostBuilder builder = Host.CreateDefaultBuilder()
-   ...
-   .ConfigureServices((context, services) =>
-    {
-        services
-        //NOTE: TParser should be one of the derived parsers such as DefaultParser
-        .AddParserLibrary<TParser>(context) //extension method. 
-        ...
-        ;
-    })
-    ...
-var app = builder.Build();
-...
-
-var parser1 = app.Services.GetService<IParser>(); 
-//or
-var parser2 = app.Services.GetParser(); //extension method
-
-//sample calls if we want to retrieve instances of Tokenizer and TokenizerOptions outside a subclassed Parser
-var tokenizer1 = app.Services.GetService<ITokenizer>();
-//or
-var tokenizer2 = app.Services.GetTokenizer(); //extension method
-
-var tokenizerOptions = app.Services.GetService<IOptions<TokenizerOptions>>().Value;
-```
-
-# Parsers
-
-Every `Parser` subclass adapts to the `IParser` interface and typically every `Parser` derives from the `Parser` base class.
-All derived Parsers use parenthesis pairs (`(`, `)`) by default to override the operators priority. The priority of the operators is internally defined in the `DefaultParser`. A custom `Parser` can override the default operator priority and use other than the common operators using an external `appsettings.json` file, which will be analyzed in later examples.
-
-## `DefaultParser`
-
-The `DefaultParser` class for the moment accepts the followig operators:
-- `+`: plus sign (unary) and plus (binary)
-- `-`: negative sign (unary) and minus (binary)
-- `*`: multiplication
-- `/`: division
-- `^`: power
-
-and the following functions:
-
-- `abs(x)`: Absolute value
-- `acos(x)`: Inverse cosine (in radians)
-- `acosd(x)`: Inverse cosine (in degrees)
-- `acosh(x)`: Inverse hyperbolic cosine
-- `asin(x)`: Inverse sine (in radians)
-- `asind(x)`: Inverse sine (in degrees)
-- `asinh(x)`: Inverse hyperbolic sine
-- `atan(x)`: Inverse tangent (in radians)
-- `atand(x)`: Inverse tangent (in degrees)
-- `atan2(y,x)`: Inverse tangent (in radians)
-- `atan2d(y,x)`: Inverse tangent (in degrees)
-- `atanh(x)`: Inverse hyperbolic tangent
-- `cbrt(x)`: Cube root
-- `cos(x)`: Cosine (x in radians)
-- `cosd(x)`: Cosine (x in degrees)
-- `cosh(x)`: Hyperbolic cosine
-- `exp(x)`: Exponential function (e^x)
-- `log(x)` / `ln(x)`: Natural logarithm
-- `log10(x)`: Base 10 logarithm
-- `log2(x)`: Base 2 logarithm
-- `logn(x,n)`: Base n logarithm
-- `max(x,y)`: Maximum
-- `min(x,y)`: Minimum
-- `pow(x,y): Power function (x^y)
-- `round(x,y)`: Round to y decimal digits
-- `sin(x)`: Sine (x in radians)
-- `sind(x)`: Sine (x in degrees)
-- `sinh(x)`: Hyperbolic sine
-- `sqr(x)` / `sqrt(x)`: Square root
-- `tan(x)`: Tangent (x in radians)
-- `tand(x)`: Tangent (x in degrees)
-- `tanh(x)`: Hyperbolic tangent 
-
-The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
-- `pi` : the number π (see [π](https://en.wikipedia.org/wiki/Pi))
-- `e` : the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
-- `phi` : the golden ratio φ (see [φ](https://en.wikipedia.org/wiki/Golden_ratio))
-
-## `ComplexParser`
-
-The `ComplexParser` class for the moment accepts the followig operators:
-- `+`: plus sign (unary) and plus (binary)
-- `-`: negative sign (unary) and minus (binary)
-- `*`: multiplication
-- `/`: division
-- `^`: power
-
-and the following functions:
-
-- `abs(z)`: Absolute value
-- `acos(z)`: Inverse cosine (in radians)
-- `acosd(z)`: Inverse cosine (in degrees)
-- `asin(z)`: Inverse sine (in radians)
-- `asind(z)`: Inverse sine (in degrees)
-- `atan(z)`: Inverse tangent (in radians)
-- `atand(z)`: Inverse tangent (in degrees)
-- `cos(z)`: Cosine (z in radians)
-- `cosd(z)`: Cosine (z in degrees)
-- `cosh(z)`: Hyperbolic cosine
-- `exp(z)`: Exponential function (e^z)
-- `log(z)` / `ln(z)`: Natural logarithm
-- `log10(z)`: Base 10 logarithm
-- `log2(z)`: Base 2 logarithm
-- `logn(z,n)`: Base n logarithm
-- `pow(z,y)`: Power function (z^y)
-- `round(z,y)`: Round to y decimal digits
-- `sin(z)`: Sine (z in radians)
-- `sind(z)`: Sine (z in degrees)
-- `sinh(z)`: Hyperbolic sine
-- `sqr(z)` / `sqrt(z)`: Square root
-- `tan(z)`: Tangent (z in radians)
-- `tand(z)`: Tangent (z in degrees)
-- `tanh(z)`: Hyperbolic tangent 
-
-The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
-- `i` , `j`: the imaginary unit (see [imaginary unit](https://en.wikipedia.org/wiki/Imaginary_unit))
-- `pi`: the number π (see [π](https://en.wikipedia.org/wiki/Pi))
-- `e`: the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
-
-## `Vector3Parser`
-
-The `Vector3Parser` class for the moment accepts the followig operators:
-- `+`: plus sign (unary) and plus (binary)
-- `-`: negative sign (unary) and minus (binary)
-- `*`: multiplication (element-wise)
-- `/`: division (element-wise)
-- `^`: cross product (e.g. v1 ^ v2)
-- `@`: dot vector (e.g. v1 @ v2)
-- `!`: normalize vector (e.g. !v1)
-
-and the following functions:
-
-- `abs(v)`: Absolute value
-- `cross(v1,v2)`: Cross product (same result with `^`)
-- `dot(v1,v2)`: Dot product (same result with `@`)
-- `dist(v1,v2)`: Distance
-- `dist2(v1,v2)`: Distance squared
-- `lerp(v1,v2,f)`: Linear combination of v1, v2
-- `length(v)`: Vector length
-- `length2(v)`: Vector length squared
-- `norm(v)`: Normalize (same result with `!`)
-- `sqr(v)` / `sqrt(v)`: Square root
-- `round(v,f)`: Round to f decimal digits
-
-The following constants are also defined _unless_ the same names are overriden by the `variables` dictionary argument when calling the `Evaluate` function:
-- `pi`: the number π (see [π](https://en.wikipedia.org/wiki/Pi))
-- `e`: the Euler's number (see [e](https://en.wikipedia.org/wiki/E_(mathematical_constant))) 
-- `ux`: the unit vector X
-- `uy`: the unit vector Y
-- `uz`: the unit vector Z 
-
-## The Expression Tree
-
-The project is based on Expression binary trees. The classes `Node<T>`, `NodeBase` and `Tree` (all 3 in namespace `ParserLibrary.ExpressionTree`) are comprising everything we need about binary trees. In fact due to the fact that `Node<T>` is generic, we can use it for other uses as well. Each `Parser` uses a `Tokenizer` to facilitate any parsing. For the example below, we get the in-order, pre-order and post-order Nodes for the root node of the expression tree. For each `Tree` or a specific `Node`, we can print to the console a depiction of the binary tree. Visualizing the epressing tree is great for understanding the operations priorities
-```cs
-string expr = "a+tan(8+5) + sin(321+afsd*2^2)";
-var parser = App.GetDefaultParser();
-var tokenizer = app.Services.GetTokenizer();
-var tree = parser.GetExpressionTree(expr);
-Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
-Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
-Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
-tree.Print(withSlashes:false) ;
-```
-
-The code above prints the following to the Console:
-```
-Post order traversal: a 8 5 + tan + 321 afsd 2 2 ^ * + sin +
-Pre order traversal: + + a tan + 8 5 sin + 321 * afsd ^ 2 2
-In order traversal: a + tan 8 + 5 + sin 321 + afsd * 2 ^ 2
-
-
-      +
-   ┌──└───┐
-   +     sin
-  ┌└─┐     └┐
-  a tan     +
-      └┐  ┌─└─┐
-       + 321  *
-      ┌└┐   ┌─└┐
-      8 5 afsd ^
-              ┌└┐
-              2 2
-```
-## `Tree<T>`
-The `Tree<T>` class contains the following important members:
-* `Root [Node<T>]`: The Root Node of the tree. This the only node in the `Tree` which has no parent nodes.
-* `Print [void]`: Prints the Tree to the console using 2 available variations controlled by the argument `withSlashes`.
-* `Count [int]`: The total number of nodes in the tree.
-* `GetHeight() [int]`: The height of the binary tree. For example a tree with a single root node and 2 leafs has a height of 1.
-* `GetLeafNodesCount() [int]`: The number of leaf nodes.
-
-## `NodeBase`
-The `NodeBase` class contains the core of the binary tree functionality:
-* `Text [string]`: The text representation of the node
-* `Left [NodeBase]`: The left child node
-* `Right [NodeBase]`: The right child node
-* `PreOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in pre-order arrangement 
-* `PostOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in post-order arrangement
-* `InOrderNodes [IEnumerable<NodeBase>)`: All nodes starting from the current node, in in-order arrangement
-
-## `Node<T>`
-The `Node<T>` inherits `NodeBase` and includes some additional members which are expression-oriented:
-* `Value<T>`: The value of the node. The inherited `Text` property should be a string representation of this value.
-To facilitate the retrieval of child nodes depending on the type of each token, some methods of the `Node<T>` are very practical:
-* `GetUnaryArgument [object]`: Retrieves the value of the child node, assuming that the token represents a unary operator (such as unary `-`).
-* `GetBinaryArguments [(object LeftOperand, object RightOperand)]`: Retrieves the value of the two operand child nodes, assuming that the token represents a binary operator (such as `*` and `^`).
-* `GetFunctionArguments [(object[]]`: Retrieves the values of the function argument nodes, assuming that the token represents a function token operator (such as `sin`).
-Note, that we are not using any generic types for the node values. The array of objects allow the single returned array to return instances of different daa types.
-
-
-### _more documentation to follow **soon**..._
+The `StatefulParserFactory` approach has several advantages:
+- **Proper dependency injection**: The factory ensures all required services (logger, options) are correctly injected
+- **Expression binding**: The expression is set during construction, eliminating the need to manually set the `Expression` property
+- **Thread safety**: Each factory call creates a new instance, avoiding state conflicts
+- **Clean API**: Simpler usage pattern that follows dependency injection best practices
 
 
 

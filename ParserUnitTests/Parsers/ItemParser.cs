@@ -16,6 +16,8 @@ public class Item
         new() { Name = v2.Name, Value = v2.Value + v1 };
     public static Item operator +(Item v2, int v1) =>
         new() { Name = v2.Name, Value = v2.Value + v1 };
+    public static Item operator *(Item v2, int v1) =>
+        new() { Name = v2.Name, Value = v2.Value  * v1 };
 
     public static Item operator +(Item v1, Item v2) =>
         new() { Name = $"{v1.Name} {v2.Name}", Value = v2.Value + v1.Value };
@@ -24,7 +26,7 @@ public class Item
 
 }
 
-public class CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
 
     //we assume that literals are integer numbers only
@@ -68,7 +70,7 @@ public class CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions>
 
 }
 
-public class CustomTypeStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
+public class ItemStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
 {
 
     //we assume that literals are integer numbers only
@@ -90,6 +92,13 @@ public class CustomTypeStatefulParser(ILogger<StatefulParser> logger, IOptions<T
             return leftOperand is Item ?
                 (Item)leftOperand + (int)rightOperand! : (int)leftOperand! + (Item)rightOperand!;
         }
+        else if (operatorName == "*")
+        {
+            var left = leftOperand as dynamic;
+            var right = rightOperand as dynamic;
+            return left * right;
+        }
+
 
 
         return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
