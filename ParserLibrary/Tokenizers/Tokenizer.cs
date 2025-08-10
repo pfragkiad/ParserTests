@@ -1,4 +1,5 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
+using System.Diagnostics;
 
 namespace ParserLibrary.Tokenizers;
 
@@ -450,8 +451,8 @@ public class Tokenizer : ITokenizer
 
     public ParenthesisCheckResult CheckParentheses(string expression)
     {
-        var open = _options.TokenPatterns.OpenParenthesis;
-        var close = _options.TokenPatterns.CloseParenthesis;
+        var open = _options.TokenPatterns.OpenParenthesis; //char 
+        var close = _options.TokenPatterns.CloseParenthesis; //char
 
         List<int> unmatchedClosed = [];
         List<int> openPositions = [];
@@ -492,23 +493,39 @@ public class Tokenizer : ITokenizer
     public List<string> GetVariableNames(string expression)
     {
         //returns the identifiers in the expression
-        var tokens = GetInfixTokens(expression);
-        return [.. tokens
-            .Where(t => t.TokenType == TokenType.Identifier)
-            .Select(t => t.Text)
-            .Distinct()];
+        var infixTokens = GetInfixTokens(expression);
+        return GetVariableNames(infixTokens);
     }
 
-    public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression,
-        string[] ignorePrefixes, string[] ignorePostfixes)
+    public List<string> GetVariableNames(List<Token> infixTokens)
+    {
+      return [.. infixTokens
+                .Where(t => t.TokenType == TokenType.Identifier)
+                .Select(t => t.Text)
+                .Distinct()];
+    }
+
+    public VariableNamesCheckResult CheckVariableNames(
+        string expression,
+        HashSet<string> identifierNames,
+        string[] ignorePrefixes,
+        string[] ignorePostfixes)
     {
         var tokens = GetInfixTokens(expression);
+       return CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
+    }
 
+    public VariableNamesCheckResult CheckVariableNames(
+       List<Token> infixTokens,
+        HashSet<string> identifierNames,
+        string[] ignorePrefixes,
+        string[] ignorePostfixes)
+    {
         HashSet<string> matchedNames = [];
         HashSet<string> unmatchedNames = [];
         HashSet<string> ignoredNames = [];
 
-        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
         {
             if (
                 identifierNames.Contains(t.Text))
@@ -524,6 +541,7 @@ public class Tokenizer : ITokenizer
                 continue;
             }
 
+
             unmatchedNames.Add(t.Text);
         }
 
@@ -535,14 +553,25 @@ public class Tokenizer : ITokenizer
         };
     }
 
-    public VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null)
+    public VariableNamesCheckResult CheckVariableNames(
+        string expression,
+        HashSet<string> identifierNames,
+        Regex? ignoreIdentifierPattern = null)
     {
         //returns the identifiers in the expression
         var tokens = GetInfixTokens(expression);
+        return CheckVariableNames(tokens, identifierNames, ignoreIdentifierPattern);
+    }
+
+    public VariableNamesCheckResult CheckVariableNames(
+        List<Token> infixTokens,
+        HashSet<string> identifierNames,
+        Regex? ignoreIdentifierPattern = null)
+    {
         HashSet<string> matchedNames = [];
         HashSet<string> unmatchedNames = [];
         HashSet<string> ignoredNames = [];
-        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Identifier))
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
         {
             if (identifierNames.Contains(t.Text))
             {
@@ -566,6 +595,53 @@ public class Tokenizer : ITokenizer
         };
     }
 
+
+
+    public VariableNamesCheckResult CheckVariableNames(
+        string expression,
+        HashSet<string> identifierNames,
+        string[] ignoreCaptureGroups)
+    {
+        var tokens = GetInfixTokens(expression);
+        return CheckVariableNames(tokens, identifierNames, ignoreCaptureGroups);
+    }
+
+
+    public VariableNamesCheckResult CheckVariableNames(
+        List<Token> infixTokens,
+        HashSet<string> identifierNames,
+        string[] ignoreCaptureGroups)
+    {
+        HashSet<string> matchedNames = [];
+        HashSet<string> unmatchedNames = [];
+        HashSet<string> ignoredNames = [];
+
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
+        {
+            if (
+                identifierNames.Contains(t.Text))
+            {
+                matchedNames.Add(t.Text);
+                continue;
+            }
+
+            //check if the identifier matches any of the capture groups
+            if (ignoreCaptureGroups.Any(g => t.Match!.Groups[g].Success))
+            {
+                ignoredNames.Add(t.Text);
+                continue;
+            }
+
+            unmatchedNames.Add(t.Text);
+        }
+
+        return new VariableNamesCheckResult
+        {
+            MatchedNames = [.. matchedNames],
+            UnmatchedNames = [.. unmatchedNames],
+            IgnoredNames = [.. ignoredNames]
+        };
+    }
 
 
     #endregion

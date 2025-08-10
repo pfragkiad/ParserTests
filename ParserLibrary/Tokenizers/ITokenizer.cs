@@ -9,6 +9,7 @@ public interface ITokenizer
 
     List<Token> GetPostfixTokens(List<Token> infixTokens);
 
+    List<Token> GetPostfixTokens(string expression);
     
     
     bool AreParenthesesMatched(string expression); //fast version
@@ -16,9 +17,10 @@ public interface ITokenizer
     ParenthesisCheckResult CheckParentheses(string expression);
   
     List<string> GetVariableNames(string expression);
-
-    VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, string[] ignorePrefixes, string[] ignorePostfixes);
-
-    VariableNamesCheckResult CheckVariableNames(HashSet<string> identifierNames, string expression, Regex? ignoreIdentifierPattern = null);
-    List<Token> GetPostfixTokens(string expression);
+    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> identifierNames, string[] ignoreCaptureGroups);
+    VariableNamesCheckResult CheckVariableNames(string expression, HashSet<string> identifierNames, string[] ignoreCaptureGroups);
+    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> identifierNames, Regex? ignoreIdentifierPattern = null);
+    VariableNamesCheckResult CheckVariableNames(string expression, HashSet<string> identifierNames, Regex? ignoreIdentifierPattern = null);
+    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> identifierNames, string[] ignorePrefixes, string[] ignorePostfixes);
+    VariableNamesCheckResult CheckVariableNames(string expression, HashSet<string> identifierNames, string[] ignorePrefixes, string[] ignorePostfixes);
 }

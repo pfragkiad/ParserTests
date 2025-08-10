@@ -16,7 +16,7 @@ public static class DependencyInjection
                     .AddStatefulParserFactory();
     }
 
-    public static IServiceCollection AddStatefulParserLibrary( //to be removed in future
+    public static IServiceCollection AddStatefulParserLibrary(
         this IServiceCollection services,
         HostBuilderContext context,
         string tokenizerSection = TokenizerOptions.TokenizerSection) 
