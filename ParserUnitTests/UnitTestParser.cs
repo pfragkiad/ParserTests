@@ -26,12 +26,12 @@ public class UnitTestParser
     public void TestCustomIntStatefulParser()
     {
         var parserApp = App.GetStatefulParserApp();
-        var factory = parserApp.Services.GetRequiredStatefulParserFactory();    
-        var parser = factory.Create<IntStatefulParser>("a+tan(8+5) + sin(321+asd*2^2)"); //returns 860
+        var factory = parserApp.Services.GetRequiredStatefulParserFactory();
+        var parser = factory.Create<IntStatefulParser>(
+            "a+tan(8+5) + sin(321+asd*2^2)",
+            new() { { "a", 8 }, { "asd", 10 } }); //returns 860
 
-        string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
-        parser.Expression = expr;
-        int result = (int)parser.Evaluate(new() { { "a", 8 }, { "asd", 10 } });
+        int result = (int)parser.Evaluate();
 
         Assert.Equal<int>(860, result);
     }
@@ -64,7 +64,7 @@ public class UnitTestParser
     [InlineData("-round(10.3513,1)", -10.4)]
     //% in action has higher priority than *, and ! has higher than - [to sum up -> the closest to the operand has the highest priority]
     //[InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
-    [InlineData("-!!a%*", (-2 * 2 * 5 + 2)*3)] //! doubles, % adds 2, * triples (all unary with same priority) 
+    [InlineData("-!!a%*", (-2 * 2 * 5 + 2) * 3)] //! doubles, % adds 2, * triples (all unary with same priority) 
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<FunctionsOperandsParser>();
@@ -114,47 +114,48 @@ public class UnitTestParser
         //var parser = app.Services.GetStatefulParser();
 
         //or
-        var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
-
-        Item result = (Item)parser.Evaluate(
-            new() {
+        var parser = App.GetStatefulParser<ItemStatefulParser>(
+            "a + add(b,4) + 5",
+             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }
-            });
+             });
+        Item result = (Item)parser.Evaluate();
 
         Assert.Equal("foo bar 12", result.ToString());
     }
 
-    [Fact]
-    public void TestStatefulParserFactory()
-    {
-        // Test the new factory approach
-        var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
+    //[Fact]
+    //public void TestStatefulParserFactory()
+    //{
+    //    // Test the new factory approach
+    //    var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
 
-        Item result = (Item)parser.Evaluate(
-            new() {
-                {"a", new Item { Name="foo", Value = 3}  },
-                {"b", new Item { Name="bar"}  }
-            });
+    //    Item result = (Item)parser.Evaluate(
+    //        new() {
+    //            {"a", new Item { Name="foo", Value = 3}  },
+    //            {"b", new Item { Name="bar"}  }
+    //        });
 
-        Assert.Equal("foo bar 12", result.ToString());
-    }
+    //    Assert.Equal("foo bar 12", result.ToString());
+    //}
 
     [Fact]
     public void TestStatefulParserFactoryWithDifferentExpressions()
     {
+        var variables = new Dictionary<string, object?>
+        {
+            {"a", new Item { Name="test1", Value = 5 }},
+            {"b", new Item { Name="test2", Value = 3 }}
+        };   
         // Create multiple parsers with different expressions using the factory
-        var parser1 = App.CreateStatefulParser<ItemStatefulParser>("a + 10");
-        var parser2 = App.CreateStatefulParser<ItemStatefulParser>("b * 5");
+        var parser1 = App.GetStatefulParser<ItemStatefulParser>("a + 10", variables);
+        var parser2 = App.GetStatefulParser<ItemStatefulParser>("b * 5", variables);
 
-        var variables = new Dictionary<string, object?> 
-        { 
-            {"a", new Item { Name="test1", Value = 5 }}, 
-            {"b", new Item { Name="test2", Value = 3 }} 
-        };
+   
 
-        var result1 = (Item)parser1.Evaluate(variables);
-        var result2 = (Item)parser2.Evaluate(variables);
+        var result1 = (Item)parser1.Evaluate();
+        var result2 = (Item)parser2.Evaluate();
 
         Assert.Equal("test1 15", result1.ToString());
         Assert.Equal("test2 15", result2.ToString()); // 3 * 5 = 15

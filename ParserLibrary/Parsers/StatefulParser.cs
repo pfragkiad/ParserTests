@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FluentValidation.Results;
+using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
 
@@ -19,12 +20,15 @@ public class StatefulParser : Parser, IStatefulParser
     protected List<Token> _postfixTokens = [];
 
     public StatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options,
-        string? expression = null)
+        string? expression = null,
+        Dictionary<string,object?>? variables = null)
         : base(logger, options)
     {
         //assign expression if not null or whitespace
         if (!string.IsNullOrWhiteSpace(expression))
             Expression = expression;
+
+        Variables = variables ?? [];
     }
 
     //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
@@ -55,6 +59,20 @@ public class StatefulParser : Parser, IStatefulParser
             _postfixTokens = GetPostfixTokens(_infixTokens);
         }
     }
+
+
+    protected Dictionary<string, object?> _variables = [];
+    public Dictionary<string, object?> Variables
+    {
+        get => _variables;
+        set
+        {
+            _variables = value ?? [];
+            _variables = MergeVariableConstants(_variables);
+        }
+    }
+
+
     #endregion
 
 
@@ -66,13 +84,21 @@ public class StatefulParser : Parser, IStatefulParser
         _nodeValueDictionary = [];
         _nodeDictionary = [];
         _stack = [];
+        _variables = [];
     }
 
     //also resets the internal expression
     public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
         Expression = expression;
-        return Evaluate(variables);
+        Variables = variables ?? [];
+        return Evaluate();
+    }
+
+    public virtual object? Evaluate(Dictionary<string, object?>? variables = null)
+    {
+        Variables = variables ?? [];
+        return Evaluate();
     }
 
     //also resets the internal expression
@@ -80,20 +106,30 @@ public class StatefulParser : Parser, IStatefulParser
     public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
     {
         Expression = expression;
-        return EvaluateType(variables);
+        Variables = variables ?? [];
+
+        return EvaluateType();
     }
 
-    public object? Evaluate(Dictionary<string, object?>? variables = null) =>
-        Evaluate(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
+    public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
+    {
+        Variables = variables ?? [];
+        return EvaluateType();
+    }
 
-    public Type EvaluateType(Dictionary<string, object?>? variables = null) =>
-        EvaluateType(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
+
+    public object? Evaluate() =>
+        Evaluate(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants:false);
+
+    public Type EvaluateType() =>
+        EvaluateType(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants:false);
 
 
     #endregion
 
     #region Validation checks
 
+    #region Tokenizer 
     public bool AreParenthesesMatched() =>
         Expression is null || AreParenthesesMatched(Expression!);
 
@@ -119,19 +155,44 @@ public class StatefulParser : Parser, IStatefulParser
         HashSet<string> identifierNames,
         string[] ignoreCaptureGroups) =>
         CheckVariableNames(_infixTokens, identifierNames, ignoreCaptureGroups);
+    #endregion
 
-    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
-        CheckEmptyFunctionArguments(_nodeDictionary);
+    #region Parser
 
-    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
-        CheckFunctionArgumentsCount(_nodeDictionary);
+    public FunctionNamesCheckResult CheckFunctionNames() =>
+        CheckFunctionNames(_infixTokens);
+
+    public List<string> GetMatchedFunctionNames() =>
+        GetMatchedFunctionNames(_infixTokens);
+
 
     public InvalidOperatorsCheckResult CheckOperators() =>
-        CheckOperators(_nodeDictionary);
-
+      CheckOperators(_nodeDictionary);
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
         CheckOrphanArgumentSeparators(_nodeDictionary);
+
+    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
+          CheckFunctionArgumentsCount(_nodeDictionary);
+    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
+        CheckEmptyFunctionArguments(_nodeDictionary);
+
+
+    #endregion
+
+    public List<ValidationFailure> GetValidationFailures()
+    {
+        var failures = new List<ValidationFailure>();
+        failures.AddRange(CheckParentheses().GetValidationFailures());
+        failures.AddRange(CheckVariableNames([.. _variables.Keys]).GetValidationFailures());
+        failures.AddRange(CheckFunctionNames().GetValidationFailures());
+        failures.AddRange(CheckOperators().GetValidationFailures());
+        failures.AddRange(CheckOrphanArgumentSeparators().GetValidationFailures());
+        failures.AddRange(CheckFunctionArgumentsCount().GetValidationFailures());
+        failures.AddRange(CheckEmptyFunctionArguments().GetValidationFailures());
+        return failures;
+    }
+
 
     #endregion
 

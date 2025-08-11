@@ -24,7 +24,9 @@ public class StatefulParserFactory : IStatefulParserFactory
     /// <typeparam name="TStatefulParser">The type of StatefulParser to create</typeparam>
     /// <param name="expression">The expression to parse</param>
     /// <returns>A new StatefulParser instance configured with the expression</returns>
-    public TStatefulParser Create<TStatefulParser>(string? expression) where TStatefulParser : StatefulParser
+    public TStatefulParser Create<TStatefulParser>(
+        string? expression,
+        Dictionary<string, object?>? variables = null) where TStatefulParser : StatefulParser
     {
         try
         {
@@ -32,7 +34,8 @@ public class StatefulParserFactory : IStatefulParserFactory
             var parserInstance = (TStatefulParser)Activator.CreateInstance(typeof(TStatefulParser), 
                 _serviceProvider.GetRequiredService<ILogger<TStatefulParser>>(), 
                 _options,
-                expression)!;
+                expression,
+                variables)!;
 
             _logger.LogDebug("Created StatefulParser of type {ParserType} with expression: {Expression}", typeof(TStatefulParser).Name, expression);
             

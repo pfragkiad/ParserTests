@@ -5,20 +5,6 @@ using System.Numerics;
 
 public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    //protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    //{
-    //    variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-    //    if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
-    //    if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
-
-    //    if (!variables.ContainsKey("ux")) variables.Add("ux", Vector3.UnitX);
-    //    if (!variables.ContainsKey("uy")) variables.Add("uy", Vector3.UnitY);
-    //    if (!variables.ContainsKey("uz")) variables.Add("uz", Vector3.UnitZ);
-
-    //    return base.Evaluate(postfixTokens, variables);
-    //}
-
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {

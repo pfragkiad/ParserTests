@@ -40,13 +40,16 @@ public class Parser : Tokenizer, IParser
 
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
-        //returns the names of the functions that are not registered
         var tokens = GetInfixTokens(expression);
-        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        return CheckFunctionNames(tokens);
+    }
+
+    public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
+    {
 
         HashSet<string> matchedNames = [];
         HashSet<string> unmatchedNames = [];
-        foreach (var t in tokens.Where(t => t.TokenType == TokenType.Function))
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
         {
             if (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text))
             { matchedNames.Add(t.Text); continue; }
@@ -61,16 +64,21 @@ public class Parser : Tokenizer, IParser
         };
     }
 
+
+
     public List<string> GetMatchedFunctionNames(string expression)
     {
-        //returns the names of the functions that are registered
         var tokens = GetInfixTokens(expression);
-        //var postfixTokens = _tokenizer.GetPostfixTokens(inOrderTokens);
+        return GetMatchedFunctionNames(tokens);
+    }
+
+    public List<string> GetMatchedFunctionNames(List<Token> tokens)
+    {
         return [.. tokens
-            .Where(t => t.TokenType == TokenType.Function &&
-                (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text)))
-            .Select(t => t.Text)
-            .Distinct()];
+                    .Where(t => t.TokenType == TokenType.Function &&
+                        (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text)))
+                    .Select(t => t.Text)
+                    .Distinct()];
     }
 
     #region Expression trees
@@ -273,7 +281,7 @@ public class Parser : Tokenizer, IParser
 
     public virtual Dictionary<string, object?> Constants { get => []; }
 
-    private Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
+    protected Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
     {
         if (variables is null) return Constants;
         foreach (var entry in Constants)
@@ -302,13 +310,19 @@ public class Parser : Tokenizer, IParser
         Dictionary<Token, Node<Token>> nodeDictionary = [];
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
 
-        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
+        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants:true);
     }
 
     //main EvaluateType method
-    protected Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    protected Type EvaluateType(
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables,
+        Stack<Token> stack,
+        Dictionary<Token, Node<Token>> nodeDictionary,
+        Dictionary<Node<Token>, object?> nodeValueDictionary, bool mergeConstants)
     {
-        variables = MergeVariableConstants(variables);
+        if (mergeConstants) //should be false if the constants are already merged
+            variables = MergeVariableConstants(variables);
 
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
@@ -376,13 +390,19 @@ public class Parser : Tokenizer, IParser
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
-        return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
+        return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants: true);
     }
 
     //main Evaluate method
-    protected object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    protected object? Evaluate(
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables,
+        Stack<Token> stack,
+        Dictionary<Token, Node<Token>> nodeDictionary,
+        Dictionary<Node<Token>, object?> nodeValueDictionary, bool mergeConstants)
     {
-        variables = MergeVariableConstants(variables);
+        if (mergeConstants) //should be false if the constants are already merged
+            variables = MergeVariableConstants(variables);
 
         _logger.LogDebug("Evaluating...");
         //https://www.youtube.com/watch?v=WHs-wSo33MM

@@ -73,14 +73,15 @@ public static class App
             .Services
             .GetRequiredParser();
 
-    public static IStatefulParser CreateStatefulParser<TParser>(
+    public static IStatefulParser GetStatefulParser<TParser>(
         string expression,
+        Dictionary<string, object?>? variables = null,
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
         GetStatefulParserApp(configFile, tokenizerSection)
             .Services
             .GetRequiredStatefulParserFactory()
-            .Create<TParser>(expression);
+            .Create<TParser>(expression,variables);
 
     public static IParser? GetDefaultParser(
         string configFile = "appsettings.json",

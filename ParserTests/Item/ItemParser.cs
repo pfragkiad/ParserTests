@@ -86,7 +86,11 @@ public class ItemParser(ILogger<Parser> logger,IOptions<TokenizerOptions> option
 }
 
 
-public class CustomTypeTransientParser(ILogger<CustomTypeTransientParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
+public class CustomTypeTransientParser(
+    ILogger<CustomTypeTransientParser> logger,
+    IOptions<TokenizerOptions> options,
+    string expression,
+    Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
 {
 
     //we assume that LITERALS are integer numbers only

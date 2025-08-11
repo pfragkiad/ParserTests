@@ -70,7 +70,11 @@ public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> optio
 
 }
 
-public class ItemStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) : StatefulParser(logger, options, expression)
+public class ItemStatefulParser(
+    ILogger<StatefulParser> logger,
+    IOptions<TokenizerOptions> options,
+    string expression,
+    Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
 {
 
     //we assume that literals are integer numbers only
