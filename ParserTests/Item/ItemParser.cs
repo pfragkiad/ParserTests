@@ -86,8 +86,8 @@ public class ItemParser(ILogger<Parser> logger,IOptions<TokenizerOptions> option
 }
 
 
-public class CustomTypeTransientParser(
-    ILogger<CustomTypeTransientParser> logger,
+public class CustomTypeStatefulParser(
+    ILogger<CustomTypeStatefulParser> logger,
     IOptions<TokenizerOptions> options,
     string expression,
     Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)

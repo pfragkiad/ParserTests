@@ -533,14 +533,14 @@ In case, we want one of the following 2 cases:
 * a `Parser` instance per expression
 * a `Parser` that handles only non-parallel requests (such as the case of a terminal console),
 
-then the `NodeValueDictionary` could possibly be stored as an internal field and simplify the subclass definition. That's why the library contains another Parser variant named `StatefulParser`. Subclasses of `StatefulParser` (which implement the `IStatefulParser` interface), are typically created with transient scope (not singleton), in order to avoid any conflict. All `StatefulParser` instances come with state and have the `nodeValueDictionary` as an internal protected member. The example below, shows how we would implement a `StatefulParser` for the same `Item`. The syntax of the `CustomTypeStatefulParser` is simpler than the syntax of the `CustomTypeParser`, because it practically omits passing the `nodeValueDictionary` for each function call. Let's see how:
 
 ```cs
-public class CustomTypeStatefulParser : StatefulParser
+public class CustomTypeStatefulParser(
+    ILogger<CustomTypeStatefulParser> logger,
+    IOptions<TokenizerOptions> options,
+    string expression,
+    Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
 {
-    public CustomTypeStatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options, string expression) :
-        base(logger, options, expression)
-    { }
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
@@ -582,13 +582,13 @@ The recommended way to create `StatefulParser` instances is through the `Statefu
 
 ```cs
 // Using the factory pattern (recommended)
-var parser = App.CreateStatefulParser<CustomTypeStatefulParser>("a + add(b,4) + 5");
-
-Item result = (Item)parser.Evaluate(
-    new() {
+var parser = App.GetStatefulParser<ItemStatefulParser>(
+    expression: "a + add(b,4) + 5",
+    variables: new() {
         {"a", new Item { Name="foo", Value = 3}  },
         {"b", new Item { Name="bar"}  }
     });
+Item result = (Item)parser.Evaluate();
 
 Console.WriteLine(result); // foo bar 12
 ```
@@ -599,13 +599,13 @@ Alternatively, if you need direct access to the factory:
 // Manual access to the factory
 var app = App.GetStatefulParserApp();
 var factory = app.Services.GetRequiredStatefulParserFactory();
-var parser = factory.Create<CustomTypeStatefulParser>("a + add(b,4) + 5");
-
-Item result = (Item)parser.Evaluate(
-    new() {
+var parser = factory.Create<CustomTypeStatefulParser>(
+    expression: "a + add(b,4) + 5",
+    variables: new() {
         {"a", new Item { Name="foo", Value = 3}  },
         {"b", new Item { Name="bar"}  }
     });
+Item result = (Item)parser.Evaluate();
 
 Console.WriteLine(result); // foo bar 12
 ```

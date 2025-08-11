@@ -115,8 +115,8 @@ public class UnitTestParser
 
         //or
         var parser = App.GetStatefulParser<ItemStatefulParser>(
-            "a + add(b,4) + 5",
-             new() {
+            expression: "a + add(b,4) + 5",
+            variables: new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }
              });
