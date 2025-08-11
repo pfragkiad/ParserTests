@@ -180,16 +180,98 @@ public class StatefulParser : Parser, IStatefulParser
 
     #endregion
 
-    public List<ValidationFailure> GetValidationFailures()
+    public List<ValidationFailure> GetValidationFailures(string[] ignoreCaptureGroups)
     {
+        if (string.IsNullOrWhiteSpace(_expression)) return [];
+
         var failures = new List<ValidationFailure>();
-        failures.AddRange(CheckParentheses().GetValidationFailures());
-        failures.AddRange(CheckVariableNames([.. _variables.Keys]).GetValidationFailures());
-        failures.AddRange(CheckFunctionNames().GetValidationFailures());
-        failures.AddRange(CheckOperators().GetValidationFailures());
-        failures.AddRange(CheckOrphanArgumentSeparators().GetValidationFailures());
-        failures.AddRange(CheckFunctionArgumentsCount().GetValidationFailures());
-        failures.AddRange(CheckEmptyFunctionArguments().GetValidationFailures());
+
+        //stage 1 check parentheses (2 variants)
+        if (!AreParenthesesMatched()) //fastest check
+        {
+            //second version for demo purposes (if explicit output is needed) (less fast check - without stack/binary tree)
+            var parenthesisCheckResult = CheckParentheses();
+
+            _logger.LogWarning("Unmatched parentheses in formula: {formula}", _expression);
+            //get validation failures (one per unmatched parenthesis)
+            failures.AddRange(parenthesisCheckResult.GetValidationFailures());
+        }
+
+        //unmatched parentheses will crash postfix checks
+        bool cannotContinueOtherChecks = failures.Count > 0;
+
+        //stage 2 check function names
+        var checkFunctionNamesResult = CheckFunctionNames();
+        if (!checkFunctionNamesResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched function names in formula: {formula}", _expression);
+            //get validation failures (one per unmatched function name)
+            failures.AddRange(checkFunctionNamesResult.GetValidationFailures());
+        }
+
+        //stage 3 check identifier names (timeseries names ONLY are expected to be within brackets so they are ignored)
+        var checkNamesResult = CheckVariableNames([.. _variables.Keys],
+            ignoreCaptureGroups: ignoreCaptureGroups);
+
+        if (!checkNamesResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched identifiers in formula: {formula}", _expression);
+            //get validation failures (one per unmatched identifier name)
+            failures.AddRange(checkNamesResult.GetValidationFailures());
+        }
+
+        //if there are errors here we have to exit early 
+        if (cannotContinueOtherChecks)
+            return failures;
+        //throw new ValidationException("Errors in formula validation.", failures);
+
+        //stage 4 check invalid operators (needs postfix tokens)
+        var checkOperatorsResult = CheckOperators();
+        if (!checkOperatorsResult.IsSuccess)
+        {
+            _logger.LogWarning("Invalid operators in formula: {formula}", _expression);
+            //get validation failures (one per invalid operator)
+            failures.AddRange(checkOperatorsResult.GetValidationFailures());
+        }
+
+        var checkArgumentsResult = CheckOrphanArgumentSeparators();
+        if (!checkArgumentsResult.IsSuccess)
+        {
+            _logger.LogWarning("Invalid argument separators in formula: {formula}", _expression);
+            //get validation failures (one per invalid argument separator)
+            failures.AddRange(checkArgumentsResult.GetValidationFailures());
+        }
+
+
+        //we have to check for null argumentts before checking arguments count
+
+        //stage 5 check function arguments count 
+        var checkFunctionArgumentsResult = CheckFunctionArgumentsCount();
+        //check for function arguments count! before
+        if (!checkFunctionArgumentsResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched function arguments in formula: {formula}", _expression);
+            //get validation failures (one per unmatched function argument)
+            failures.AddRange(checkFunctionArgumentsResult.GetValidationFailures());
+        }
+
+        //stage 6 check empty function arguments (used if empty parameters are NOT allowed)
+        var emptyArgumentsRsult = CheckEmptyFunctionArguments();
+        if (!emptyArgumentsRsult.IsSuccess)
+        {
+            _logger.LogWarning("Empty function arguments in formula: {formula}", _expression);
+            //get validation failures (one per empty function argument)
+            failures.AddRange(emptyArgumentsRsult.GetValidationFailures());
+        }
+
+
+        //failures.AddRange(CheckParentheses().GetValidationFailures());
+        //failures.AddRange(CheckVariableNames([.. _variables.Keys]).GetValidationFailures());
+        //failures.AddRange(CheckFunctionNames().GetValidationFailures());
+        //failures.AddRange(CheckOperators().GetValidationFailures());
+        //failures.AddRange(CheckOrphanArgumentSeparators().GetValidationFailures());
+        //failures.AddRange(CheckFunctionArgumentsCount().GetValidationFailures());
+        //failures.AddRange(CheckEmptyFunctionArguments().GetValidationFailures());
         return failures;
     }
 

@@ -17,5 +17,5 @@ public interface IStatefulParser : IParser
 
     Type EvaluateType(Dictionary<string, object?>? variables = null);
 
-    List<ValidationFailure> GetValidationFailures();
+    List<ValidationFailure> GetValidationFailures(string[] ignoreCaptureGroups);
 }
