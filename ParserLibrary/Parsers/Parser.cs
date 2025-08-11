@@ -271,7 +271,15 @@ public class Parser : Tokenizer, IParser
         return nodeValueDictionary[root]!;
     }
 
+    public virtual Dictionary<string, object?> Constants { get => []; }
 
+    private Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
+    {
+        if (variables is null) return Constants;
+        foreach (var entry in Constants)
+            if (!variables!.ContainsKey(entry.Key)) variables.Add(entry.Key, entry.Value);
+        return variables;
+    }
 
     public virtual object? Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
@@ -297,8 +305,11 @@ public class Parser : Tokenizer, IParser
         return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
     }
 
+    //main EvaluateType method
     protected Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
+        variables = MergeVariableConstants(variables);
+
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
         {
@@ -368,8 +379,11 @@ public class Parser : Tokenizer, IParser
         return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary);
     }
 
+    //main Evaluate method
     protected object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables, Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
+        variables = MergeVariableConstants(variables);
+
         _logger.LogDebug("Evaluating...");
         //https://www.youtube.com/watch?v=WHs-wSo33MM
         foreach (var token in postfixTokens)
