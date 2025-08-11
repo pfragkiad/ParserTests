@@ -15,6 +15,7 @@ public interface ITokenizer
     bool AreParenthesesMatched(string expression); //fast version
 
     ParenthesisCheckResult CheckParentheses(string expression);
+    ParenthesisCheckResult CheckParentheses(List<Token> infixTokens);
   
     List<string> GetVariableNames(string expression);
     VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> identifierNames, string[] ignoreCaptureGroups);

@@ -490,6 +490,39 @@ public class Tokenizer : ITokenizer
     }
 
 
+    public ParenthesisCheckResult CheckParentheses(List<Token> infixTokens)
+    {
+        var open = _options.TokenPatterns.OpenParenthesis; //char 
+        var close = _options.TokenPatterns.CloseParenthesis; //char
+        List<int> unmatchedClosed = [];
+        List<int> openPositions = [];
+        for (int i = 0; i < infixTokens.Count; i++)
+        {
+            var token = infixTokens[i];
+            if (token.Text == open.ToString())
+            {
+                openPositions.Add(token.Index);
+                continue;
+            }
+            if (token.Text != close.ToString())
+                continue;
+            if (openPositions.Count == 0)
+            {
+                unmatchedClosed.Add(token.Index);
+            }
+            else
+            {
+                openPositions.RemoveAt(openPositions.Count - 1);
+            }
+        }
+        return new ParenthesisCheckResult
+        {
+            UnmatchedClosed = unmatchedClosed,
+            UnmatchedOpen = openPositions
+        };
+    }
+
+
     public List<string> GetVariableNames(string expression)
     {
         //returns the identifiers in the expression
