@@ -158,13 +158,13 @@ From the declaration of the function below, we can see that the `Evaluate` funct
 # Custom Parsers
 
 Any `Parser` that uses custom types should inherit the `Parser` base class. 
-Each custom parser should override the methods:
-* `Evaluate`: if there is at least one "constant" such as `pi`, which should be defined by default.
-* `EvaluateUnaryOperator` : if there is at least one unary operator
+Each custom parser should override the members:
+* `Constants`: if there is at least one "constant" such as `pi`, which should be defined by default.
 * `EvaluateLiteral`: if there is at least one literal value such as `0.421`. In most cases a simple parse function can be called for a `double` or `int`.
+* `EvaluateUnaryOperator` : if there is at least one unary operator
 * `EvaluateOperator`: if there is at least one binary operator
 * `EvaluateFunction`: if there is at least one function.
-It is best to understand how to override these functions in the example implementations below. Note that some `Node` functions are used, which are explained later in the text (namely the methods `GetUnaryArgument`, `GetBinaryArguments`, `GetFunctionArguments`).
+It is best to understand how to override these functions in the example implementations below.
 
 ## Custom parser examples #1:  `ComplexParser`
 
@@ -177,18 +177,14 @@ namespace ParserLibrary.Parsers;
 
 public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    {
-        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-        //we define "constants" if they are not already defined
-        if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
-        if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
-        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
-        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
-
-        return base.Evaluate(postfixTokens, variables);
-    }
+ public override Dictionary<string, object?> Constants => 
+        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        {
+            { "i", Complex.ImaginaryOne },
+            { "j", Complex.ImaginaryOne },
+            { "pi", new Complex(Math.PI, 0) },
+            { "e", new Complex(Math.E, 0) }
+        };
 
     protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
@@ -246,7 +242,7 @@ public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        Complex[] a = ComplexParser.GetComplexFunctionArguments(args);
+        Complex[] a = GetComplexFunctionArguments(args);
         const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
         return functionName switch
@@ -315,19 +311,15 @@ using System.Numerics;
 
 ppublic class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    {
-        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-        if (!variables.ContainsKey("pi")) variables.Add("pi", DoubleToVector3((float)Math.PI));
-        if (!variables.ContainsKey("e")) variables.Add("e", DoubleToVector3((float)Math.E));
-
-        if (!variables.ContainsKey("ux")) variables.Add("ux", Vector3.UnitX);
-        if (!variables.ContainsKey("uy")) variables.Add("uy", Vector3.UnitY);
-        if (!variables.ContainsKey("uz")) variables.Add("uz", Vector3.UnitZ);
-
-        return base.Evaluate(postfixTokens, variables);
-    }
+   public override Dictionary<string, object?> Constants =>
+        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        {
+            { "pi", DoubleToVector3((float)Math.PI) },
+            { "e", DoubleToVector3((float)Math.E) },
+            { "ux", Vector3.UnitX },
+            { "uy", Vector3.UnitY },
+            { "uz", Vector3.UnitZ }
+        };
 
     protected override object EvaluateLiteral(string s) =>
         float.Parse(s, CultureInfo.InvariantCulture);
@@ -337,6 +329,7 @@ ppublic class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> o
 
     public static Vector3 DoubleToVector3(object arg)
         => new(Convert.ToSingle(arg), Convert.ToSingle(arg), Convert.ToSingle(arg));
+
 
     public static bool IsNumeric(object arg) =>
            arg is double || arg is int || arg is float;

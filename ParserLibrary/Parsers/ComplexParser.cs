@@ -4,18 +4,27 @@ namespace ParserLibrary.Parsers;
 
 public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    {
-        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+    //protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
+    //{
+    //    variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
-        //we define "constants" if they are not already defined
-        if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
-        if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
-        if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
-        if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
+    //    //we define "constants" if they are not already defined
+    //    if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
+    //    if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
+    //    if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
+    //    if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
 
-        return base.Evaluate(postfixTokens, variables);
-    }
+    //    return base.Evaluate(postfixTokens, variables);
+    //}
+
+    public override Dictionary<string, object?> Constants => 
+        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        {
+            { "i", Complex.ImaginaryOne },
+            { "j", Complex.ImaginaryOne },
+            { "pi", new Complex(Math.PI, 0) },
+            { "e", new Complex(Math.E, 0) }
+        };
 
     protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
@@ -73,7 +82,7 @@ public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> op
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        Complex[] a = ComplexParser.GetComplexFunctionArguments(args);
+        Complex[] a = GetComplexFunctionArguments(args);
         const double TORAD = Math.PI / 180.0, TODEG = 180.0 * Math.PI;
 
         return functionName switch
