@@ -2,10 +2,10 @@
 _No Other Expression Parser, Ever_
 
 ### About
-I wanted to write my "custom terminal" that used interactive commands with expressions. Other Expression builders used only **numbers** as basic entities which I did not want; this is something too common. I wanted some variables to represent **musical notes/chords**, or even **vectors** and **matrices** and some other to represent numbers.
-The only way, was to build an Expression builder that could allow custom types. Obviously, the default capability of handling numerical values was needed as a start.
+I wanted to create my own custom terminal that supported interactive commands with expressions. Other expression builders I found only used numbers as the basic entities, which I didn’t want—this felt too common. I wanted variables that could represent chords, vectors, matrices, and, of course, numbers.
+The only way to build an optimized version of what I wanted, was to build an expression builder that inherently support custom types. Naturally, the ability to handle numerical values was needed as a starting point.
 
-**The library is frequently updated, so please check again for a newer version and the most recent README after a while 😃.**
+**The library is frequently updated, so please check back for newer versions and the most recent README.**
 
 The library is based on modern programming tools and can be highly customized. Its basic features are:
 - Default support for:
