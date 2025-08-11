@@ -549,7 +549,7 @@ public class Tokenizer : ITokenizer
     }
 
     public VariableNamesCheckResult CheckVariableNames(
-       List<Token> infixTokens,
+        List<Token> infixTokens,
         HashSet<string> identifierNames,
         string[] ignorePrefixes,
         string[] ignorePostfixes)
@@ -627,7 +627,6 @@ public class Tokenizer : ITokenizer
             IgnoredNames = [.. ignoredNames]
         };
     }
-
 
 
     public VariableNamesCheckResult CheckVariableNames(

@@ -13,7 +13,7 @@ public class StatefulParser : Parser, IStatefulParser
     //created for simplifying and caching dictionaries
     protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
-    protected Stack<Token> _stack =[];
+    protected Stack<Token> _stack = [];
 
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
@@ -90,6 +90,36 @@ public class StatefulParser : Parser, IStatefulParser
         EvaluateType(_postfixTokens, variables, _stack, _nodeDictionary, _nodeValueDictionary);
 
 
+    #endregion
+
+    #region Validation checks
+
+    public bool AreParenthesesMatched() =>
+        Expression is null || AreParenthesesMatched(Expression!);
+
+    public ParenthesisCheckResult CheckParentheses() =>
+        CheckParentheses(_infixTokens);
+
+    public List<string> GetVariableNames() =>
+        GetVariableNames(_infixTokens);
+
+    public VariableNamesCheckResult CheckVariableNames(
+        HashSet<string> identifierNames,
+        string[] ignorePrefixes,
+        string[] ignorePostfixes) =>
+        CheckVariableNames(_infixTokens, identifierNames, ignorePrefixes, ignorePostfixes);
+
+    public VariableNamesCheckResult CheckVariableNames(
+       HashSet<string> identifierNames,
+       Regex? ignoreIdentifierPattern = null) =>
+       CheckVariableNames(_infixTokens, identifierNames, ignoreIdentifierPattern);
+
+
+    public VariableNamesCheckResult CheckVariableNames(
+        HashSet<string> identifierNames,
+        string[] ignoreCaptureGroups) =>
+        CheckVariableNames(_infixTokens, identifierNames, ignoreCaptureGroups);
+
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
         CheckEmptyFunctionArguments(_nodeDictionary);
 
@@ -103,10 +133,6 @@ public class StatefulParser : Parser, IStatefulParser
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
         CheckOrphanArgumentSeparators(_nodeDictionary);
 
-
-
-
     #endregion
-
 
 }
