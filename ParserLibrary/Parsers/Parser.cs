@@ -12,10 +12,17 @@ public class Parser : Tokenizer, IParser
     : base(logger, options)
     { }
 
-    protected Dictionary<string, (string[] Parameters, string Body)> _customFunctions = [];
+    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
-    //needed for checking the function identifiers and arguments count in the expression tree
-    protected virtual Dictionary<string, int> MainFunctions => [];
+    /// <summary>
+    /// The dictionary stores the main functions with their names and the exact number of arguments.
+    /// </summary>
+    protected virtual Dictionary<string, int> MainFunctionsArgumentsCount => [];
+
+    /// <summary>
+    /// The dictionary stores the minimum number of arguments for each main function.
+    /// </summary>
+    protected virtual Dictionary<string, int> MainFunctionsMinVariableArgumentsCount => [];
 
     public void RegisterFunction(string definition)
     {
@@ -35,7 +42,7 @@ public class Parser : Tokenizer, IParser
 
         var paramList = nameAndParams[1][..^1].Split(_options.TokenPatterns.ArgumentSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        _customFunctions[name] = (paramList, body);
+        CustomFunctions[name] = (paramList, body);
     }
 
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
@@ -51,7 +58,7 @@ public class Parser : Tokenizer, IParser
         HashSet<string> unmatchedNames = [];
         foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
         {
-            if (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text))
+            if (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text))
             { matchedNames.Add(t.Text); continue; }
 
             unmatchedNames.Add(t.Text);
@@ -76,7 +83,7 @@ public class Parser : Tokenizer, IParser
     {
         return [.. tokens
                     .Where(t => t.TokenType == TokenType.Function &&
-                        (_customFunctions.ContainsKey(t.Text) || MainFunctions.ContainsKey(t.Text)))
+                        (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text)))
                     .Select(t => t.Text)
                     .Distinct()];
     }
@@ -310,7 +317,7 @@ public class Parser : Tokenizer, IParser
         Dictionary<Token, Node<Token>> nodeDictionary = [];
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
 
-        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants:true);
+        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants: true);
     }
 
     //main EvaluateType method
@@ -606,7 +613,7 @@ public class Parser : Tokenizer, IParser
         object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
 
         //checks for custom functions registered with RegisterFunction method  
-        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        if (CustomFunctions.TryGetValue(functionName, out var funcDef))
         {
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
@@ -635,7 +642,7 @@ public class Parser : Tokenizer, IParser
             _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
         object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
 
-        if (_customFunctions.TryGetValue(functionName, out var funcDef))
+        if (CustomFunctions.TryGetValue(functionName, out var funcDef))
         {
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
@@ -803,7 +810,7 @@ public class Parser : Tokenizer, IParser
             string functionName = node.Value.Text;
             int actualArgumentsCount = node.GetFunctionArgumentsCount(_options.TokenPatterns.ArgumentSeparator.ToString());
 
-            if (_customFunctions.TryGetValue(node.Value.Text, out var funcDef))
+            if (CustomFunctions.TryGetValue(node.Value.Text, out var funcDef))
             {
                 int expectedArgumentsCount = funcDef.Parameters.Length;
                 var checkResult = new FunctionArgumentCheckResult
@@ -820,7 +827,7 @@ public class Parser : Tokenizer, IParser
                 continue;
             }
 
-            if (MainFunctions.TryGetValue(functionName, out int expectedCount))
+            if (MainFunctionsArgumentsCount.TryGetValue(functionName, out int expectedCount))
             {
                 var checkResult = new FunctionArgumentCheckResult
                 {
@@ -830,6 +837,24 @@ public class Parser : Tokenizer, IParser
                     Position = node.Value.Index + 1
                 };
                 if (actualArgumentsCount != expectedCount)
+                    invalidFunctions.Add(checkResult);
+                else validFunctions.Add(checkResult);
+
+                continue;
+            }
+
+            if (MainFunctionsMinVariableArgumentsCount.TryGetValue(functionName, out int minExpectedCount))
+            {
+                var checkResult = new FunctionArgumentCheckResult
+                {
+                    ActualArgumentsCount = actualArgumentsCount,
+                    MinExpectedArgumentsCount = minExpectedCount,
+                    FunctionName = functionName,
+                    Position = node.Value.Index + 1
+                };
+
+                //this is a function with variable arguments
+                if (actualArgumentsCount < minExpectedCount)
                     invalidFunctions.Add(checkResult);
                 else validFunctions.Add(checkResult);
 

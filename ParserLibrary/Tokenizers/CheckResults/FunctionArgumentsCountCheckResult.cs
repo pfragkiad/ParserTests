@@ -10,6 +10,8 @@ public readonly struct FunctionArgumentCheckResult
 
     public int? ExpectedArgumentsCount { get; init; }
 
+    public int? MinExpectedArgumentsCount { get; init; }
+
     public int? ActualArgumentsCount { get; init; }
 }
 

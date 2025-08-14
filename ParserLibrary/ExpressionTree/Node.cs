@@ -95,6 +95,8 @@ public class Node<T> : NodeBase
     /// <returns></returns>
     public object?[] GetFunctionArguments(int count, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
+        if (count == 0) return [];
+
         if (count == 1) return [nodeValueDictionary[(Right as Node<T>)!]]; //a1
 
         if (count == 2) return [

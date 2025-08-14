@@ -37,7 +37,7 @@ public class StatefulParser : Parser, IStatefulParser
 
     //}
 
-    #region 
+    #region Reset Evaluate methods
 
 
     #region Expression fields
@@ -173,7 +173,8 @@ public class StatefulParser : Parser, IStatefulParser
         CheckOrphanArgumentSeparators(_nodeDictionary);
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
-          CheckFunctionArgumentsCount(_nodeDictionary);
+        CheckFunctionArgumentsCount(_nodeDictionary);
+
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
         CheckEmptyFunctionArguments(_nodeDictionary);
 
