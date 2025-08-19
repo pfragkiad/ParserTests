@@ -12,7 +12,6 @@ public class Parser : Tokenizer, IParser
     : base(logger, options)
     { }
 
-    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     /// <summary>
     /// The dictionary stores the main functions with their names and the exact number of arguments.
@@ -23,6 +22,10 @@ public class Parser : Tokenizer, IParser
     /// The dictionary stores the minimum number of arguments for each main function.
     /// </summary>
     protected virtual Dictionary<string, int> MainFunctionsMinVariableArgumentsCount => [];
+
+    #region Custom functions
+
+    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     public void RegisterFunction(string definition)
     {
@@ -44,6 +47,9 @@ public class Parser : Tokenizer, IParser
 
         CustomFunctions[name] = (paramList, body);
     }
+
+
+    #endregion
 
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {

@@ -20,6 +20,122 @@ public class Node<T> : NodeBase
         }
     }
 
+    #region Cloning
+
+
+    /// <summary>
+    /// Creates a deep clone of this node and all its descendants.
+    /// </summary>
+    /// <returns>A new Node&lt;T&gt; instance with cloned structure</returns>
+    public Node<T> DeepClone()
+    {
+        var cloneMap = new Dictionary<Node<T>, Node<T>>();
+        return DeepCloneInternal(cloneMap);
+    }
+
+    /// <summary>
+    /// Creates a deep clone of this node and all its descendants, using the provided mapping
+    /// to handle circular references and maintain node relationships.
+    /// </summary>
+    /// <param name="cloneMap">Map to track original to cloned node relationships</param>
+    /// <returns>A new Node&lt;T&gt; instance with cloned structure</returns>
+    public Node<T> DeepClone(Dictionary<Node<T>, Node<T>> cloneMap)
+    {
+        return DeepCloneInternal(cloneMap);
+    }
+
+    /// <summary>
+    /// Internal implementation for deep cloning with circular reference handling.
+    /// </summary>
+    /// <param name="cloneMap">Map to track cloned nodes</param>
+    /// <returns>Cloned node</returns>
+    private Node<T> DeepCloneInternal(Dictionary<Node<T>, Node<T>> cloneMap)
+    {
+        // Check if we've already cloned this node
+        if (cloneMap.TryGetValue(this, out var existingClone))
+            return existingClone;
+
+        // Create new node with cloned value
+        var cloned = new Node<T>(CloneValue(Value))
+        {
+            Text = this.Text // Explicitly set Text in case it differs from Value.ToString()
+        };
+
+        // Add to map before cloning children to handle circular references
+        cloneMap[this] = cloned;
+
+        // Clone children
+        cloned.Left = CloneChild(this.Left as Node<T>, cloneMap);
+        cloned.Right = CloneChild(this.Right as Node<T>, cloneMap);
+
+        // Clone Other collection if it exists
+        if (this.Other?.Count > 0)
+        {
+            cloned.Other = new List<NodeBase>();
+            foreach (var otherNode in this.Other)
+            {
+                if (otherNode is Node<T> typedOtherNode)
+                {
+                    cloned.Other.Add(typedOtherNode.DeepCloneInternal(cloneMap));
+                }
+                else
+                {
+                    // For non-generic NodeBase instances, create a basic clone
+                    // You might need to adjust this based on your actual usage
+                    var basicClone = new Node<object>(otherNode.Text) { Text = otherNode.Text };
+                    cloned.Other.Add(basicClone);
+                }
+            }
+        }
+
+        return cloned;
+    }
+
+    /// <summary>
+    /// Helper method to clone a child node.
+    /// </summary>
+    /// <param name="child">The child node to clone</param>
+    /// <param name="cloneMap">Map to track cloned nodes</param>
+    /// <returns>Cloned child node or null</returns>
+    private static Node<T>? CloneChild(Node<T>? child, Dictionary<Node<T>, Node<T>> cloneMap)
+    {
+        return child?.DeepCloneInternal(cloneMap);
+    }
+
+    /// <summary>
+    /// Clones the value of type T. Override this method if T requires special cloning logic.
+    /// </summary>
+    /// <param name="original">The original value to clone</param>
+    /// <returns>A cloned value</returns>
+    private static T? CloneValue(T? original)
+    {
+        if (original == null) return default;
+
+        // Handle Token specifically since it's likely to be your T type
+        if (original is Token token)
+        {
+            return (T)(object)token.Clone();
+        }
+
+        // For value types and strings, return as-is (they're immutable)
+        if (typeof(T).IsValueType || typeof(T) == typeof(string))
+        {
+            return original;
+        }
+
+        // For ICloneable types
+        if (original is ICloneable cloneable)
+        {
+            return (T)cloneable.Clone();
+        }
+
+        // For reference types without special cloning needs, return the reference
+        // This assumes the value is effectively immutable for cloning purposes
+        return original;
+    }
+
+    #endregion
+
     public object? GetUnaryArgument(bool isPrefix, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         return nodeValueDictionary[

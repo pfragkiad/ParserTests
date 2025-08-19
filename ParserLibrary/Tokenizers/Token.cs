@@ -110,5 +110,26 @@ public class Token : IComparable<Token>
         return
             _text.CompareTo(other?._text); ;
     }
+
+    /// <summary>
+    /// Creates a deep clone of this token.
+    /// </summary>
+    /// <returns>A new Token instance with the same properties</returns>
+    public Token Clone()
+    {
+        var cloned = new Token(TokenType, _text, _index)
+        {
+            SingleChar = _singleChar
+        };
+
+        // Note: We share the Match reference since Match objects are typically immutable
+        // and represent the original regex match from parsing
+        if (_match != null)
+        {
+            cloned.Match = _match;
+        }
+
+        return cloned;
+    }
 }
 

@@ -27,5 +27,47 @@ public class Tree<T>
 
     public static int MinimumNodesCount(int height) => height + 1;
     public static int MaximumNodesCount(int height) => (1 << height) - 1; //2^h-1
+
+    #region Cloning
+
+    public Tree<T> DeepClone()
+    {
+        if (Root is null)
+            throw new InvalidOperationException("Cannot clone a tree with a null root.");
+
+        // Use the shared clone map for the entire tree
+        var cloneMap = new Dictionary<Node<T>, Node<T>>();
+
+        // Clone the root and all descendants
+        var clonedRoot = Root.DeepClone(cloneMap);
+
+        // Reconstruct the NodeDictionary for the cloned tree
+        var clonedNodeDictionary = new Dictionary<Token, Node<T>>();
+
+        foreach (var kvp in NodeDictionary)
+        {
+            var originalToken = kvp.Key;
+            var originalNode = kvp.Value;
+
+            // Clone the token
+            var clonedToken = originalToken.Clone();
+
+            // Get the corresponding cloned node
+            if (cloneMap.TryGetValue(originalNode, out var clonedNode))
+            {
+                clonedNodeDictionary[clonedToken] = clonedNode;
+            }
+        }
+
+        return new Tree<T>
+        {
+            Root = clonedRoot,
+            NodeDictionary = clonedNodeDictionary
+        };
+    }
+
+
+
+    #endregion
 }
 
