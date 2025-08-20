@@ -40,18 +40,12 @@ public class Tree<T>
             return [];
 
         var postfixTokens = new List<Token>();
-        var nodeToTokenMap = NodeDictionary.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
         // Post-order traversal gives us postfix notation
-        foreach (var node in Root.PostOrderNodes().Cast<Node<T>>())
-        {
-            if (nodeToTokenMap.TryGetValue(node, out var token))
-            {
-                // Skip null tokens that were added during parsing for empty operands
-                if (!token.IsNull)
-                    postfixTokens.Add(token);
-            }
-        }
+        var nodes = Root.PostOrderNodes().Cast<Node<Token>>();
+
+        foreach(Node<Token> node in nodes)
+            postfixTokens.Add(node.Value ?? Token.Null);
 
         return postfixTokens;
     }
@@ -66,20 +60,14 @@ public class Tree<T>
             return [];
 
         var infixTokens = new List<Token>();
-        var nodeToTokenMap = NodeDictionary.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
-        // In-order traversal gives us infix notation
-        foreach (var node in Root.InOrderNodes().Cast<Node<T>>())
-        {
-            if (nodeToTokenMap.TryGetValue(node, out var token))
-            {
-                // Skip null tokens that were added during parsing for empty operands
-                if (!token.IsNull)
-                    infixTokens.Add(token);
-            }
-        }
+        var nodes = Root.InOrderNodes().Cast<Node<Token>>();
+
+        foreach (Node<Token> node in nodes)
+            infixTokens.Add(node.Value ?? Token.Null);
 
         return infixTokens;
+
     }
 
     #endregion

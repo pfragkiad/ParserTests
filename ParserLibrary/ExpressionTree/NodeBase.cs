@@ -19,7 +19,7 @@ public abstract class NodeBase(string text)
         int rightHeight = Right?.GetHeight() ?? 0;
         int maxOtherHeight = Other?.Select(n => n.GetHeight()).Max() ?? 0;
 
-        return Math.Max(maxOtherHeight,Math.Max(leftHeight,rightHeight)) + 1;
+        return Math.Max(maxOtherHeight, Math.Max(leftHeight, rightHeight)) + 1;
     }
 
     //https://www.csharpstar.com/csharp-program-to-implement-binary-search-tree-traversal/#:~:text=There%20are%20three%20traversal%20methods,of%20the%20node%20key%20values.&text=%E2%80%93%20A%20postorder%20traversal%2C%20the%20method,then%20over%20the%20right%20subtrees.
@@ -27,9 +27,9 @@ public abstract class NodeBase(string text)
     {
         yield return this;
 
-        if ( (Other?.Count ?? 0)>0) //PRE ORDER TESTED!
-            foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
-                yield return node;
+        //if ( (Other?.Count ?? 0)>0) 
+        //    foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
+        //        yield return node;
 
         if (Left is not null)
             foreach (var node in Left.PreOrderNodes())
@@ -38,14 +38,16 @@ public abstract class NodeBase(string text)
         if (Right is not null)
             foreach (var node in Right.PreOrderNodes())
                 yield return node;
+
+        if ((Other?.Count ?? 0) > 0)
+            foreach (var node in Other!)
+                foreach (var childNode in node.PreOrderNodes())
+                    yield return childNode;
+
     }
 
-    public IEnumerable<NodeBase> PostOrderNodes() 
+    public IEnumerable<NodeBase> PostOrderNodes()
     {
-        if((Other?.Count ?? 0) > 0) //POST ORDER TESTED!
-            foreach(var node in (Other! as IEnumerable<NodeBase>).Reverse())
-                yield return node;
-
         if (Left is not null)
             foreach (var node in Left.PostOrderNodes())
                 yield return node;
@@ -54,39 +56,38 @@ public abstract class NodeBase(string text)
             foreach (var node in Right.PostOrderNodes())
                 yield return node;
 
+        if ((Other?.Count ?? 0) > 0)
+            foreach (var node in Other!)
+                foreach (var childNode in node.PreOrderNodes())
+                    yield return childNode;
+
+
+        //if ((Other?.Count ?? 0) > 0) //PRE ORDER TESTED!
+        //    foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
+        //        yield return node;
+
+
         yield return this;
     }
 
-    public IEnumerable<NodeBase> InOrderNodes() //WORKS ONLY
+    public IEnumerable<NodeBase> InOrderNodes()
     {
-        if ((Other?.Count ?? 0) > 0) //Argument case only (Left cannot precede function in any case)
-        {
-            //to be consistent and remove this case, all Other should be stored on the Right Node
-            yield return this;
-
-            foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
+        if (Left is not null)
+            foreach (var node in Left.InOrderNodes())
                 yield return node;
 
-            if (Left is not null)
-                foreach (var node in Left.InOrderNodes())
-                    yield return node;
+        yield return this; //in order is not clear when Other is used, but we keep compatiblity with binary trees
 
-            if (Right is not null)
-                foreach (var node in Right.InOrderNodes())
-                    yield return node;
-        }
-        else
-        {
-            if (Left is not null)
-                foreach (var node in Left.InOrderNodes())
-                    yield return node;
+        if (Right is not null)
+            foreach (var node in Right.InOrderNodes())
+                yield return node;
 
-            yield return this;
+        if ((Other?.Count ?? 0) > 0)
+            foreach (var node in Other!)
+                foreach (var childNode in node.PreOrderNodes())
+                    yield return childNode;
 
-            if (Right is not null)
-                foreach (var node in Right.InOrderNodes())
-                    yield return node;
-        }
+
     }
 
 

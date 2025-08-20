@@ -166,10 +166,10 @@ internal class Program
     }
 
 
-    private static void ItemParserTests(bool withTreeOptimizing)
+    private static void ItemParserTests()
     {
         // Parser Expression Test
-        Console.WriteLine("--- Parser Expression Test ---");
+        Console.WriteLine("--- Item Parser Performance Comparison ---");
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
         IParser parser = app.Services.GetRequiredParser();
 
@@ -177,86 +177,142 @@ internal class Program
         var i2 = new Item { Name = "I2", Value = 5 };
 
         string expression = "I1 + 5 + 6 + 7.0 + I2";
+        var variables = new Dictionary<string, object?>
+        {
+            { "I1", i1 },
+            { "I2", i2 }
+        };
+
         Console.WriteLine($"Expression: {expression}");
-        Console.WriteLine($"Variables: item = {i1}, item2 = {i2}");
+        Console.WriteLine($"Variables: I1 = {i1}, I2 = {i2}");
         Console.WriteLine();
 
-        // Generate and print the original expression tree with timing
-        Console.WriteLine("=== Original Expression Tree ===");
-        var treeStopwatch = Stopwatch.StartNew();
+        // Pre-generate trees to exclude preparation overhead from performance measurement
+        Console.WriteLine("=== Preparing Trees (excluded from performance measurement) ===");
         var originalTree = parser.GetExpressionTree(expression);
-        treeStopwatch.Stop();
-        
-        Console.WriteLine($"Tree Info: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}, Leaf Nodes={originalTree.GetLeafNodesCount()}");
-        Console.WriteLine($"Tree Generation Time: {treeStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine("\nTree Structure:");
-        originalTree.Print(withSlashes: false);
-        Console.WriteLine();
-
-        // Generate variable types for optimization
         var variableTypes = new Dictionary<string, Type>
         {
             { "I1", typeof(Item) },
             { "I2", typeof(Item) }
         };
-
-        // Generate and print the optimized expression tree with timing
-        Console.WriteLine("=== Optimized Expression Tree ===");
-        var optimizedStopwatch = Stopwatch.StartNew();
         var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        optimizedStopwatch.Stop();
         
-        Console.WriteLine($"Optimized Tree Info: Nodes={optimizedTree.Count}, Height={optimizedTree.GetHeight()}, Leaf Nodes={optimizedTree.GetLeafNodesCount()}");
-        Console.WriteLine($"Optimization Time: {optimizedStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine("\nOptimized Tree Structure:");
-
-        //int requiredHeight = originalTree.GetHeight() + 10; // Add some padding
-        //if (Console.BufferHeight < requiredHeight)
-        //{
-        //    Console.SetBufferSize(Console.BufferWidth, Math.Max(requiredHeight, 50));
-        //}
-        optimizedTree.Print(withSlashes: false);
+        Console.WriteLine($"Original Tree: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}");
+        Console.WriteLine($"Optimized Tree: Nodes={optimizedTree.Count}, Height={optimizedTree.GetHeight()}");
         Console.WriteLine();
 
-        // Tree Traversals for comparison
-        Console.WriteLine("=== Tree Traversals Comparison ===");
-        Console.WriteLine("Original Tree Traversals:");
-        Console.WriteLine($"  Post-order: {string.Join(" ", originalTree.Root.PostOrderNodes().Select(n => n.Text))}");
-        Console.WriteLine($"  Pre-order:  {string.Join(" ", originalTree.Root.PreOrderNodes().Select(n => n.Text))}");
-        Console.WriteLine($"  In-order:   {string.Join(" ", originalTree.Root.InOrderNodes().Select(n => n.Text))}");
+        // Performance comparison - PURE EVALUATION ONLY
+        Console.WriteLine("=== Pure Evaluation Performance Comparison ===");
         Console.WriteLine();
 
-        Console.WriteLine("Optimized Tree Traversals:");
-        Console.WriteLine($"  Post-order: {string.Join(" ", optimizedTree.Root.PostOrderNodes().Select(n => n.Text))}");
-        Console.WriteLine($"  Pre-order:  {string.Join(" ", optimizedTree.Root.PreOrderNodes().Select(n => n.Text))}");
-        Console.WriteLine($"  In-order:   {string.Join(" ", optimizedTree.Root.InOrderNodes().Select(n => n.Text))}");
-        Console.WriteLine();
-
-        // Evaluate the expression with detailed timing
-        Console.WriteLine("=== Expression Evaluation ===");
-        var evalStopwatch = Stopwatch.StartNew();
-        var parserResult = parser.Evaluate(expression, new Dictionary<string, object?>
+        const int iterations = 10;
+        
+      //  // Test 1: Standard Evaluate method (without tree optimizer)
+      //  Console.WriteLine($"Testing Standard Evaluate method ({iterations} iterations):");
+        
+      //    Console.WriteLine($"Warmup (5 iterations):");
+      //// Warm up
+      //  for (int i = 0; i < 5; i++)
+      //  {
+      //      parser.Evaluate(expression, variables);
+      //  }
+        
+        var evaluateStopwatch = Stopwatch.StartNew();
+        object? standardResult = null;
+        
+        for (int i = 0; i < iterations; i++)
         {
-            { "I1", i1 },
-            { "I2", i2 }
-        });
-        evalStopwatch.Stop();
-
-        Console.WriteLine($"Parser Result: {parserResult}, Type: {parserResult?.GetType().Name}");
-        Console.WriteLine($"Expression Evaluation Time: {evalStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Total Processing Time: {treeStopwatch.ElapsedMilliseconds + optimizedStopwatch.ElapsedMilliseconds + evalStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Expected calculation: {i1} + 5 + 6 + 7 (rounded) + {i2}");
-        Console.WriteLine($"= First 10 + 5 + 6 + 7 + Second 5 = Combined result with total value 33");
-
+            standardResult = parser.Evaluate(expression, variables);
+        }
+        
+        evaluateStopwatch.Stop();
+        
+        Console.WriteLine($"  Result: {standardResult} (Type: {standardResult?.GetType().Name})");
+        Console.WriteLine($"  Total Time: {evaluateStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"  Average Time per Evaluation: {(double)evaluateStopwatch.ElapsedTicks / iterations / TimeSpan.TicksPerMillisecond:F6}ms");
+        Console.WriteLine($"  Evaluations per second: {iterations * 1000.0 / evaluateStopwatch.ElapsedMilliseconds:F0}");
         Console.WriteLine();
-        Console.WriteLine("=== Performance Summary ===");
-        Console.WriteLine($"Tree Generation:     {treeStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Tree Optimization:   {optimizedStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Expression Evaluation: {evalStopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Total Time:          {treeStopwatch.ElapsedMilliseconds + optimizedStopwatch.ElapsedMilliseconds + evalStopwatch.ElapsedMilliseconds}ms");
+
+        // Test 2: EvaluateWithTreeOptimizer method
+        Console.WriteLine($"Testing EvaluateWithTreeOptimizer method ({iterations} iterations):");
+        
+        //// Warm up
+        //for (int i = 0; i < 100; i++)
+        //{
+        //    parser.EvaluateWithTreeOptimizer(expression, variables);
+        //}
+        
+        var optimizerStopwatch = Stopwatch.StartNew();
+        object? optimizedResult = null;
+        
+        for (int i = 0; i < iterations; i++)
+        {
+            optimizedResult = parser.EvaluateWithTreeOptimizer(expression, variables);
+        }
+        
+        optimizerStopwatch.Stop();
+        
+        Console.WriteLine($"  Result: {optimizedResult} (Type: {optimizedResult?.GetType().Name})");
+        Console.WriteLine($"  Total Time: {optimizerStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"  Average Time per Evaluation: {(double)optimizerStopwatch.ElapsedTicks / iterations / TimeSpan.TicksPerMillisecond:F6}ms");
+        Console.WriteLine($"  Evaluations per second: {iterations * 1000.0 / optimizerStopwatch.ElapsedMilliseconds:F0}");
+        Console.WriteLine();
+
+        // Performance analysis
+        Console.WriteLine("=== Performance Analysis ===");
+        var standardTime = evaluateStopwatch.ElapsedMilliseconds;
+        var optimizedTime = optimizerStopwatch.ElapsedMilliseconds;
+        var timeDifference = standardTime - optimizedTime;
+        var speedupRatio = optimizedTime > 0 ? (double)standardTime / optimizedTime : 0;
+        
+        Console.WriteLine($"Standard Evaluate:           {standardTime}ms");
+        Console.WriteLine($"EvaluateWithTreeOptimizer:   {optimizedTime}ms");
+        Console.WriteLine($"Time Difference:             {timeDifference}ms");
+        Console.WriteLine($"Speed Ratio:                 {speedupRatio:F2}x {(speedupRatio > 1 ? "(optimizer is faster)" : "(standard is faster)")}");
+        
+        if (speedupRatio > 1)
+        {
+            Console.WriteLine($"Performance Improvement:     {((speedupRatio - 1) * 100):F1}% faster with optimizer");
+        }
+        else if (speedupRatio < 1 && speedupRatio > 0)
+        {
+            Console.WriteLine($"Performance Degradation:     {((1 / speedupRatio - 1) * 100):F1}% slower with optimizer");
+        }
+        Console.WriteLine();
+
+        // Result validation
+        Console.WriteLine("=== Result Validation ===");
+        bool resultsMatch = (standardResult?.ToString() == optimizedResult?.ToString()) && 
+                           (standardResult?.GetType() == optimizedResult?.GetType());
+        
+        Console.WriteLine($"Results Match: {(resultsMatch ? "✓ YES" : "✗ NO")}");
+        if (!resultsMatch)
+        {
+            Console.WriteLine($"Standard Result:  {standardResult} (Type: {standardResult?.GetType().Name})");
+            Console.WriteLine($"Optimized Result: {optimizedResult} (Type: {optimizedResult?.GetType().Name})");
+        }
+        Console.WriteLine($"Expected: Combined Item with value 33 (10 + 5 + 6 + 7 + 5)");
+        Console.WriteLine();
+
+        //// Show tree structures for reference
+        //Console.WriteLine("=== Tree Structures ===");
+        //Console.WriteLine("Original Tree:");
+        //originalTree.Print(withSlashes: false);
+        //Console.WriteLine();
+        
+        //Console.WriteLine("Optimized Tree:");
+        //optimizedTree.Print(withSlashes: false);
+        //Console.WriteLine();
+
+        // Final summary
+        Console.WriteLine("=== Final Performance Summary ===");
+        Console.WriteLine($"Standard Evaluate:           {standardTime}ms ({iterations:N0} iterations)");
+        Console.WriteLine($"EvaluateWithTreeOptimizer:   {optimizedTime}ms ({iterations:N0} iterations)");
+        Console.WriteLine($"Winner: {(timeDifference > 0 ? "EvaluateWithTreeOptimizer" : "Standard Evaluate")} by {Math.Abs(timeDifference)}ms");
+        Console.WriteLine($"Speed Difference: {Math.Abs(speedupRatio - 1) * 100:F1}%");
         
         Console.WriteLine();
-        Console.WriteLine("=== End Item Parser Tests ===");
+        Console.WriteLine("=== End Pure Evaluation Performance Tests ===");
     }
 
     private static void ItemOperatorTests()
@@ -300,7 +356,7 @@ internal class Program
 
         //ItemOperatorTests();
 
-        //ItemParserTests();
+        ItemParserTests();
        
         //CheckTypeTests();
 

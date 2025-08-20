@@ -329,6 +329,8 @@ public class Parser : Tokenizer, IParser
             .Where(kv=>kv.Value is not null)
             .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType()) ?? []);
 
+        //tree.Print();
+
         return EvaluateWithTreeOptimizer(tree, variables);  
     }
 
