@@ -12,10 +12,14 @@ public interface IStatefulParser : IParser
 
     object? Evaluate(Dictionary<string, object?>? variables = null);
 
+    object? EvaluateWithTreeOptimizer(Dictionary<string, object?>? variables = null);
+
+
 
     Type EvaluateType();
 
     Type EvaluateType(Dictionary<string, object?>? variables = null);
+
 
     List<ValidationFailure> GetValidationFailures(string[] ignoreCaptureGroups);
 }

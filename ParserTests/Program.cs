@@ -166,17 +166,125 @@ internal class Program
     }
 
 
-    private static void ItemTest()
+    private static void ItemParserTests(bool withTreeOptimizing)
     {
+        // Parser Expression Test
+        Console.WriteLine("--- Parser Expression Test ---");
+        var app = App.GetParserApp<ItemParser>("parsersettings.json");
+        IParser parser = app.Services.GetRequiredParser();
+
+        var i1 = new Item { Name = "I1", Value = 10 };
+        var i2 = new Item { Name = "I2", Value = 5 };
+
+        string expression = "I1 + 5 + 6 + 7.0 + I2";
+        Console.WriteLine($"Expression: {expression}");
+        Console.WriteLine($"Variables: item = {i1}, item2 = {i2}");
+        Console.WriteLine();
+
+        // Generate and print the original expression tree with timing
+        Console.WriteLine("=== Original Expression Tree ===");
+        var treeStopwatch = Stopwatch.StartNew();
+        var originalTree = parser.GetExpressionTree(expression);
+        treeStopwatch.Stop();
+        
+        Console.WriteLine($"Tree Info: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}, Leaf Nodes={originalTree.GetLeafNodesCount()}");
+        Console.WriteLine($"Tree Generation Time: {treeStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine("\nTree Structure:");
+        originalTree.Print(withSlashes: false);
+        Console.WriteLine();
+
+        // Generate variable types for optimization
+        var variableTypes = new Dictionary<string, Type>
+        {
+            { "I1", typeof(Item) },
+            { "I2", typeof(Item) }
+        };
+
+        // Generate and print the optimized expression tree with timing
+        Console.WriteLine("=== Optimized Expression Tree ===");
+        var optimizedStopwatch = Stopwatch.StartNew();
+        var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
+        optimizedStopwatch.Stop();
+        
+        Console.WriteLine($"Optimized Tree Info: Nodes={optimizedTree.Count}, Height={optimizedTree.GetHeight()}, Leaf Nodes={optimizedTree.GetLeafNodesCount()}");
+        Console.WriteLine($"Optimization Time: {optimizedStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine("\nOptimized Tree Structure:");
+
+        //int requiredHeight = originalTree.GetHeight() + 10; // Add some padding
+        //if (Console.BufferHeight < requiredHeight)
+        //{
+        //    Console.SetBufferSize(Console.BufferWidth, Math.Max(requiredHeight, 50));
+        //}
+        optimizedTree.Print(withSlashes: false);
+        Console.WriteLine();
+
+        // Tree Traversals for comparison
+        Console.WriteLine("=== Tree Traversals Comparison ===");
+        Console.WriteLine("Original Tree Traversals:");
+        Console.WriteLine($"  Post-order: {string.Join(" ", originalTree.Root.PostOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine($"  Pre-order:  {string.Join(" ", originalTree.Root.PreOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine($"  In-order:   {string.Join(" ", originalTree.Root.InOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine();
+
+        Console.WriteLine("Optimized Tree Traversals:");
+        Console.WriteLine($"  Post-order: {string.Join(" ", optimizedTree.Root.PostOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine($"  Pre-order:  {string.Join(" ", optimizedTree.Root.PreOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine($"  In-order:   {string.Join(" ", optimizedTree.Root.InOrderNodes().Select(n => n.Text))}");
+        Console.WriteLine();
+
+        // Evaluate the expression with detailed timing
+        Console.WriteLine("=== Expression Evaluation ===");
+        var evalStopwatch = Stopwatch.StartNew();
+        var parserResult = parser.Evaluate(expression, new Dictionary<string, object?>
+        {
+            { "I1", i1 },
+            { "I2", i2 }
+        });
+        evalStopwatch.Stop();
+
+        Console.WriteLine($"Parser Result: {parserResult}, Type: {parserResult?.GetType().Name}");
+        Console.WriteLine($"Expression Evaluation Time: {evalStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Total Processing Time: {treeStopwatch.ElapsedMilliseconds + optimizedStopwatch.ElapsedMilliseconds + evalStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Expected calculation: {i1} + 5 + 6 + 7 (rounded) + {i2}");
+        Console.WriteLine($"= First 10 + 5 + 6 + 7 + Second 5 = Combined result with total value 33");
+
+        Console.WriteLine();
+        Console.WriteLine("=== Performance Summary ===");
+        Console.WriteLine($"Tree Generation:     {treeStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Tree Optimization:   {optimizedStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Expression Evaluation: {evalStopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Total Time:          {treeStopwatch.ElapsedMilliseconds + optimizedStopwatch.ElapsedMilliseconds + evalStopwatch.ElapsedMilliseconds}ms");
+        
+        Console.WriteLine();
+        Console.WriteLine("=== End Item Parser Tests ===");
+    }
+
+    private static void ItemOperatorTests()
+    {
+        Console.WriteLine("=== Item Tests ===");
+        Console.WriteLine();
+
         var item = new Item { Name = "Test", Value = 10 };
+        Console.WriteLine($"Original item: {item}");
+        Console.WriteLine();
 
         // Addition with doubles
         var result1 = item + 5.7;    // Value becomes 10 + 6 = 16
+        Console.WriteLine($"item + 5.7 = {result1} (5.7 rounded to {(int)Math.Round(5.7, 0)})");
+
         var result2 = 3.2 + item;    // Value becomes 10 + 3 = 13
+        Console.WriteLine($"3.2 + item = {result2} (3.2 rounded to {(int)Math.Round(3.2, 0)})");
+
+        Console.WriteLine();
 
         // Multiplication with doubles
         var result3 = item * 2.8;    // Value becomes 10 * 3 = 30
+        Console.WriteLine($"item * 2.8 = {result3} (2.8 rounded to {(int)Math.Round(2.8, 0)})");
+
         var result4 = 1.9 * item;    // Value becomes 10 * 2 = 20
+        Console.WriteLine($"1.9 * item = {result4} (1.9 rounded to {(int)Math.Round(1.9, 0)})");
+
+        Console.WriteLine();
     }
 
     private static void Main(string[] args)
@@ -184,13 +292,15 @@ internal class Program
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
         //MainTests();
-       // ComplexTests();
+        // ComplexTests();
 
 
         //return;
 
 
-        //ItemTests
+        //ItemOperatorTests();
+
+        //ItemParserTests();
        
         //CheckTypeTests();
 

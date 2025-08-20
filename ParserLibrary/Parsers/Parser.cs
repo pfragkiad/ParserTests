@@ -155,14 +155,14 @@ public class Parser : Tokenizer, IParser
 
     // Add this method to your Parser class
 
-    public Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes)
+    public Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type>? variableTypes = null)
     {
         var tree = GetExpressionTree(expression);
         var optimizer = new TreeOptimizer<Token>();
         return optimizer.OptimizeForDataTypes(tree, variableTypes);
     }
 
-    public Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes)
+    public Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null)
     {
         var tree = GetExpressionTree(postfixTokens);
         var optimizer = new TreeOptimizer<Token>();
@@ -321,6 +321,24 @@ public class Parser : Tokenizer, IParser
         var postfixTokens = GetPostfixTokens(s);
         return Evaluate(postfixTokens, variables);
     }
+
+    public virtual object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
+    {
+        var tree = GetOptimizedExpressionTree(expression,
+            variables?
+            .Where(kv=>kv.Value is not null)
+            .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType()) ?? []);
+
+        return EvaluateWithTreeOptimizer(tree, variables);  
+    }
+
+    protected virtual object? EvaluateWithTreeOptimizer(Tree<Token> tree, Dictionary<string, object?>? variables = null)
+    {
+        var postfixTokens = tree.GetPostfixTokens();
+        return Evaluate(postfixTokens, variables);
+    }
+
+
 
     public virtual Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
     {

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
+using System.Linq.Expressions;
 
 namespace ParserLibrary.Parsers;
 
@@ -21,7 +22,7 @@ public class StatefulParser : Parser, IStatefulParser
 
     public StatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options,
         string? expression = null,
-        Dictionary<string,object?>? variables = null)
+        Dictionary<string, object?>? variables = null)
         : base(logger, options)
     {
         //assign expression if not null or whitespace
@@ -42,40 +43,6 @@ public class StatefulParser : Parser, IStatefulParser
 
     #region Expression fields
 
-
-    private string? _expression;
-    public string? Expression
-    {
-        get => _expression;
-        set
-        {
-            Reset();
-
-            _expression = value;
-            if (string.IsNullOrWhiteSpace(_expression)) return;
-
-            //parses all tokens
-            _infixTokens = GetInfixTokens(value!);
-            _postfixTokens = GetPostfixTokens(_infixTokens);
-        }
-    }
-
-
-    protected Dictionary<string, object?> _variables = [];
-    public Dictionary<string, object?> Variables
-    {
-        get => _variables;
-        set
-        {
-            _variables = value ?? [];
-            _variables = MergeVariableConstants(_variables);
-        }
-    }
-
-
-    #endregion
-
-
     protected void Reset()
     {
         _infixTokens = [];
@@ -87,42 +54,108 @@ public class StatefulParser : Parser, IStatefulParser
         _variables = [];
     }
 
+    private string? _expression;
+    public string? Expression { get => _expression; set => _expression = value; }
+
+    private void PrepareExpression(string? expression, bool useOptimizer, Dictionary<string, object?>? variables = null)
+    {
+        _expression = expression;
+        PrepareExpression(useOptimizer, variables);
+    }
+
+    private void PrepareExpression(bool useOptimizer, Dictionary<string, object?>? variables = null)
+    {
+        Reset();
+        if (string.IsNullOrWhiteSpace(_expression)) return;
+
+        Variables = variables ?? [];
+
+        if (!useOptimizer)
+        {
+            _infixTokens = GetInfixTokens(_expression!);
+            _postfixTokens = GetPostfixTokens(_infixTokens);
+            return;
+        }
+
+        //use optimizer
+
+        var tree = GetOptimizedExpressionTree(
+            _expression!,
+           _variables?
+           .Where(kv => kv.Value is not null)
+           .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType()) ?? []);
+
+        //parses all tokens
+        _infixTokens = tree.GetInfixTokens();
+        //_postfixTokens = GetPostfixTokens(_infixTokens);
+        _postfixTokens = tree.GetPostfixTokens();
+    }
+
+    protected Dictionary<string, object?> _variables = [];
+
+    public Dictionary<string, object?> Variables
+    {
+        get => _variables;
+        set
+        {
+            _variables = value ?? [];
+            _variables = MergeVariableConstants(_variables);
+        }
+    }
+
+    #endregion
+
+
+
+
     //also resets the internal expression
     public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
-        Expression = expression;
-        Variables = variables ?? [];
+        PrepareExpression(expression, useOptimizer: false, variables);
         return Evaluate();
     }
 
+    //Evaluates without tree optimization
     public virtual object? Evaluate(Dictionary<string, object?>? variables = null)
     {
-        Variables = variables ?? [];
+        PrepareExpression(useOptimizer: false, variables);
         return Evaluate();
     }
+
+
+    public override object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
+    {
+        PrepareExpression(expression, useOptimizer: true, variables);
+        return Evaluate();
+    }
+
+    public virtual object? EvaluateWithTreeOptimizer(Dictionary<string, object?>? variables = null)
+    {
+        PrepareExpression(useOptimizer: true, variables);
+        return Evaluate();
+    }
+
 
     //also resets the internal expression
 
     public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
     {
-        Expression = expression;
-        Variables = variables ?? [];
-
+        PrepareExpression(expression, useOptimizer: false, variables); //no need to optimize for type evaluation
         return EvaluateType();
     }
 
     public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
     {
-        Variables = variables ?? [];
+        PrepareExpression(useOptimizer: false, variables);
         return EvaluateType();
     }
 
 
     public object? Evaluate() =>
-        Evaluate(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants:false);
+        Evaluate(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
 
     public Type EvaluateType() =>
-        EvaluateType(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants:false);
+        EvaluateType(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
 
 
     #endregion

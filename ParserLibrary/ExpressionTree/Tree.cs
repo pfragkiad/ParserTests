@@ -21,12 +21,68 @@ public class Tree<T>
 
     public int GetLeafNodesCount()
     {
-       return NodeDictionary.
-            Count(e => e.Value.Left is null && e.Value.Right is null);
+        return NodeDictionary.
+             Count(e => e.Value.Left is null && e.Value.Right is null);
     }
 
     public static int MinimumNodesCount(int height) => height + 1;
     public static int MaximumNodesCount(int height) => (1 << height) - 1; //2^h-1
+
+    #region Get tokens from the tree
+
+    /// <summary>
+    /// Gets the tokens in postfix order from the expression tree.
+    /// </summary>
+    /// <returns>A list of tokens in postfix (reverse Polish) notation order</returns>
+    public List<Token> GetPostfixTokens()
+    {
+        if (Root is null)
+            return [];
+
+        var postfixTokens = new List<Token>();
+        var nodeToTokenMap = NodeDictionary.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+
+        // Post-order traversal gives us postfix notation
+        foreach (var node in Root.PostOrderNodes().Cast<Node<T>>())
+        {
+            if (nodeToTokenMap.TryGetValue(node, out var token))
+            {
+                // Skip null tokens that were added during parsing for empty operands
+                if (!token.IsNull)
+                    postfixTokens.Add(token);
+            }
+        }
+
+        return postfixTokens;
+    }
+
+    /// <summary>
+    /// Gets the tokens in infix order from the expression tree.
+    /// </summary>
+    /// <returns>A list of tokens in infix notation order</returns>
+    public List<Token> GetInfixTokens()
+    {
+        if (Root is null)
+            return [];
+
+        var infixTokens = new List<Token>();
+        var nodeToTokenMap = NodeDictionary.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+
+        // In-order traversal gives us infix notation
+        foreach (var node in Root.InOrderNodes().Cast<Node<T>>())
+        {
+            if (nodeToTokenMap.TryGetValue(node, out var token))
+            {
+                // Skip null tokens that were added during parsing for empty operands
+                if (!token.IsNull)
+                    infixTokens.Add(token);
+            }
+        }
+
+        return infixTokens;
+    }
+
+    #endregion
 
     #region Cloning
 

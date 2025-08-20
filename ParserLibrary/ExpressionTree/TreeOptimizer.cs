@@ -4,8 +4,9 @@ namespace ParserLibrary.ExpressionTree;
 
 public class TreeOptimizer<T>
 {
-    public Tree<T> OptimizeForDataTypes(Tree<T> originalTree, Dictionary<string, Type> variableTypes)
+    public Tree<T> OptimizeForDataTypes(Tree<T> originalTree, Dictionary<string, Type>? variableTypes = null)
     {
+        variableTypes ??= [];
         var optimizedTree = originalTree.DeepClone();
         OptimizeNode(optimizedTree.Root, variableTypes);
         return optimizedTree;
