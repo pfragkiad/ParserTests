@@ -153,7 +153,21 @@ public class Parser : Tokenizer, IParser
         return tree;
     }
 
+    // Add this method to your Parser class
 
+    public Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes)
+    {
+        var tree = GetExpressionTree(expression);
+        var optimizer = new TreeOptimizer<Token>();
+        return optimizer.OptimizeForDataTypes(tree, variableTypes);
+    }
+
+    public Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes)
+    {
+        var tree = GetExpressionTree(postfixTokens);
+        var optimizer = new TreeOptimizer<Token>();
+        return optimizer.OptimizeForDataTypes(tree, variableTypes);
+    }
 
 
     #endregion

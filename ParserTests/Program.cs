@@ -10,9 +10,9 @@ using ParserLibrary.ExpressionTree;
 
 using System.Diagnostics;
 using System.Numerics;
-using ParserTests.Item;
 using System.Globalization;
 using OneOf;
+using ParserTests.Common;
 
 
 
@@ -94,27 +94,7 @@ internal class Program
         Complex result2 = (Complex?)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } }) ?? Complex.Zero;
         Console.WriteLine(result2);
     }
-
-    private static void Main(string[] args)
-    {
-        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-
-        //MainTests();
-       // ComplexTests();
-
-
-        //return;
-
-
-        //ItemTests
-        CheckTypeTests();
-
-
-
-        //get host app with ItemParser
-
-    }
-
+   
     private static void CheckTypeTests()
     {
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
@@ -184,4 +164,40 @@ internal class Program
         //Console.WriteLine($"Result3: {result3}, Type: {result3.GetType().Name}");
         //Console.WriteLine($"Result4: {result4}, Type: {result4.GetType().Name}");
     }
+
+
+    private static void ItemTest()
+    {
+        var item = new Item { Name = "Test", Value = 10 };
+
+        // Addition with doubles
+        var result1 = item + 5.7;    // Value becomes 10 + 6 = 16
+        var result2 = 3.2 + item;    // Value becomes 10 + 3 = 13
+
+        // Multiplication with doubles
+        var result3 = item * 2.8;    // Value becomes 10 * 3 = 30
+        var result4 = 1.9 * item;    // Value becomes 10 * 2 = 20
+    }
+
+    private static void Main(string[] args)
+    {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
+        //MainTests();
+       // ComplexTests();
+
+
+        //return;
+
+
+        //ItemTests
+       
+        //CheckTypeTests();
+
+
+
+        //get host app with ItemParser
+
+    }
+
 }

@@ -7,3 +7,5 @@ global using Microsoft.Extensions.Options;
 
 global using Microsoft.Extensions.Logging;
 global using System.Globalization;
+
+global using ParserTests.Common;

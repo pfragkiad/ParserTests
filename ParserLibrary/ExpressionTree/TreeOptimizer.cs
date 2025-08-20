@@ -20,13 +20,13 @@ public class TreeOptimizer<T>
         if (node.Right != null) OptimizeNode((Node<T>)node.Right, variableTypes);
 
         // Check if this node represents a commutative operation
-        if (IsCommutativeOperation(node))
+        if (TreeOptimizer<T>.IsCommutativeOperation(node))
         {
             RearrangeCommutativeOperation(node, variableTypes);
         }
     }
 
-    private bool IsCommutativeOperation(Node<T> node)
+    private static bool IsCommutativeOperation(Node<T> node)
     {
         if (node.Value is not Token token) return false;
         
@@ -103,11 +103,25 @@ public class TreeOptimizer<T>
         
         return token.TokenType switch
         {
-            TokenType.Literal => 0, // Literals first (constants)
+            TokenType.Literal => GetLiteralTypePriority(token.Text),
             TokenType.Identifier when variableTypes.TryGetValue(token.Text, out var type) => GetTypePriorityValue(type),
             TokenType.Function => 1000, // Functions last
             _ => int.MaxValue
         };
+    }
+
+    private int GetLiteralTypePriority(string literalText)
+    {
+        // Check for integer literals
+        if (int.TryParse(literalText, out _))
+            return 2; // Integer literals
+        
+        // Check for floating-point literals
+        if (double.TryParse(literalText, System.Globalization.CultureInfo.InvariantCulture, out _))
+            return 1; // Float literals
+        
+        // All other literals (including timespan literals) are treated as unrecognized
+        return 0; // Unrecognized literals get highest priority (safest approach)
     }
 
     private int GetTypePriorityValue(Type type)
@@ -115,7 +129,7 @@ public class TreeOptimizer<T>
         // Customize this based on your specific types
         if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return 1;
         if (type == typeof(int) || type == typeof(long)) return 2;
-        if (type.Name.Contains("Item")) return 100; // Your custom Item types
+        //if (type.Name.Contains("Item")) return 100; // Your custom Item types
         
         return 50; // Default priority for other types
     }

@@ -61,5 +61,6 @@ public interface IParser : ITokenizer
     InvalidOperatorsCheckResult CheckOperators(string expression);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression);
-
+    Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes);
+    Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes);
 }

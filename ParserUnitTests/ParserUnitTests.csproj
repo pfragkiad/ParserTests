@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ParserLibrary\ParserLibrary.csproj" />
+    <ProjectReference Include="..\ParserTests.Common\ParserTests.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,4 @@
-﻿namespace ParserTests.Item;
+﻿namespace ParserTests.Common;
 
 public partial class Item //<--set to partial so we can add operators later
 {
