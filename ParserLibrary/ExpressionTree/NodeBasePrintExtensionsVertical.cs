@@ -90,8 +90,7 @@ public static class NodeBasePrintExtensionsVertical
     private static void CalculatePositions(List<NodeInfo> nodeInfos, int leftOffset)
     {
         // Minimal spacing between adjacent child subtrees
-        const int minGap = 2;               // widen to avoid touching connectors/text
-        const int lastLevelLeftGutter = 0;  // extra left gutter for the bottom-most level
+        const int minGap = 2;
 
         // Quick lookups
         var map = nodeInfos.ToDictionary(n => n.Node, n => n);
@@ -119,32 +118,11 @@ public static class NodeBasePrintExtensionsVertical
             n.SubtreeWidth = Math.Max(nodeTextWidth, childrenTotal);
         }
 
-        // 2) Top-down: assign absolute positions so each parent is centered over its children span
+        // 2) Top-down: assign absolute positions, compact siblings, then center parent over compacted children
         var root = nodeInfos.First(n => n.Level == 0);
         AssignPositionsTopDown(root, leftOffset, minGap, map);
 
-        // 3) Ensure extra left space for the last level (leaves row)
-        int maxLevel = nodeInfos.Max(n => n.Level);
-        var lastLevelNodes = nodeInfos.Where(n => n.Level == maxLevel).ToList();
-        if (lastLevelNodes.Count > 0)
-        {
-            int minLeftOnLast = lastLevelNodes.Min(n =>
-            {
-                int half = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
-                return n.CenterColumn - half;
-            });
-
-            if (minLeftOnLast < lastLevelLeftGutter)
-            {
-                int delta = lastLevelLeftGutter - minLeftOnLast;
-                foreach (var n in nodeInfos)
-                {
-                    n.CenterColumn += delta;
-                }
-            }
-        }
-
-        // 4) Bounds
+        // 3) Bounds
         foreach (var n in nodeInfos)
         {
             int halfWidth = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
@@ -155,15 +133,18 @@ public static class NodeBasePrintExtensionsVertical
 
     private static void AssignPositionsTopDown(NodeInfo parent, int subtreeLeft, int gap, Dictionary<NodeBase, NodeInfo> map)
     {
-        // Center of this node's subtree
-        int parentCenter = subtreeLeft + parent.SubtreeWidth / 2;
-        parent.CenterColumn = parentCenter;
+        int nodeTextWidth = Math.Max(1, parent.Node.Text.Length);
 
-        if (parent.Children.Count == 0) return;
+        if (parent.Children.Count == 0)
+        {
+            // Leaf: center within its subtree
+            parent.CenterColumn = subtreeLeft + nodeTextWidth / 2;
+            return;
+        }
 
         var children = parent.Children.Select(c => map[c]).ToList();
 
-        // Total width of children subtrees plus gaps (keeps sibling order)
+        // First place children naively within the allotted subtree block
         int childrenTotal = 0;
         for (int i = 0; i < children.Count; i++)
         {
@@ -171,16 +152,142 @@ public static class NodeBasePrintExtensionsVertical
             if (i > 0) childrenTotal += gap;
         }
 
-        // Start children so they are centered beneath the parent
-        int childrenLeft = parentCenter - childrenTotal / 2;
-
+        int blockWidth = Math.Max(nodeTextWidth, childrenTotal);
+        int childrenLeft = subtreeLeft + Math.Max(0, (blockWidth - childrenTotal) / 2);
         int currentLeft = childrenLeft;
+
+        // Recurse into children to place their subtrees
         for (int i = 0; i < children.Count; i++)
         {
             var child = children[i];
             AssignPositionsTopDown(child, currentLeft, gap, map);
             currentLeft += child.SubtreeWidth + (i < children.Count - 1 ? gap : 0);
         }
+
+        // Now compact siblings as much as allowed, left-to-right
+        for (int i = 1; i < children.Count; i++)
+        {
+            var leftRoot = children[i - 1];
+            var rightRoot = children[i];
+
+            int maxShiftLeft = ComputeMaxLeftShift(rightRoot, leftRoot, map, gap);
+            if (maxShiftLeft > 0)
+            {
+                ShiftSubtree(rightRoot, map, maxShiftLeft);
+            }
+        }
+
+        // Center parent over the compacted children span,
+        // then nudge to avoid being collinear with any child.
+        var (minLeft, maxRight) = GetChildrenSpan(children, map);
+        int proposedCenter = (minLeft + maxRight) / 2;
+
+        // Ensure parent is strictly between leftmost and rightmost child centers
+        const int parentChildOffset = 1; // at least one column away
+        int leftChildCenter = children.Min(c => c.CenterColumn);
+        int rightChildCenter = children.Max(c => c.CenterColumn);
+
+        if (proposedCenter <= leftChildCenter)
+            proposedCenter = leftChildCenter + parentChildOffset;
+
+        if (proposedCenter >= rightChildCenter)
+            proposedCenter = rightChildCenter - parentChildOffset;
+
+        parent.CenterColumn = proposedCenter;
+    }
+
+    // Compute how much we can move the 'right' subtree to the left without overlapping the 'left' subtree,
+    // considering all nodes that appear on the same absolute level.
+    private static int ComputeMaxLeftShift(NodeInfo right, NodeInfo left, Dictionary<NodeBase, NodeInfo> map, int minGap)
+    {
+        var rightNodes = EnumerateSubtree(right, map);
+        var leftNodes  = EnumerateSubtree(left, map);
+
+        // Build level -> min(leftBound) for right subtree
+        var rightMinLeftByLevel = new Dictionary<int, int>();
+        foreach (var n in rightNodes)
+        {
+            int lb = n.CenterColumn - (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+            if (!rightMinLeftByLevel.TryGetValue(n.Level, out int curr))
+                rightMinLeftByLevel[n.Level] = lb;
+            else
+                rightMinLeftByLevel[n.Level] = Math.Min(curr, lb);
+        }
+
+        // Build level -> max(rightBound) for left subtree
+        var leftMaxRightByLevel = new Dictionary<int, int>();
+        foreach (var n in leftNodes)
+        {
+            int rb = n.CenterColumn + (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+            if (!leftMaxRightByLevel.TryGetValue(n.Level, out int curr))
+                leftMaxRightByLevel[n.Level] = rb;
+            else
+                leftMaxRightByLevel[n.Level] = Math.Max(curr, rb);
+        }
+
+        int allowed = int.MaxValue;
+        foreach (var level in rightMinLeftByLevel.Keys)
+        {
+            if (!leftMaxRightByLevel.TryGetValue(level, out int leftMax)) continue;
+
+            int rightMinLeft = rightMinLeftByLevel[level];
+            int required = rightMinLeft - (leftMax + minGap);
+
+            allowed = Math.Min(allowed, required);
+        }
+
+        return Math.Max(0, allowed == int.MaxValue ? 0 : allowed);
+    }
+
+    private static void ShiftSubtree(NodeInfo root, Dictionary<NodeBase, NodeInfo> map, int shiftLeft)
+    {
+        if (shiftLeft <= 0) return;
+        foreach (var n in EnumerateSubtree(root, map))
+        {
+            n.CenterColumn -= shiftLeft;
+        }
+    }
+
+    private static IEnumerable<NodeInfo> EnumerateSubtree(NodeInfo root, Dictionary<NodeBase, NodeInfo> map)
+    {
+        var stack = new Stack<NodeInfo>();
+        stack.Push(root);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            yield return n;
+            // Push children
+            for (int i = n.Children.Count - 1; i >= 0; i--)
+            {
+                var c = n.Children[i];
+                if (map.TryGetValue(c, out var ci))
+                    stack.Push(ci);
+            }
+        }
+    }
+
+    private static (int minLeft, int maxRight) GetChildrenSpan(List<NodeInfo> children, Dictionary<NodeBase, NodeInfo> map)
+    {
+        int minLeft = int.MaxValue;
+        int maxRight = int.MinValue;
+
+        foreach (var child in children)
+        {
+            foreach (var n in EnumerateSubtree(child, map))
+            {
+                int half = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+                int lb = n.CenterColumn - half;
+                int rb = n.CenterColumn + half;
+
+                if (lb < minLeft) minLeft = lb;
+                if (rb > maxRight) maxRight = rb;
+            }
+        }
+
+        if (minLeft == int.MaxValue) minLeft = 0;
+        if (maxRight == int.MinValue) maxRight = 0;
+
+        return (minLeft, maxRight);
     }
 
     private static string BuildVerticalTree(List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, int leftOffset)
