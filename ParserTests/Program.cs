@@ -94,7 +94,7 @@ internal class Program
         Complex result2 = (Complex?)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } }) ?? Complex.Zero;
         Console.WriteLine(result2);
     }
-   
+
     private static void CheckTypeTests()
     {
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
@@ -173,30 +173,33 @@ internal class Program
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
         IParser parser = app.Services.GetRequiredParser();
 
-        var i1 = new Item { Name = "I1", Value = 10 };
-        var i2 = new Item { Name = "I2", Value = 5 };
+        var i1 = new Item { Name = "item1", Value = 10 };
+        var i2 = new Item { Name = "item2", Value = 5 };
 
-        string expression = "I1 + 5 + 6 + 7.0 + I2";
+        string expression = "item1 + 5 + 6 + 7.0 + item2";
         var variables = new Dictionary<string, object?>
         {
-            { "I1", i1 },
-            { "I2", i2 }
+            { "item1", i1 },
+            { "item2", i2 }
         };
 
         Console.WriteLine($"Expression: {expression}");
-        Console.WriteLine($"Variables: I1 = {i1}, I2 = {i2}");
+        Console.WriteLine($"Variables: item1 = {i1}, item2 = {i2}");
         Console.WriteLine();
 
         // Pre-generate trees to exclude preparation overhead from performance measurement
         Console.WriteLine("=== Preparing Trees (excluded from performance measurement) ===");
         var originalTree = parser.GetExpressionTree(expression);
+        //originalTree.Print(withSlashes: false);
+
         var variableTypes = new Dictionary<string, Type>
         {
-            { "I1", typeof(Item) },
-            { "I2", typeof(Item) }
+            { "item1", typeof(Item) },
+            { "item2", typeof(Item) }
         };
         var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        
+        optimizedTree.Print(withSlashes: false);
+
         Console.WriteLine($"Original Tree: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}");
         Console.WriteLine($"Optimized Tree: Nodes={optimizedTree.Count}, Height={optimizedTree.GetHeight()}");
         Console.WriteLine();
@@ -205,28 +208,28 @@ internal class Program
         Console.WriteLine("=== Pure Evaluation Performance Comparison ===");
         Console.WriteLine();
 
-        const int iterations = 10;
-        
-      //  // Test 1: Standard Evaluate method (without tree optimizer)
-      //  Console.WriteLine($"Testing Standard Evaluate method ({iterations} iterations):");
-        
-      //    Console.WriteLine($"Warmup (5 iterations):");
-      //// Warm up
-      //  for (int i = 0; i < 5; i++)
-      //  {
-      //      parser.Evaluate(expression, variables);
-      //  }
-        
+        const int iterations = 20;
+
+        //  // Test 1: Standard Evaluate method (without tree optimizer)
+        //  Console.WriteLine($"Testing Standard Evaluate method ({iterations} iterations):");
+
+        Console.WriteLine($"Warmup (5 iterations):");
+        // Warm up
+        for (int i = 0; i < 5; i++)
+        {
+            parser.Evaluate(expression, variables);
+        }
+
         var evaluateStopwatch = Stopwatch.StartNew();
         object? standardResult = null;
-        
+
         for (int i = 0; i < iterations; i++)
         {
             standardResult = parser.Evaluate(expression, variables);
         }
-        
+
         evaluateStopwatch.Stop();
-        
+
         Console.WriteLine($"  Result: {standardResult} (Type: {standardResult?.GetType().Name})");
         Console.WriteLine($"  Total Time: {evaluateStopwatch.ElapsedMilliseconds}ms");
         Console.WriteLine($"  Average Time per Evaluation: {(double)evaluateStopwatch.ElapsedTicks / iterations / TimeSpan.TicksPerMillisecond:F6}ms");
@@ -235,23 +238,23 @@ internal class Program
 
         // Test 2: EvaluateWithTreeOptimizer method
         Console.WriteLine($"Testing EvaluateWithTreeOptimizer method ({iterations} iterations):");
-        
-        //// Warm up
-        //for (int i = 0; i < 100; i++)
-        //{
-        //    parser.EvaluateWithTreeOptimizer(expression, variables);
-        //}
-        
+
+        // Warm up
+        for (int i = 0; i < 5; i++)
+        {
+            parser.EvaluateWithTreeOptimizer(expression, variables);
+        }
+
         var optimizerStopwatch = Stopwatch.StartNew();
         object? optimizedResult = null;
-        
+
         for (int i = 0; i < iterations; i++)
         {
             optimizedResult = parser.EvaluateWithTreeOptimizer(expression, variables);
         }
-        
+
         optimizerStopwatch.Stop();
-        
+
         Console.WriteLine($"  Result: {optimizedResult} (Type: {optimizedResult?.GetType().Name})");
         Console.WriteLine($"  Total Time: {optimizerStopwatch.ElapsedMilliseconds}ms");
         Console.WriteLine($"  Average Time per Evaluation: {(double)optimizerStopwatch.ElapsedTicks / iterations / TimeSpan.TicksPerMillisecond:F6}ms");
@@ -264,12 +267,12 @@ internal class Program
         var optimizedTime = optimizerStopwatch.ElapsedMilliseconds;
         var timeDifference = standardTime - optimizedTime;
         var speedupRatio = optimizedTime > 0 ? (double)standardTime / optimizedTime : 0;
-        
+
         Console.WriteLine($"Standard Evaluate:           {standardTime}ms");
         Console.WriteLine($"EvaluateWithTreeOptimizer:   {optimizedTime}ms");
         Console.WriteLine($"Time Difference:             {timeDifference}ms");
         Console.WriteLine($"Speed Ratio:                 {speedupRatio:F2}x {(speedupRatio > 1 ? "(optimizer is faster)" : "(standard is faster)")}");
-        
+
         if (speedupRatio > 1)
         {
             Console.WriteLine($"Performance Improvement:     {((speedupRatio - 1) * 100):F1}% faster with optimizer");
@@ -282,9 +285,9 @@ internal class Program
 
         // Result validation
         Console.WriteLine("=== Result Validation ===");
-        bool resultsMatch = (standardResult?.ToString() == optimizedResult?.ToString()) && 
+        bool resultsMatch = (standardResult?.ToString() == optimizedResult?.ToString()) &&
                            (standardResult?.GetType() == optimizedResult?.GetType());
-        
+
         Console.WriteLine($"Results Match: {(resultsMatch ? "✓ YES" : "✗ NO")}");
         if (!resultsMatch)
         {
@@ -294,15 +297,28 @@ internal class Program
         Console.WriteLine($"Expected: Combined Item with value 33 (10 + 5 + 6 + 7 + 5)");
         Console.WriteLine();
 
-        //// Show tree structures for reference
-        //Console.WriteLine("=== Tree Structures ===");
-        //Console.WriteLine("Original Tree:");
+        // Show tree structures for reference
+        Console.WriteLine("=== Tree Structures ===");
+        Console.WriteLine("Original Tree:");
         //originalTree.Print(withSlashes: false);
-        //Console.WriteLine();
-        
-        //Console.WriteLine("Optimized Tree:");
-        //optimizedTree.Print(withSlashes: false);
-        //Console.WriteLine();
+        //originalTree.Root.PrintSimpleTree();
+        //originalTree.Root.PrintAsciiTree();
+        //originalTree.Root.PrintHorizontalTree();
+        //originalTree.Root.PrintDetailedTree();
+        optimizedTree.Root.PrintVerticalTree();
+        originalTree.Root.PrintParenthesized();
+        Console.WriteLine();
+
+
+
+        Console.WriteLine("Optimized Tree:");
+        //optimizedTree.Root.PrintSimpleTree();
+        //optimizedTree.Root.PrintAsciiTree();
+        //optimizedTree.Root.PrintHorizontalTree();
+        //optimizedTree.Root.PrintDetailedTree();
+        optimizedTree.Root.PrintVerticalTree();         // NEW! From NodeBasePrintExtensionsVertical
+        optimizedTree.Root.PrintParenthesized();
+        Console.WriteLine();
 
         // Final summary
         Console.WriteLine("=== Final Performance Summary ===");
@@ -310,7 +326,7 @@ internal class Program
         Console.WriteLine($"EvaluateWithTreeOptimizer:   {optimizedTime}ms ({iterations:N0} iterations)");
         Console.WriteLine($"Winner: {(timeDifference > 0 ? "EvaluateWithTreeOptimizer" : "Standard Evaluate")} by {Math.Abs(timeDifference)}ms");
         Console.WriteLine($"Speed Difference: {Math.Abs(speedupRatio - 1) * 100:F1}%");
-        
+
         Console.WriteLine();
         Console.WriteLine("=== End Pure Evaluation Performance Tests ===");
     }
@@ -357,7 +373,7 @@ internal class Program
         //ItemOperatorTests();
 
         ItemParserTests();
-       
+
         //CheckTypeTests();
 
 

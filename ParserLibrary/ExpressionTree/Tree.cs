@@ -19,6 +19,12 @@ public class Tree<T>
         else Root.PrintWithDashes(topMargin: topMargin, leftMargin: leftMargin);
     }
 
+    public void Print2()
+    {
+        //print vertical
+        Root.PrintVerticalTree();
+    }
+
     public int GetLeafNodesCount()
     {
         return NodeDictionary.
