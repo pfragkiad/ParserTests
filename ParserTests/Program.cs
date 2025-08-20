@@ -176,7 +176,8 @@ internal class Program
         var i1 = new Item { Name = "item1", Value = 10 };
         var i2 = new Item { Name = "item2", Value = 5 };
 
-        string expression = "item1 + 5 + 6 + 7.0 + item2";
+        //string expression = "item1 + 5 + 6 + 7.0 + item2";
+        string expression = "(item1*3 +1) + 7.0 + 2.5 + 2*item2";
         var variables = new Dictionary<string, object?>
         {
             { "item1", i1 },
@@ -208,17 +209,17 @@ internal class Program
         Console.WriteLine("=== Pure Evaluation Performance Comparison ===");
         Console.WriteLine();
 
-        const int iterations = 20;
+        const int iterations = 1;
 
         //  // Test 1: Standard Evaluate method (without tree optimizer)
         //  Console.WriteLine($"Testing Standard Evaluate method ({iterations} iterations):");
 
         Console.WriteLine($"Warmup (5 iterations):");
-        // Warm up
-        for (int i = 0; i < 5; i++)
-        {
-            parser.Evaluate(expression, variables);
-        }
+        //// Warm up
+        //for (int i = 0; i < 5; i++)
+        //{
+        //    parser.Evaluate(expression, variables);
+        //}
 
         var evaluateStopwatch = Stopwatch.StartNew();
         object? standardResult = null;
@@ -239,11 +240,11 @@ internal class Program
         // Test 2: EvaluateWithTreeOptimizer method
         Console.WriteLine($"Testing EvaluateWithTreeOptimizer method ({iterations} iterations):");
 
-        // Warm up
-        for (int i = 0; i < 5; i++)
-        {
-            parser.EvaluateWithTreeOptimizer(expression, variables);
-        }
+        //// Warm up
+        //for (int i = 0; i < 5; i++)
+        //{
+        //    parser.EvaluateWithTreeOptimizer(expression, variables);
+        //}
 
         var optimizerStopwatch = Stopwatch.StartNew();
         object? optimizedResult = null;
@@ -305,7 +306,7 @@ internal class Program
         //originalTree.Root.PrintAsciiTree();
         //originalTree.Root.PrintHorizontalTree();
         //originalTree.Root.PrintDetailedTree();
-        optimizedTree.Root.PrintVerticalTree();
+        originalTree.Root.PrintVerticalTree();
         originalTree.Root.PrintParenthesized();
         Console.WriteLine();
 
@@ -316,7 +317,7 @@ internal class Program
         //optimizedTree.Root.PrintAsciiTree();
         //optimizedTree.Root.PrintHorizontalTree();
         //optimizedTree.Root.PrintDetailedTree();
-        optimizedTree.Root.PrintVerticalTree();         // NEW! From NodeBasePrintExtensionsVertical
+        optimizedTree.Print2();         // NEW! From NodeBasePrintExtensionsVertical
         optimizedTree.Root.PrintParenthesized();
         Console.WriteLine();
 

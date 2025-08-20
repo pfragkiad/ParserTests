@@ -12,6 +12,7 @@ public class Tree<T>
 
     public int Count { get => NodeDictionary.Count; }
 
+    [Obsolete]
     public void Print(int topMargin = 2, int leftMargin = 2, bool withSlashes = false)
     {
         if (withSlashes)
@@ -19,10 +20,14 @@ public class Tree<T>
         else Root.PrintWithDashes(topMargin: topMargin, leftMargin: leftMargin);
     }
 
-    public void Print2()
+    /// <summary>
+    /// Print vertical tree with optional left positioning parameter
+    /// </summary>
+    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
+    public void Print2(int leftOffset = 0)
     {
         //print vertical
-        Root.PrintVerticalTree();
+        Root.PrintVerticalTree(leftOffset);
     }
 
     public int GetLeafNodesCount()

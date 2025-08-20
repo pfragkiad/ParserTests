@@ -10,7 +10,10 @@ public static class NodeBasePrintExtensionsVertical
     /// <summary>
     /// Vertical tree with centered nodes and proper box-drawing connections
     /// </summary>
-    public static string ToVerticalTreeString(this NodeBase root)
+    /// <param name="root">The root node of the tree</param>
+    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
+    /// <returns>String representation of the vertical tree</returns>
+    public static string ToVerticalTreeString(this NodeBase root, int leftOffset = 0)
     {
         if (root is null) return string.Empty;
 
@@ -21,18 +24,20 @@ public static class NodeBasePrintExtensionsVertical
         CollectNodeInfos(root, 0, nodeInfos, parentMap, null);
         
         // Calculate positions for each node
-        CalculatePositions(nodeInfos);
+        CalculatePositions(nodeInfos, leftOffset);
         
         // Build the visual representation
-        return BuildVerticalTree(nodeInfos, parentMap);
+        return BuildVerticalTree(nodeInfos, parentMap, leftOffset);
     }
 
     /// <summary>
     /// Print vertical tree to console
     /// </summary>
-    public static void PrintVerticalTree(this NodeBase root)
+    /// <param name="root">The root node of the tree</param>
+    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
+    public static void PrintVerticalTree(this NodeBase root, int leftOffset = 0)
     {
-        Console.WriteLine(root.ToVerticalTreeString());
+        Console.WriteLine(root.ToVerticalTreeString(leftOffset));
     }
 
     #region Private Helper Classes and Methods
@@ -42,10 +47,13 @@ public static class NodeBasePrintExtensionsVertical
         public NodeBase Node { get; set; }
         public int Level { get; set; }
         public int TraversalOrder { get; set; }
-        public List<NodeBase> Children { get; set; } = new();
+        public List<NodeBase> Children { get; set; } = [];
         public int CenterColumn { get; set; }
         public int LeftBound { get; set; }
         public int RightBound { get; set; }
+
+        // Computed layout width that guarantees no overlap within this subtree
+        public int SubtreeWidth { get; set; }
     }
 
     private static void CollectNodeInfos(NodeBase node, int level, List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, NodeBase parent)
@@ -79,70 +87,113 @@ public static class NodeBasePrintExtensionsVertical
         }
     }
 
-    private static void CalculatePositions(List<NodeInfo> nodeInfos)
+    private static void CalculatePositions(List<NodeInfo> nodeInfos, int leftOffset)
     {
-        // Group nodes by level
-        var levelGroups = nodeInfos.GroupBy(n => n.Level).OrderBy(g => g.Key).ToList();
-        
-        // Calculate positions for each level, considering the tree structure
-        foreach (var levelGroup in levelGroups)
+        // Minimal spacing between adjacent child subtrees
+        const int minGap = 2;               // widen to avoid touching connectors/text
+        const int lastLevelLeftGutter = 0;  // extra left gutter for the bottom-most level
+
+        // Quick lookups
+        var map = nodeInfos.ToDictionary(n => n.Node, n => n);
+
+        // 1) Bottom-up: compute SubtreeWidth for each node so siblings fit with min gap
+        foreach (var n in nodeInfos.OrderByDescending(n => n.Level))
         {
-            var nodesInLevel = levelGroup.OrderBy(n => n.TraversalOrder).ToList();
-            
-            if (levelGroup.Key == 0)
+            int nodeTextWidth = Math.Max(1, n.Node.Text.Length);
+
+            if (n.Children.Count == 0)
             {
-                // Root node - center it
-                var rootNode = nodesInLevel[0];
-                rootNode.CenterColumn = Math.Max(20, rootNode.Node.Text.Length / 2); // Start with reasonable offset
+                n.SubtreeWidth = nodeTextWidth;
+                continue;
             }
-            else
+
+            // Siblings in declared order
+            var childInfos = n.Children.Select(c => map[c]).ToList();
+            int childrenTotal = 0;
+            for (int i = 0; i < childInfos.Count; i++)
             {
-                // Position child nodes relative to their parents
-                foreach (var nodeInfo in nodesInLevel)
+                childrenTotal += childInfos[i].SubtreeWidth;
+                if (i > 0) childrenTotal += minGap;
+            }
+
+            n.SubtreeWidth = Math.Max(nodeTextWidth, childrenTotal);
+        }
+
+        // 2) Top-down: assign absolute positions so each parent is centered over its children span
+        var root = nodeInfos.First(n => n.Level == 0);
+        AssignPositionsTopDown(root, leftOffset, minGap, map);
+
+        // 3) Ensure extra left space for the last level (leaves row)
+        int maxLevel = nodeInfos.Max(n => n.Level);
+        var lastLevelNodes = nodeInfos.Where(n => n.Level == maxLevel).ToList();
+        if (lastLevelNodes.Count > 0)
+        {
+            int minLeftOnLast = lastLevelNodes.Min(n =>
+            {
+                int half = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+                return n.CenterColumn - half;
+            });
+
+            if (minLeftOnLast < lastLevelLeftGutter)
+            {
+                int delta = lastLevelLeftGutter - minLeftOnLast;
+                foreach (var n in nodeInfos)
                 {
-                    var parentNode = nodeInfos.FirstOrDefault(n => n.Children.Contains(nodeInfo.Node));
-                    if (parentNode != null)
-                    {
-                        var siblings = parentNode.Children;
-                        int siblingIndex = siblings.IndexOf(nodeInfo.Node);
-                        
-                        if (siblings.Count == 1)
-                        {
-                            // Single child - center under parent
-                            nodeInfo.CenterColumn = parentNode.CenterColumn;
-                        }
-                        else
-                        {
-                            // Multiple children - spread them out
-                            int spacing = Math.Max(8, parentNode.Node.Text.Length + 4);
-                            int totalWidth = (siblings.Count - 1) * spacing;
-                            int startCol = parentNode.CenterColumn - totalWidth / 2;
-                            
-                            nodeInfo.CenterColumn = startCol + siblingIndex * spacing;
-                        }
-                    }
+                    n.CenterColumn += delta;
                 }
             }
-            
-            // Calculate bounds for each node
-            foreach (var nodeInfo in nodesInLevel)
-            {
-                int halfWidth = (int)Math.Ceiling(nodeInfo.Node.Text.Length / 2.0);
-                nodeInfo.LeftBound = nodeInfo.CenterColumn - halfWidth;
-                nodeInfo.RightBound = nodeInfo.CenterColumn + halfWidth;
-            }
+        }
+
+        // 4) Bounds
+        foreach (var n in nodeInfos)
+        {
+            int halfWidth = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+            n.LeftBound = n.CenterColumn - halfWidth;
+            n.RightBound = n.CenterColumn + halfWidth;
         }
     }
 
-    private static string BuildVerticalTree(List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap)
+    private static void AssignPositionsTopDown(NodeInfo parent, int subtreeLeft, int gap, Dictionary<NodeBase, NodeInfo> map)
+    {
+        // Center of this node's subtree
+        int parentCenter = subtreeLeft + parent.SubtreeWidth / 2;
+        parent.CenterColumn = parentCenter;
+
+        if (parent.Children.Count == 0) return;
+
+        var children = parent.Children.Select(c => map[c]).ToList();
+
+        // Total width of children subtrees plus gaps (keeps sibling order)
+        int childrenTotal = 0;
+        for (int i = 0; i < children.Count; i++)
+        {
+            childrenTotal += children[i].SubtreeWidth;
+            if (i > 0) childrenTotal += gap;
+        }
+
+        // Start children so they are centered beneath the parent
+        int childrenLeft = parentCenter - childrenTotal / 2;
+
+        int currentLeft = childrenLeft;
+        for (int i = 0; i < children.Count; i++)
+        {
+            var child = children[i];
+            AssignPositionsTopDown(child, currentLeft, gap, map);
+            currentLeft += child.SubtreeWidth + (i < children.Count - 1 ? gap : 0);
+        }
+    }
+
+    private static string BuildVerticalTree(List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, int leftOffset)
     {
         var levelGroups = nodeInfos.GroupBy(n => n.Level).OrderBy(g => g.Key).ToList();
         var grid = new Dictionary<(int row, int col), char>();
 
+        int rowsPerLevel = 3; // Fixed 3 rows per level (node, connection, space)
+
         for (int levelIndex = 0; levelIndex < levelGroups.Count; levelIndex++)
         {
             var levelGroup = levelGroups[levelIndex];
-            int nodeRow = levelIndex * 3; // 3 rows per level (node, connection, space)
+            int nodeRow = levelIndex * rowsPerLevel;
 
             // Place nodes
             foreach (var nodeInfo in levelGroup)
@@ -216,7 +267,7 @@ public static class NodeBasePrintExtensionsVertical
                 // Correct corner characters
                 grid[(connectionRow + 1, parentCol)] = '┘';
                 grid[(connectionRow + 1, childCol)] = '└';
-                grid[(connectionRow, childCol)] = '│';
+                grid[(connectionRow + 2, childCol)] = '│';
             }
         }
         else

@@ -8,8 +8,6 @@ namespace ParserTests.Common;
 
 public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
-
-    //we assume that LITERALS are integer numbers only
     protected override object EvaluateLiteral(string s)
     {
         //return int if parsed else double
@@ -27,19 +25,17 @@ public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> optio
             throw new ArgumentException($"Invalid operands for operator {operatorName}");
         }
 
-        if (operatorName == "+")
+        return operatorName switch
         {
-            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
-
-            dynamic left = leftOperand!, right = rightOperand!;
-            return left + right;
-        }
-
-        return base.EvaluateOperator(operatorName, leftOperand, rightOperand);
+            "+" => (dynamic)leftOperand! + (dynamic)rightOperand!,
+            "*" => (dynamic)leftOperand! * (dynamic)rightOperand!,
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand)
+        };
     }
 
     protected override Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
     {
+
         bool isLeftInt = leftOperand as Type == typeof(int);
         bool isRightInt = rightOperand as Type == typeof(int);
         bool isLeftNumeric = leftOperand as Type == typeof(int) || leftOperand as Type == typeof(double);
@@ -47,15 +43,21 @@ public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> optio
         bool isLeftItem = leftOperand is Type t && t == typeof(Item);
         bool isRightItem = rightOperand is Type t2 && t2 == typeof(Item);
 
-        if (operatorName == "+")
+        return operatorName switch
         {
-            if (isLeftInt && isRightInt) return typeof(int);
-            if (isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
-            if (isLeftItem && isRightItem) return typeof(Item);
-            if (isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
-            if (isLeftItem || isRightItem) return typeof(double); //Item + double or double + Item returns double
-        }
-        return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
+            "+" => (isLeftInt && isRightInt) ? typeof(int) :
+                   (isLeftNumeric && isRightNumeric) ? typeof(double) :
+                   (isLeftItem && isRightItem) ? typeof(Item) :
+                   (isLeftInt || isRightInt) ? typeof(Item) :
+                   (isLeftItem || isRightItem) ? typeof(double) :
+                   typeof(object),
+            "*" => (isLeftInt && isRightInt) ? typeof(int) :
+                   (isLeftNumeric && isRightNumeric) ? typeof(double) :
+                   (isLeftItem && (isRightInt || isRightNumeric)) ? typeof(Item) :
+                   ((isLeftInt || isLeftNumeric) && isRightItem) ? typeof(Item) :
+                   typeof(object),
+            _ => base.EvaluateOperatorType(operatorName, leftOperand, rightOperand)
+        };
     }
 
 
