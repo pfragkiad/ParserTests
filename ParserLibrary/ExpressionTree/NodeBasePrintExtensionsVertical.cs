@@ -125,9 +125,9 @@ public static class NodeBasePrintExtensionsVertical
         // 3) Bounds
         foreach (var n in nodeInfos)
         {
-            int halfWidth = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
-            n.LeftBound = n.CenterColumn - halfWidth;
-            n.RightBound = n.CenterColumn + halfWidth;
+            BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
+            n.LeftBound = lb;
+            n.RightBound = rb;
         }
     }
 
@@ -180,16 +180,14 @@ public static class NodeBasePrintExtensionsVertical
         // Center parent over the compacted children span,
         // then nudge to avoid being collinear with any child.
         var (minLeft, maxRight) = GetChildrenSpan(children, map);
-        int proposedCenter = (minLeft + maxRight) / 2;
+        int proposedCenter = (int)Math.Round((minLeft + maxRight) / 2.0, MidpointRounding.AwayFromZero);
 
-        // Ensure parent is strictly between leftmost and rightmost child centers
-        const int parentChildOffset = 1; // at least one column away
+        const int parentChildOffset = 1;
         int leftChildCenter = children.Min(c => c.CenterColumn);
         int rightChildCenter = children.Max(c => c.CenterColumn);
 
         if (proposedCenter <= leftChildCenter)
             proposedCenter = leftChildCenter + parentChildOffset;
-
         if (proposedCenter >= rightChildCenter)
             proposedCenter = rightChildCenter - parentChildOffset;
 
@@ -203,22 +201,20 @@ public static class NodeBasePrintExtensionsVertical
         var rightNodes = EnumerateSubtree(right, map);
         var leftNodes  = EnumerateSubtree(left, map);
 
-        // Build level -> min(leftBound) for right subtree
         var rightMinLeftByLevel = new Dictionary<int, int>();
         foreach (var n in rightNodes)
         {
-            int lb = n.CenterColumn - (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+            BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out _);
             if (!rightMinLeftByLevel.TryGetValue(n.Level, out int curr))
                 rightMinLeftByLevel[n.Level] = lb;
             else
                 rightMinLeftByLevel[n.Level] = Math.Min(curr, lb);
         }
 
-        // Build level -> max(rightBound) for left subtree
         var leftMaxRightByLevel = new Dictionary<int, int>();
         foreach (var n in leftNodes)
         {
-            int rb = n.CenterColumn + (int)Math.Ceiling(n.Node.Text.Length / 2.0);
+            BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out _, out int rb);
             if (!leftMaxRightByLevel.TryGetValue(n.Level, out int curr))
                 leftMaxRightByLevel[n.Level] = rb;
             else
@@ -229,10 +225,8 @@ public static class NodeBasePrintExtensionsVertical
         foreach (var level in rightMinLeftByLevel.Keys)
         {
             if (!leftMaxRightByLevel.TryGetValue(level, out int leftMax)) continue;
-
             int rightMinLeft = rightMinLeftByLevel[level];
             int required = rightMinLeft - (leftMax + minGap);
-
             allowed = Math.Min(allowed, required);
         }
 
@@ -275,10 +269,7 @@ public static class NodeBasePrintExtensionsVertical
         {
             foreach (var n in EnumerateSubtree(child, map))
             {
-                int half = (int)Math.Ceiling(n.Node.Text.Length / 2.0);
-                int lb = n.CenterColumn - half;
-                int rb = n.CenterColumn + half;
-
+                BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
                 if (lb < minLeft) minLeft = lb;
                 if (rb > maxRight) maxRight = rb;
             }
@@ -286,8 +277,14 @@ public static class NodeBasePrintExtensionsVertical
 
         if (minLeft == int.MaxValue) minLeft = 0;
         if (maxRight == int.MinValue) maxRight = 0;
-
         return (minLeft, maxRight);
+    }
+
+    private static void BoundsFromCenter(int center, int textLen, out int leftBound, out int rightBound)
+    {
+        int startCol = center - textLen / 2; // identical to PlaceNodeInGrid
+        leftBound = startCol;
+        rightBound = startCol + textLen - 1;
     }
 
     private static string BuildVerticalTree(List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, int leftOffset)
