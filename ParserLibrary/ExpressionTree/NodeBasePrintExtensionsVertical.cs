@@ -177,21 +177,30 @@ public static class NodeBasePrintExtensionsVertical
             }
         }
 
-        // Center parent over the compacted children span,
-        // then nudge to avoid being collinear with any child.
-        var (minLeft, maxRight) = GetChildrenSpan(children, map);
-        int proposedCenter = (int)Math.Round((minLeft + maxRight) / 2.0, MidpointRounding.AwayFromZero);
+        // Parent placement rules:
+        // - Single child: offset parent one column to the LEFT or RIGHT of the child,
+        //   based on whether that child is Node.Left or Node.Right. This guarantees
+        //   a visible elbow (never a vertical line).
+        // - Multiple children: center the parent between the outermost child centers.
+        if (children.Count == 1)
+        {
+            var child = children[0];
+            bool isLeftChild = ReferenceEquals(parent.Node.Left, child.Node);
+            bool isRightChild = ReferenceEquals(parent.Node.Right, child.Node);
 
-        const int parentChildOffset = 1;
-        int leftChildCenter = children.Min(c => c.CenterColumn);
-        int rightChildCenter = children.Max(c => c.CenterColumn);
+            // If neither (e.g., non-binary node with a single 'Other' child), default to left.
+            if (!isLeftChild && !isRightChild) isLeftChild = true;
 
-        if (proposedCenter <= leftChildCenter)
-            proposedCenter = leftChildCenter + parentChildOffset;
-        if (proposedCenter >= rightChildCenter)
-            proposedCenter = rightChildCenter - parentChildOffset;
-
-        parent.CenterColumn = proposedCenter;
+            const int singleChildOffset = 1; // ensures parentCol != childCol
+            parent.CenterColumn = child.CenterColumn + (isLeftChild ? +singleChildOffset : -singleChildOffset);
+        }
+        else
+        {
+            int leftChildCenter = children.Min(c => c.CenterColumn);
+            int rightChildCenter = children.Max(c => c.CenterColumn);
+            int proposedCenter = (int)Math.Round((leftChildCenter + rightChildCenter) / 2.0, MidpointRounding.AwayFromZero);
+            parent.CenterColumn = proposedCenter;
+        }
     }
 
     // Compute how much we can move the 'right' subtree to the left without overlapping the 'left' subtree,
@@ -345,34 +354,35 @@ public static class NodeBasePrintExtensionsVertical
 
         if (children.Count == 1)
         {
-            // Single child - direct vertical line or L-shape
+            // Single child - must show LEFT/RIGHT orientation (never a vertical line)
             var child = children[0];
             int childCol = child.CenterColumn;
-            
-            if (parentCol == childCol)
+
+            grid[(connectionRow, parentCol)] = '│';
+
+            int startCol = Math.Min(parentCol, childCol);
+            int endCol = Math.Max(parentCol, childCol);
+
+            // Horizontal line
+            for (int c = startCol; c <= endCol; c++)
             {
-                // Direct vertical connection
-                grid[(connectionRow, parentCol)] = '│';
+                grid[(connectionRow + 1, c)] = '─';
+            }
+
+            if (childCol < parentCol)
+            {
+                // Child is to the LEFT of parent
+                grid[(connectionRow + 1, parentCol)] = '┘';
+                grid[(connectionRow + 1, childCol)] = '└';
             }
             else
             {
-                // L-shaped connection
-                grid[(connectionRow, parentCol)] = '│';
-                
-                int startCol = Math.Min(parentCol, childCol);
-                int endCol = Math.Max(parentCol, childCol);
-                
-                // Horizontal line
-                for (int c = startCol; c <= endCol; c++)
-                {
-                    grid[(connectionRow + 1, c)] = '─';
-                }
-                
-                // Correct corner characters
-                grid[(connectionRow + 1, parentCol)] = '┘';
-                grid[(connectionRow + 1, childCol)] = '└';
-                grid[(connectionRow + 2, childCol)] = '│';
+                // Child is to the RIGHT of parent
+                grid[(connectionRow + 1, parentCol)] = '└';
+                grid[(connectionRow + 1, childCol)] = '┘';
             }
+
+            grid[(connectionRow + 2, childCol)] = '│';
         }
         else
         {
@@ -391,7 +401,7 @@ public static class NodeBasePrintExtensionsVertical
             // Correct T-junction: ┴ points down from parent
             grid[(connectionRow + 1, parentCol)] = '┴';
             
-            // Correct corner characters for children: ┌ and ┐ instead of ┬
+            // Correct corner characters for children: ┌ and ┐
             foreach (var child in children)
             {
                 int childCol = child.CenterColumn;
@@ -405,7 +415,7 @@ public static class NodeBasePrintExtensionsVertical
                 }
                 else
                 {
-                    // Child directly under parent - just continue the vertical line
+                    // Child directly under parent - continue the vertical line
                     grid[(connectionRow + 1, childCol)] = '┴';
                 }
                 grid[(connectionRow + 2, childCol)] = '│';
