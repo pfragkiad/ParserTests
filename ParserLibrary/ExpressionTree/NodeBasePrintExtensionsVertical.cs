@@ -178,17 +178,14 @@ public static class NodeBasePrintExtensionsVertical
         }
 
         // Parent placement rules:
-        // - Single child: offset parent one column to the LEFT or RIGHT of the child,
-        //   based on whether that child is Node.Left or Node.Right. This guarantees
-        //   a visible elbow (never a vertical line).
-        // - Multiple children: center the parent between the outermost child centers.
+        // - Single child: offset parent one column to the LEFT or RIGHT of the child to show orientation (elbow).
+        // - Multiple children: center exactly between outermost child centers.
         if (children.Count == 1)
         {
             var child = children[0];
             bool isLeftChild = ReferenceEquals(parent.Node.Left, child.Node);
             bool isRightChild = ReferenceEquals(parent.Node.Right, child.Node);
 
-            // If neither (e.g., non-binary node with a single 'Other' child), default to left.
             if (!isLeftChild && !isRightChild) isLeftChild = true;
 
             const int singleChildOffset = 1; // ensures parentCol != childCol
@@ -196,9 +193,28 @@ public static class NodeBasePrintExtensionsVertical
         }
         else
         {
-            int leftChildCenter = children.Min(c => c.CenterColumn);
-            int rightChildCenter = children.Max(c => c.CenterColumn);
-            int proposedCenter = (int)Math.Round((leftChildCenter + rightChildCenter) / 2.0, MidpointRounding.AwayFromZero);
+            // Ensure perfect visual symmetry: if the span is odd, add one extra space by shifting the rightmost subtree.
+            var ordered = children.OrderBy(c => c.CenterColumn).ToList();
+            var leftMost = ordered.First();
+            var rightMost = ordered.Last();
+            int span = rightMost.CenterColumn - leftMost.CenterColumn;
+
+            if ((span & 1) == 1)
+            {
+                // Add one column of spacing on the right to make the span even
+                ShiftSubtreeBy(rightMost, map, +1);
+
+                // Recompute after shifting
+                ordered = children.OrderBy(c => c.CenterColumn).ToList();
+                leftMost = ordered.First();
+                rightMost = ordered.Last();
+            }
+
+            int leftChildCenter = leftMost.CenterColumn;
+            int rightChildCenter = rightMost.CenterColumn;
+
+            // With an even span, the midpoint is an integer and produces equal left/right distances
+            int proposedCenter = (leftChildCenter + rightChildCenter) / 2;
             parent.CenterColumn = proposedCenter;
         }
     }
@@ -248,6 +264,16 @@ public static class NodeBasePrintExtensionsVertical
         foreach (var n in EnumerateSubtree(root, map))
         {
             n.CenterColumn -= shiftLeft;
+        }
+    }
+
+    // New: generic shift (can move left or right by any delta)
+    private static void ShiftSubtreeBy(NodeInfo root, Dictionary<NodeBase, NodeInfo> map, int delta)
+    {
+        if (delta == 0) return;
+        foreach (var n in EnumerateSubtree(root, map))
+        {
+            n.CenterColumn += delta;
         }
     }
 
@@ -398,24 +424,23 @@ public static class NodeBasePrintExtensionsVertical
                 grid[(connectionRow + 1, c)] = '─';
             }
             
-            // Correct T-junction: ┴ points down from parent
+            // T-junction under parent
             grid[(connectionRow + 1, parentCol)] = '┴';
             
-            // Correct corner characters for children: ┌ and ┐
+            // Corners into each child
             foreach (var child in children)
             {
                 int childCol = child.CenterColumn;
                 if (childCol < parentCol)
                 {
-                    grid[(connectionRow + 1, childCol)] = '┌'; // Left corner
+                    grid[(connectionRow + 1, childCol)] = '┌';
                 }
                 else if (childCol > parentCol)
                 {
-                    grid[(connectionRow + 1, childCol)] = '┐'; // Right corner  
+                    grid[(connectionRow + 1, childCol)] = '┐';
                 }
                 else
                 {
-                    // Child directly under parent - continue the vertical line
                     grid[(connectionRow + 1, childCol)] = '┴';
                 }
                 grid[(connectionRow + 2, childCol)] = '│';
