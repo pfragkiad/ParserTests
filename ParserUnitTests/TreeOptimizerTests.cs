@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary;
 using ParserLibrary.ExpressionTree;
-using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
 
 using ParserUnitTests.Parsers;

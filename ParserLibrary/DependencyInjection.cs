@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserLibrary;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
     //DefaultParser, Vector3Parser, ComplexParser are all Parser implementations.
     //Adding as them as IParser means that only one of them can be registered at a time, which bottlenecks their usage without explicit reason.
 
+    //This is also the case for the TokenizerOptions! They can be configured only once.
 
 
     public static IServiceCollection ConfigureTokenizerOptions(

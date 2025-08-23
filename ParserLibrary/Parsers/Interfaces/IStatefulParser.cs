@@ -1,6 +1,6 @@
 ﻿using FluentValidation.Results;
 
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Interfaces;
 
 public interface IStatefulParser : IParser
 {

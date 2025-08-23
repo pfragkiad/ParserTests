@@ -1,6 +1,6 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
 
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Interfaces;
 
 public interface IParser : ITokenizer
 {

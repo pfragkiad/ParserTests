@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 

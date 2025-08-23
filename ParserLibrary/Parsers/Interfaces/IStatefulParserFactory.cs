@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Parsers;
+﻿namespace ParserLibrary.Parsers.Interfaces;
 
 public interface IStatefulParserFactory
 {
