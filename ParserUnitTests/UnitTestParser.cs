@@ -26,7 +26,7 @@ public class UnitTestParser
     public void TestCustomIntStatefulParser()
     {
         var parserApp = App.GetStatefulParserApp();
-        var factory = parserApp.Services.GetRequiredStatefulParserFactory();
+        var factory = parserApp.Services.GetStatefulParserFactory();
         var parser = factory.Create<IntStatefulParser>(
             "a+tan(8+5) + sin(321+asd*2^2)",
             new() { { "a", 8 }, { "asd", 10 } }); //returns 860
@@ -113,13 +113,28 @@ public class UnitTestParser
         //var app = App.GetStatefulParserApp<CustomTypeStatefulParser>();
         //var parser = app.Services.GetStatefulParser();
 
-        //or
-        var parser = App.GetStatefulParser<ItemStatefulParser>(
+        var app = Host
+            .CreateDefaultBuilder()
+            .ConfigureServices((context, services) =>
+             {
+                 services.AddScoped<ItemStatefulParserFactory>();
+             }).Build();
+        var scope = app.Services.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<ItemStatefulParserFactory>()!;
+        var parser = factory.Create(
             expression: "a + add(b,4) + 5",
             variables: new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }
              });
+
+        //or
+        //var parser = App.GetStatefulParser<ItemStatefulParser>(
+        //    expression: "a + add(b,4) + 5",
+        //    variables: new() {
+        //        {"a", new Item { Name="foo", Value = 3}  },
+        //        {"b", new Item { Name="bar"}  }
+        //     });
         Item result = (Item)parser.Evaluate();
 
         Assert.Equal("foo bar 12", result.ToString());

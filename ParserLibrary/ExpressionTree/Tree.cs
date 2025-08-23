@@ -24,10 +24,10 @@ public class Tree<T>
     /// Print vertical tree with optional left positioning parameter
     /// </summary>
     /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
-    public void Print2(int leftOffset = 0)
+    public void Print2(int leftOffset = 1, int gap = 1)
     {
         //print vertical
-        Root.PrintVerticalTree(leftOffset);
+        Root.PrintVerticalTree(leftOffset,gap);
     }
 
     public int GetLeafNodesCount()

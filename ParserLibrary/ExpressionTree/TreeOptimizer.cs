@@ -12,13 +12,13 @@ public class TreeOptimizer<T>
         return optimizedTree;
     }
 
-    private void OptimizeNode(Node<T> node, Dictionary<string, Type> variableTypes)
+    private void OptimizeNode(Node<T>? node, Dictionary<string, Type> variableTypes)
     {
-        if (node == null) return;
+        if (node is null) return;
 
         // Recursively optimize children first
-        if (node.Left != null) OptimizeNode((Node<T>)node.Left, variableTypes);
-        if (node.Right != null) OptimizeNode((Node<T>)node.Right, variableTypes);
+        if (node.Left is not null) OptimizeNode((Node<T>)node.Left, variableTypes);
+        if (node.Right is not null) OptimizeNode((Node<T>)node.Right, variableTypes);
 
         // Check if this node represents a commutative operation
         if (TreeOptimizer<T>.IsCommutativeOperation(node))
@@ -62,16 +62,16 @@ public class TreeOptimizer<T>
         return operands;
     }
 
-    private void CollectOperandsRecursive(Node<T> node, string operatorText, List<Node<T>> operands)
+    private void CollectOperandsRecursive(Node<T>? node, string operatorText, List<Node<T>> operands)
     {
-        if (node == null) return;
+        if (node is null) return;
 
         var currentOp = GetOperatorText(node);
         if (currentOp == operatorText)
         {
             // This node has the same operator, collect its operands
-            CollectOperandsRecursive((Node<T>)node.Left, operatorText, operands);
-            CollectOperandsRecursive((Node<T>)node.Right, operatorText, operands);
+            CollectOperandsRecursive(node?.Left as Node<T>, operatorText, operands);
+            CollectOperandsRecursive(node?.Right as Node<T>, operatorText, operands);
         }
         else
         {

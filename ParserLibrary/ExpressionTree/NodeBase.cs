@@ -8,7 +8,7 @@ public abstract class NodeBase(string text)
 
     public NodeBase? Right { get; set; } = null; //0
 
-    public List<NodeBase>? Other { get; set; } //>=2 (added for functions with more than 2 arguments)
+    public List<NodeBase>? Other { get; set; } //>=2
 
     public override string ToString() => Text;
 
@@ -26,10 +26,6 @@ public abstract class NodeBase(string text)
     public IEnumerable<NodeBase> PreOrderNodes()
     {
         yield return this;
-
-        //if ( (Other?.Count ?? 0)>0) 
-        //    foreach (var node in (Other! as IEnumerable<NodeBase>).Reverse())
-        //        yield return node;
 
         if (Left is not null)
             foreach (var node in Left.PreOrderNodes())
@@ -58,7 +54,7 @@ public abstract class NodeBase(string text)
 
         if ((Other?.Count ?? 0) > 0)
             foreach (var node in Other!)
-                foreach (var childNode in node.PreOrderNodes())
+                foreach (var childNode in node.PostOrderNodes())
                     yield return childNode;
 
 
@@ -84,10 +80,8 @@ public abstract class NodeBase(string text)
 
         if ((Other?.Count ?? 0) > 0)
             foreach (var node in Other!)
-                foreach (var childNode in node.PreOrderNodes())
+                foreach (var childNode in node.InOrderNodes())
                     yield return childNode;
-
-
     }
 
 

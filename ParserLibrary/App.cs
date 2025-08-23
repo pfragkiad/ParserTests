@@ -80,7 +80,7 @@ public static class App
         string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
         GetStatefulParserApp(configFile, tokenizerSection)
             .Services
-            .GetRequiredStatefulParserFactory()
+            .GetStatefulParserFactory()!
             .Create<TParser>(expression,variables);
 
     public static IParser? GetDefaultParser(

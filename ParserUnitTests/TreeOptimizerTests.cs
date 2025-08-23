@@ -35,9 +35,9 @@ public class TreeOptimizerTests
         Assert.NotNull(optimizedTree);
         Assert.NotNull(optimizedTree.Root);
         
-        // Print the tree structure for debugging
-        Console.WriteLine("Optimized Tree Structure:");
-        optimizedTree.Print();
+        //// Print the tree structure for debugging
+        //Console.WriteLine("Optimized Tree Structure:");
+        //optimizedTree.Print();
         
         // Verify the tree can still be evaluated correctly
         var variables = new Dictionary<string, object?>
@@ -54,12 +54,9 @@ public class TreeOptimizerTests
     [Fact]
     public void TestTreeOptimizationWithCommutativeOperations()
     {
-        // Arrange
-        var app = App.GetParserApp<Parser>();
-        IParser parser = app.Services.GetRequiredParser();
-        
         string expression = "x * 2.0 * y * 3"; // Multiplication with mixed types
-        
+        IParser parser = App.GetDefaultParser()!;
+
         var variableTypes = new Dictionary<string, Type>
         {
             { "x", typeof(double) },
@@ -132,9 +129,8 @@ public class TreeOptimizerTests
     public void TestTreeOptimizerDirectUsage()
     {
         // Arrange
-        var app = App.GetParserApp<Parser>();
-        IParser parser = app.Services.GetRequiredParser();
-        
+        IParser parser = App.GetDefaultParser()!;
+
         string expression = "a + b + 1.0 + c + 2";
         var originalTree = parser.GetExpressionTree(expression);
         
@@ -156,20 +152,19 @@ public class TreeOptimizerTests
         // Verify both trees have the same structure in terms of node count
         Assert.Equal(originalTree.Count, optimizedTree.Count);
         
-        Console.WriteLine("Original Tree:");
-        originalTree.Print();
+        //Console.WriteLine("Original Tree:");
+        //originalTree.Print2();
         
-        Console.WriteLine("\nOptimized Tree:");
-        optimizedTree.Print();
+        //Console.WriteLine("\nOptimized Tree:");
+        //optimizedTree.Print2();
     }
 
     [Fact]
     public void TestTreeOptimizerWithNonCommutativeOperations()
     {
         // Arrange
-        var app = App.GetParserApp<Parser>();
-        IParser parser = app.Services.GetRequiredParser();
-        
+        IParser parser = App.GetDefaultParser()!;
+
         string expression = "a - b + c"; // Subtraction is not commutative
         
         var variableTypes = new Dictionary<string, Type>

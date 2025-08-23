@@ -1,9 +1,27 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 
 namespace ParserTests.Common;
+
+public class ItemStatefulParserFactory
+{
+    private readonly IServiceProvider _provider;
+
+    public ItemStatefulParserFactory(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    public ItemStatefulParser Create(string expression, Dictionary<string, object?>? variables = null)
+    {
+        var logger = _provider.GetRequiredService<ILogger<ItemStatefulParser>>();
+        var options = _provider.GetRequiredService<IOptions<TokenizerOptions>>();
+        return new ItemStatefulParser(logger, options, expression, variables);
+    }
+}
 
 public class ItemStatefulParser(
     ILogger<ItemStatefulParser> logger,

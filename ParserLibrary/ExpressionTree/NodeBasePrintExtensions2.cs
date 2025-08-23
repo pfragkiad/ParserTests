@@ -107,17 +107,17 @@ public static class NodeBasePrintExtensions2
 
         var result = new StringBuilder();
         string connector = isLast ? "└── " : "├── ";
-        
+
         // Add node information
         string nodeInfo = $"{root.Text}";
         if (root.Left != null || root.Right != null || (root.Other?.Count ?? 0) > 0)
         {
-            var childCount = (root.Left != null ? 1 : 0) + 
-                           (root.Right != null ? 1 : 0) + 
+            var childCount = (root.Left != null ? 1 : 0) +
+                           (root.Right != null ? 1 : 0) +
                            (root.Other?.Count ?? 0);
             nodeInfo += $" [{childCount} children]";
         }
-        
+
         result.AppendLine(indent + connector + nodeInfo);
 
         var children = new List<(NodeBase node, string label)>();
@@ -136,11 +136,11 @@ public static class NodeBasePrintExtensions2
             bool isLastChild = i == children.Count - 1;
             string newIndent = indent + (isLast ? "    " : "│   ");
             var (childNode, label) = children[i];
-            
+
             // Add label for the child type
             string childConnector = isLastChild ? "└── " : "├── ";
             result.AppendLine(newIndent + childConnector + $"[{label}] {childNode.Text}");
-            
+
             // Recursively add child's children
             string childIndent = newIndent + (isLastChild ? "    " : "│   ");
             string childTree = childNode.ToDetailedTreeString(childIndent, true);
@@ -202,18 +202,18 @@ public static class NodeBasePrintExtensions2
 
     #region Private Helper Methods
 
-    private static void BuildAsciiTree(NodeBase node, string prefix, bool isLast, List<string> lines)
+    private static void BuildAsciiTree(NodeBase? node, string prefix, bool isLast, List<string> lines)
     {
-        if (node == null) return;
+        if (node is null) return;
 
         // Add current node
         lines.Add(prefix + (isLast ? "└─ " : "├─ ") + node.Text);
 
         // Prepare children list
         var children = new List<NodeBase>();
-        if (node.Left != null) children.Add(node.Left);
-        if (node.Right != null) children.Add(node.Right);
-        if (node.Other != null) children.AddRange(node.Other);
+        if (node.Left is not null) children.Add(node.Left);
+        if (node.Right is not null) children.Add(node.Right);
+        if (node.Other is not null) children.AddRange(node.Other);
 
         // Process children
         for (int i = 0; i < children.Count; i++)
@@ -224,19 +224,19 @@ public static class NodeBasePrintExtensions2
         }
     }
 
-    private static void CollectNodesByLevel(NodeBase node, int level, Dictionary<int, List<string>> levels)
+    private static void CollectNodesByLevel(NodeBase? node, int level, Dictionary<int, List<string>> levels)
     {
-        if (node == null) return;
+        if (node is null) return;
 
         if (!levels.ContainsKey(level))
-            levels[level] = new List<string>();
+            levels[level] = [];
 
         levels[level].Add(node.Text);
 
         CollectNodesByLevel(node.Left, level + 1, levels);
         CollectNodesByLevel(node.Right, level + 1, levels);
-        
-        if (node.Other != null)
+
+        if (node.Other is not null)
         {
             foreach (var otherNode in node.Other)
             {

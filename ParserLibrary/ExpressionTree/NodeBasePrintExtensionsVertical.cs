@@ -12,20 +12,21 @@ public static class NodeBasePrintExtensionsVertical
     /// </summary>
     /// <param name="root">The root node of the tree</param>
     /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
+    /// <param name="gap">Child separation factor k. Actual spaces between adjacent child subtrees = 1 + 2*k (always odd). Default: 0.</param>
     /// <returns>String representation of the vertical tree</returns>
-    public static string ToVerticalTreeString(this NodeBase root, int leftOffset = 0)
+    public static string ToVerticalTreeString(this NodeBase root, int leftOffset = 0, int gap = 0)
     {
         if (root is null) return string.Empty;
 
         var nodeInfos = new List<NodeInfo>();
         var parentMap = new Dictionary<NodeBase, NodeBase>();
-        
+
         // Collect all nodes with their level and position information
         CollectNodeInfos(root, 0, nodeInfos, parentMap, null);
-        
+
         // Calculate positions for each node
-        CalculatePositions(nodeInfos, leftOffset);
-        
+        CalculatePositions(nodeInfos, leftOffset, gap);
+
         // Build the visual representation
         return BuildVerticalTree(nodeInfos, parentMap, leftOffset);
     }
@@ -35,16 +36,17 @@ public static class NodeBasePrintExtensionsVertical
     /// </summary>
     /// <param name="root">The root node of the tree</param>
     /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
-    public static void PrintVerticalTree(this NodeBase root, int leftOffset = 0)
+    /// <param name="gap">Child separation factor k. Actual spaces between adjacent child subtrees = 1 + 2*k (always odd). Default: 0.</param>
+    public static void PrintVerticalTree(this NodeBase root, int leftOffset = 0, int gap = 0)
     {
-        Console.WriteLine(root.ToVerticalTreeString(leftOffset));
+        Console.WriteLine(root.ToVerticalTreeString(leftOffset, gap));
     }
 
     #region Private Helper Classes and Methods
 
     private class NodeInfo
     {
-        public NodeBase Node { get; set; }
+        public required NodeBase Node { get; set; }
         public int Level { get; set; }
         public int TraversalOrder { get; set; }
         public List<NodeBase> Children { get; set; } = [];
@@ -56,14 +58,14 @@ public static class NodeBasePrintExtensionsVertical
         public int SubtreeWidth { get; set; }
     }
 
-    private static void CollectNodeInfos(NodeBase node, int level, List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, NodeBase parent)
+    private static void CollectNodeInfos(NodeBase? node, int level, List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, NodeBase? parent)
     {
-        if (node == null) return;
+        if (node is null) return;
 
         var children = new List<NodeBase>();
-        if (node.Left != null) children.Add(node.Left);
-        if (node.Right != null) children.Add(node.Right);
-        if (node.Other != null) children.AddRange(node.Other);
+        if (node.Left is not null) children.Add(node.Left);
+        if (node.Right is not null) children.Add(node.Right);
+        if (node.Other is not null) children.AddRange(node.Other);
 
         var nodeInfo = new NodeInfo
         {
@@ -74,8 +76,8 @@ public static class NodeBasePrintExtensionsVertical
         };
 
         nodeInfos.Add(nodeInfo);
-        
-        if (parent != null)
+
+        if (parent is not null)
         {
             parentMap[node] = parent;
         }
@@ -87,10 +89,12 @@ public static class NodeBasePrintExtensionsVertical
         }
     }
 
-    private static void CalculatePositions(List<NodeInfo> nodeInfos, int leftOffset)
+    private static void CalculatePositions(List<NodeInfo> nodeInfos, int leftOffset, int gapFactor)
     {
-        // Minimal spacing between adjacent child subtrees
-        const int minGap = 2;
+        // Minimal spacing between adjacent child subtrees is:
+        // spaces = 1 + 2*k  => minGap (in columns between bounds) = spaces + 1 = 2 + 2*k
+        int k = Math.Max(0, gapFactor);
+        int minGap = 2 + (2 * k);
 
         // Quick lookups
         var map = nodeInfos.ToDictionary(n => n.Node, n => n);
@@ -190,33 +194,34 @@ public static class NodeBasePrintExtensionsVertical
 
             const int singleChildOffset = 1; // ensures parentCol != childCol
             parent.CenterColumn = child.CenterColumn + (isLeftChild ? +singleChildOffset : -singleChildOffset);
+
+            return;
         }
-        else
+
+        // Ensure perfect visual symmetry: if the span is odd, add one extra space by shifting the rightmost subtree.
+        var ordered = children.OrderBy(c => c.CenterColumn).ToList();
+        var leftMost = ordered.First();
+        var rightMost = ordered.Last();
+        int span = rightMost.CenterColumn - leftMost.CenterColumn;
+
+        if ((span & 1) == 1)
         {
-            // Ensure perfect visual symmetry: if the span is odd, add one extra space by shifting the rightmost subtree.
-            var ordered = children.OrderBy(c => c.CenterColumn).ToList();
-            var leftMost = ordered.First();
-            var rightMost = ordered.Last();
-            int span = rightMost.CenterColumn - leftMost.CenterColumn;
+            // Add one column of spacing on the right to make the span even
+            ShiftSubtreeBy(rightMost, map, +1);
 
-            if ((span & 1) == 1)
-            {
-                // Add one column of spacing on the right to make the span even
-                ShiftSubtreeBy(rightMost, map, +1);
-
-                // Recompute after shifting
-                ordered = children.OrderBy(c => c.CenterColumn).ToList();
-                leftMost = ordered.First();
-                rightMost = ordered.Last();
-            }
-
-            int leftChildCenter = leftMost.CenterColumn;
-            int rightChildCenter = rightMost.CenterColumn;
-
-            // With an even span, the midpoint is an integer and produces equal left/right distances
-            int proposedCenter = (leftChildCenter + rightChildCenter) / 2;
-            parent.CenterColumn = proposedCenter;
+            // Recompute after shifting
+            ordered = children.OrderBy(c => c.CenterColumn).ToList();
+            leftMost = ordered.First();
+            rightMost = ordered.Last();
         }
+
+        int leftChildCenter = leftMost.CenterColumn;
+        int rightChildCenter = rightMost.CenterColumn;
+
+        // With an even span, the midpoint is an integer and produces equal left/right distances
+        int proposedCenter = (leftChildCenter + rightChildCenter) / 2;
+        parent.CenterColumn = proposedCenter;
+
     }
 
     // Compute how much we can move the 'right' subtree to the left without overlapping the 'left' subtree,
@@ -224,7 +229,7 @@ public static class NodeBasePrintExtensionsVertical
     private static int ComputeMaxLeftShift(NodeInfo right, NodeInfo left, Dictionary<NodeBase, NodeInfo> map, int minGap)
     {
         var rightNodes = EnumerateSubtree(right, map);
-        var leftNodes  = EnumerateSubtree(left, map);
+        var leftNodes = EnumerateSubtree(left, map);
 
         var rightMinLeftByLevel = new Dictionary<int, int>();
         foreach (var n in rightNodes)
@@ -267,7 +272,7 @@ public static class NodeBasePrintExtensionsVertical
         }
     }
 
-    // New: generic shift (can move left or right by any delta)
+    // Generic shift (can move left or right by any delta)
     private static void ShiftSubtreeBy(NodeInfo root, Dictionary<NodeBase, NodeInfo> map, int delta)
     {
         if (delta == 0) return;
@@ -295,25 +300,25 @@ public static class NodeBasePrintExtensionsVertical
         }
     }
 
-    private static (int minLeft, int maxRight) GetChildrenSpan(List<NodeInfo> children, Dictionary<NodeBase, NodeInfo> map)
-    {
-        int minLeft = int.MaxValue;
-        int maxRight = int.MinValue;
+    //private static (int minLeft, int maxRight) GetChildrenSpan(List<NodeInfo> children, Dictionary<NodeBase, NodeInfo> map)
+    //{
+    //    int minLeft = int.MaxValue;
+    //    int maxRight = int.MinValue;
 
-        foreach (var child in children)
-        {
-            foreach (var n in EnumerateSubtree(child, map))
-            {
-                BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
-                if (lb < minLeft) minLeft = lb;
-                if (rb > maxRight) maxRight = rb;
-            }
-        }
+    //    foreach (var child in children)
+    //    {
+    //        foreach (var n in EnumerateSubtree(child, map))
+    //        {
+    //            BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
+    //            if (lb < minLeft) minLeft = lb;
+    //            if (rb > maxRight) maxRight = rb;
+    //        }
+    //    }
 
-        if (minLeft == int.MaxValue) minLeft = 0;
-        if (maxRight == int.MinValue) maxRight = 0;
-        return (minLeft, maxRight);
-    }
+    //    if (minLeft == int.MaxValue) minLeft = 0;
+    //    if (maxRight == int.MinValue) maxRight = 0;
+    //    return (minLeft, maxRight);
+    //}
 
     private static void BoundsFromCenter(int center, int textLen, out int leftBound, out int rightBound)
     {
@@ -336,19 +341,16 @@ public static class NodeBasePrintExtensionsVertical
 
             // Place nodes
             foreach (var nodeInfo in levelGroup)
-            {
                 PlaceNodeInGrid(grid, nodeInfo, nodeRow);
-            }
 
             // Draw connections to children (except for last level)
-            if (levelIndex < levelGroups.Count - 1)
+            if (levelIndex >= levelGroups.Count - 1) continue;
+
+            foreach (var nodeInfo in levelGroup)
             {
-                foreach (var nodeInfo in levelGroup)
+                if (nodeInfo.Children.Count > 0)
                 {
-                    if (nodeInfo.Children.Count > 0)
-                    {
-                        DrawConnections(grid, nodeInfo, nodeInfos, nodeRow);
-                    }
+                    DrawConnections(grid, nodeInfo, nodeInfos, nodeRow);
                 }
             }
         }
@@ -360,10 +362,10 @@ public static class NodeBasePrintExtensionsVertical
     {
         string nodeText = nodeInfo.Node.Text;
         int startCol = nodeInfo.CenterColumn - nodeText.Length / 2;
-        
+
         // Ensure we don't go negative
         startCol = Math.Max(0, startCol);
-        
+
         for (int i = 0; i < nodeText.Length; i++)
         {
             grid[(row, startCol + i)] = nodeText[i];
@@ -373,7 +375,7 @@ public static class NodeBasePrintExtensionsVertical
     private static void DrawConnections(Dictionary<(int row, int col), char> grid, NodeInfo parentNode, List<NodeInfo> allNodes, int parentRow)
     {
         var children = allNodes.Where(n => parentNode.Children.Contains(n.Node)).ToList();
-        if (!children.Any()) return;
+        if (children.Count == 0) return;
 
         int parentCol = parentNode.CenterColumn;
         int connectionRow = parentRow + 1;
@@ -409,54 +411,55 @@ public static class NodeBasePrintExtensionsVertical
             }
 
             grid[(connectionRow + 2, childCol)] = '│';
+            return;
         }
-        else
+
+
+        // Multiple children - use correct corner characters
+        grid[(connectionRow, parentCol)] = '│';
+
+        int leftmostCol = children.Min(c => c.CenterColumn);
+        int rightmostCol = children.Max(c => c.CenterColumn);
+
+        // Horizontal line connecting all children
+        for (int c = leftmostCol; c <= rightmostCol; c++)
         {
-            // Multiple children - use correct corner characters
-            grid[(connectionRow, parentCol)] = '│';
-            
-            int leftmostCol = children.Min(c => c.CenterColumn);
-            int rightmostCol = children.Max(c => c.CenterColumn);
-            
-            // Horizontal line connecting all children
-            for (int c = leftmostCol; c <= rightmostCol; c++)
-            {
-                grid[(connectionRow + 1, c)] = '─';
-            }
-            
-            // T-junction under parent
-            grid[(connectionRow + 1, parentCol)] = '┴';
-            
-            // Corners into each child
-            foreach (var child in children)
-            {
-                int childCol = child.CenterColumn;
-                if (childCol < parentCol)
-                {
-                    grid[(connectionRow + 1, childCol)] = '┌';
-                }
-                else if (childCol > parentCol)
-                {
-                    grid[(connectionRow + 1, childCol)] = '┐';
-                }
-                else
-                {
-                    grid[(connectionRow + 1, childCol)] = '┴';
-                }
-                grid[(connectionRow + 2, childCol)] = '│';
-            }
+            grid[(connectionRow + 1, c)] = '─';
         }
+
+        // T-junction under parent
+        grid[(connectionRow + 1, parentCol)] = '┴';
+
+        // Corners into each child
+        foreach (var child in children)
+        {
+            int childCol = child.CenterColumn;
+            if (childCol < parentCol)
+            {
+                grid[(connectionRow + 1, childCol)] = '┌';
+            }
+            else if (childCol > parentCol)
+            {
+                grid[(connectionRow + 1, childCol)] = '┐';
+            }
+            else
+            {
+                grid[(connectionRow + 1, childCol)] = '┴';
+            }
+            grid[(connectionRow + 2, childCol)] = '│';
+        }
+
     }
 
     private static string GridToString(Dictionary<(int row, int col), char> grid)
     {
-        if (!grid.Any()) return string.Empty;
+        if (grid.Count == 0) return string.Empty;
 
         int maxRow = grid.Keys.Max(k => k.row);
         int maxCol = grid.Keys.Max(k => k.col);
-        
+
         var lines = new List<string>();
-        
+
         for (int row = 0; row <= maxRow; row++)
         {
             var line = new StringBuilder();
@@ -473,7 +476,7 @@ public static class NodeBasePrintExtensionsVertical
             }
             lines.Add(line.ToString().TrimEnd());
         }
-        
+
         return string.Join(Environment.NewLine, lines);
     }
 

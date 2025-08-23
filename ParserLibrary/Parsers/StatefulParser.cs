@@ -30,6 +30,7 @@ public class StatefulParser : Parser, IStatefulParser
             Expression = expression;
 
         Variables = variables ?? [];
+
     }
 
     //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
@@ -51,7 +52,7 @@ public class StatefulParser : Parser, IStatefulParser
         _nodeValueDictionary = [];
         _nodeDictionary = [];
         _stack = [];
-        _variables = [];
+        //_variables = [];
     }
 
     private string? _expression;
