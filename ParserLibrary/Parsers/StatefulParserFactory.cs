@@ -11,7 +11,10 @@ public class StatefulParserFactory : IStatefulParserFactory
     private readonly ILogger<StatefulParserFactory> _logger;
     private readonly IOptions<TokenizerOptions> _options;
 
-    public StatefulParserFactory(IServiceProvider serviceProvider, ILogger<StatefulParserFactory> logger, IOptions<TokenizerOptions> options)
+    public StatefulParserFactory(
+        IServiceProvider serviceProvider,
+        ILogger<StatefulParserFactory> logger,
+        IOptions<TokenizerOptions> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;

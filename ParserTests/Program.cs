@@ -13,6 +13,7 @@ using System.Numerics;
 using System.Globalization;
 using OneOf;
 using ParserTests.Common;
+using ParserLibrary.Parsers.Common;
 
 
 
@@ -306,7 +307,9 @@ internal class Program
         //originalTree.Root.PrintAsciiTree();
         //originalTree.Root.PrintHorizontalTree();
         //originalTree.Root.PrintDetailedTree();
+        Console.WriteLine("   Vertical:");
         originalTree.Root.PrintVerticalTree();
+        Console.WriteLine("   Parenthesized:");
         originalTree.Root.PrintParenthesized();
         Console.WriteLine();
 
@@ -317,7 +320,9 @@ internal class Program
         //optimizedTree.Root.PrintAsciiTree();
         //optimizedTree.Root.PrintHorizontalTree();
         //optimizedTree.Root.PrintDetailedTree();
-        optimizedTree.Print2();         // NEW! From NodeBasePrintExtensionsVertical
+        Console.WriteLine("   Vertical:");
+        optimizedTree.Print2();  // NEW! From NodeBasePrintExtensionsVertical
+        Console.WriteLine("   Parenthesized:");
         optimizedTree.Root.PrintParenthesized();
         Console.WriteLine();
 

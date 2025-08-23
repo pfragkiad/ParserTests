@@ -1,6 +1,6 @@
 ﻿using ParserLibrary.Tokenizers;
 
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Common;
 
 public class DefaultParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {

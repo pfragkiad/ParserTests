@@ -5,7 +5,37 @@ namespace ParserLibrary;
 
 public static class DependencyInjection
 {
+    //This is a prerequisite for Tokenizer (ITokenizer), Parser (IParser).
+
+    //StatefulParser (IStatefulParser) is available via factory only, due tot he expression, variable parameters  (unless we remove expression/variables from constructor..)
+
+    //StatefulParserFactory (IStatefulParserFactory) also needs the tokenizer options configured. The problem with the StatefulParser is that uses reflection to create the instance.
+    //That's why an explicit factory is needed for custom StatefulParsers. This is not nice - and that's why we should restore the default StatefulParser without the expression, variables fields ..
+
+    //DefaultParser, Vector3Parser, ComplexParser are all Parser implementations.
+    //Adding as them as IParser means that only one of them can be registered at a time, which bottlenecks their usage without explicit reason.
+
+
+
+    public static IServiceCollection ConfigureTokenizerOptions(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
+        services.Configure<TokenizerOptions>(context.Configuration.GetSection(tokenizerSection));
+
+
+    #region Tokenizer
+
+    //Tokenizer needs at least the TokenizerOptions configured
+    public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer, Tokenizer>();
+
+    public static ITokenizer? GetTokenizer(this IServiceProvider services) => services.GetService<ITokenizer>();
+
+    #endregion
+
+
     #region Tokenizer, Parser services extensions
+
     public static IServiceCollection AddParserLibrary<TParser>(this IServiceCollection services, HostBuilderContext context
         , string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser
     {
@@ -30,15 +60,6 @@ public static class DependencyInjection
                     .AddStatefulParserFactory();
     }
 
-    public static IServiceCollection ConfigureTokenizerOptions(
-        this IServiceCollection services,
-        HostBuilderContext context,
-        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
-        services.Configure<TokenizerOptions>(context.Configuration.GetSection(tokenizerSection));
-
-    public static IServiceCollection AddTokenizer(this IServiceCollection services) => services.AddSingleton<ITokenizer, Tokenizer>();
-
-    public static ITokenizer? GetTokenizer(this IServiceProvider services) => services.GetService<ITokenizer>();
 
     public static IServiceCollection AddParser<TParser>(this IServiceCollection services) where TParser : Parser
              => services.AddSingleton<IParser, TParser>();

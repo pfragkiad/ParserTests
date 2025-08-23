@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Parsers;
+﻿namespace ParserLibrary.Parsers.Common;
 
 using ParserLibrary.Tokenizers;
 using System.Numerics;

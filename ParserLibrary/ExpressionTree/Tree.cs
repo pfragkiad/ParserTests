@@ -10,7 +10,6 @@ public class Tree<T>
 
     public int GetHeight() => (Root?.GetHeight() - 1) ?? 0;
 
-    public int Count { get => NodeDictionary.Count; }
 
     [Obsolete]
     public void Print(int topMargin = 2, int leftMargin = 2, bool withSlashes = false)
@@ -26,8 +25,7 @@ public class Tree<T>
     /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
     public void Print2(int leftOffset = 1, int gap = 1)
     {
-        //print vertical
-        Root.PrintVerticalTree(leftOffset,gap);
+           Root.PrintVerticalTree(leftOffset, gap);
     }
 
     public int GetLeafNodesCount()
@@ -35,6 +33,7 @@ public class Tree<T>
         return NodeDictionary.
              Count(e => e.Value.Left is null && e.Value.Right is null);
     }
+    public int Count { get => NodeDictionary.Count; }
 
     public static int MinimumNodesCount(int height) => height + 1;
     public static int MaximumNodesCount(int height) => (1 << height) - 1; //2^h-1
@@ -55,7 +54,7 @@ public class Tree<T>
         // Post-order traversal gives us postfix notation
         var nodes = Root.PostOrderNodes().Cast<Node<Token>>();
 
-        foreach(Node<Token> node in nodes)
+        foreach (Node<Token> node in nodes)
             postfixTokens.Add(node.Value ?? Token.Null);
 
         return postfixTokens;

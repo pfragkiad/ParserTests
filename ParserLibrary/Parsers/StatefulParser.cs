@@ -20,7 +20,9 @@ public class StatefulParser : Parser, IStatefulParser
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
 
-    public StatefulParser(ILogger<StatefulParser> logger, IOptions<TokenizerOptions> options,
+    public StatefulParser(
+        ILogger<StatefulParser> logger,
+        IOptions<TokenizerOptions> options,
         string? expression = null,
         Dictionary<string, object?>? variables = null)
         : base(logger, options)

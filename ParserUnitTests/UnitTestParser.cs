@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Common;
 using ParserUnitTests.Parsers;
 using System.Diagnostics;
 using System.Numerics;

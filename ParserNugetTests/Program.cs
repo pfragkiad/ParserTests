@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary;
-using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Common;
 using System.Numerics;
 
 

@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Common;
 
 public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
 {
