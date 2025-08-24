@@ -6,28 +6,30 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserTests.Common;
 
-public class ItemStatefulParserFactory
-{
-    private readonly IServiceProvider _provider;
+//public class ItemStatefulParserFactory
+//{
+//    private readonly IServiceProvider _provider;
 
-    public ItemStatefulParserFactory(IServiceProvider provider)
-    {
-        _provider = provider;
-    }
+//    public ItemStatefulParserFactory(IServiceProvider provider)
+//    {
+//        _provider = provider;
+//    }
 
-    public ItemStatefulParser Create(string expression, Dictionary<string, object?>? variables = null)
-    {
-        var logger = _provider.GetRequiredService<ILogger<ItemStatefulParser>>();
-        var options = _provider.GetRequiredService<IOptions<TokenizerOptions>>();
-        return new ItemStatefulParser(logger, options, expression, variables);
-    }
-}
+//    public ItemStatefulParser Create(string expression, Dictionary<string, object?>? variables = null)
+//    {
+//        var logger = _provider.GetRequiredService<ILogger<ItemStatefulParser>>();
+//        var options = _provider.GetRequiredService<IOptions<TokenizerOptions>>();
+//        return new ItemStatefulParser(logger, options)
+//        {
+//            Expression = expression,
+//            Variables = variables ?? []
+//        };
+//    }
+//}
 
 public class ItemStatefulParser(
     ILogger<ItemStatefulParser> logger,
-    IOptions<TokenizerOptions> options,
-    string expression,
-    Dictionary<string, object?>? variables = null) : StatefulParserBase(logger, options, expression, variables)
+    IOptions<TokenizerOptions> options) : StatefulParserBase(logger, options)
 {
 
     //we assume that LITERALS are integer numbers only
@@ -54,6 +56,12 @@ public class ItemStatefulParser(
 
             dynamic left = leftOperand!, right = rightOperand!;
             return left + right;
+        }
+        if(operatorName == "*")
+        {
+            _logger.LogDebug("Multiplying with * operator ${left} and ${right}", leftOperand, rightOperand);
+            dynamic left = leftOperand!, right = rightOperand!;
+            return left * right;
         }
 
         return base.EvaluateOperator(operatorName, leftOperand, rightOperand);

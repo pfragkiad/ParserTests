@@ -48,9 +48,7 @@ public class IntParser(ILogger<ParserBase> logger,  IOptions<TokenizerOptions> o
 
 public class IntStatefulParser(
     ILogger<StatefulParserBase> logger,
-    IOptions<TokenizerOptions> options,
-    string expression,
-    Dictionary<string,object?>? variables = null) : StatefulParserBase(logger, options, expression, variables)
+    IOptions<TokenizerOptions> options) : StatefulParserBase(logger, options)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);

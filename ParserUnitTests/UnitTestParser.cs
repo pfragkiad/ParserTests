@@ -28,10 +28,10 @@ public class UnitTestParser
     {
         var app = App.GetStatefulParserApp<IntStatefulParser>();
         var parser = app.GetStatefulParser();
-        
+
         int result =
             (int)parser.Evaluate(
-                expression:  "a+tan(8+5) + sin(321+asd*2^2)", 
+                expression: "a+tan(8+5) + sin(321+asd*2^2)",
                 variables: new() { { "a", 8 }, { "asd", 10 } })!;
 
         Assert.Equal<int>(860, result);
@@ -78,7 +78,7 @@ public class UnitTestParser
     [Fact]
     public void TestSimpleFunctionParser()
     {
-        var app = App.GetParserApp<SimpleFunctionParser>(); 
+        var app = App.GetParserApp<SimpleFunctionParser>();
         var parser = app.GetParser();
         double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
             new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
@@ -115,29 +115,23 @@ public class UnitTestParser
         //var app = App.GetStatefulParserApp<CustomTypeStatefulParser>();
         //var parser = app.Services.GetStatefulParser();
 
-        var app = Host
-            .CreateDefaultBuilder()
-            .ConfigureServices((context, services) =>
-             {
-                 services.AddScoped<ItemStatefulParserFactory>();
-             }).Build();
-        var scope = app.Services.CreateScope();
-        var factory = scope.ServiceProvider.GetRequiredService<ItemStatefulParserFactory>()!;
-        var parser = factory.Create(
+        //var app = Host
+        //    .CreateDefaultBuilder()
+        //    .ConfigureServices((context, services) =>
+        //     {
+        //         services.AddScoped<ItemStatefulParserFactory>();
+        //     }).Build();
+        //var scope = app.Services.CreateScope();
+        //var factory = scope.ServiceProvider.GetRequiredService<ItemStatefulParserFactory>()!;
+
+        var parser = App.GetStatefulParserApp<ItemStatefulParser>().GetStatefulParser();
+
+        Item result = (Item)parser.Evaluate(
             expression: "a + add(b,4) + 5",
             variables: new() {
                 {"a", new Item { Name="foo", Value = 3}  },
                 {"b", new Item { Name="bar"}  }
-             });
-
-        //or
-        //var parser = App.GetStatefulParser<ItemStatefulParser>(
-        //    expression: "a + add(b,4) + 5",
-        //    variables: new() {
-        //        {"a", new Item { Name="foo", Value = 3}  },
-        //        {"b", new Item { Name="bar"}  }
-        //     });
-        Item result = (Item)parser.Evaluate()!;
+             })!;
 
         Assert.Equal("foo bar 12", result.ToString());
     }
