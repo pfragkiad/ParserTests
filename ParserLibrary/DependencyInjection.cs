@@ -244,8 +244,8 @@ public static class DependencyInjection
         return services
             .ConfigureTokenizerOptions(options)
             .AddTransient<IStatefulParser, TStatefulParser>();
-    }  
-    
+    }
+
     public static IStatefulParser GetStatefulParser(this IServiceProvider services) => services.GetRequiredService<IStatefulParser>();
 
     public static IServiceCollection AddStatefulParser<TStatefulParser>(
@@ -315,11 +315,10 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         return services
-            .AddParser<DefaultParser>(configuration, "Default")
-            .AddParser<Vector3Parser>(configuration, "Vector3")
-            .AddParser<ComplexParser>(configuration, "Complex");
+            .AddParser<DefaultParser>("Default", TokenizerOptions.Default)
+            .AddParser<Vector3Parser>("Vector3", TokenizerOptions.Default)
+            .AddParser<ComplexParser>("Complex", TokenizerOptions.Default);
     }
-
 
     #endregion
 
