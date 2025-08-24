@@ -7,40 +7,38 @@ namespace ParserLibrary.ExpressionTree;
 /// </summary>
 public static class NodeBasePrintExtensionsVertical
 {
+    public const string DefaultMissingChildPlaceholder = "<e>";
+
     /// <summary>
-    /// Vertical tree with centered nodes and proper box-drawing connections
+    /// Vertical tree with centered nodes and proper box-drawing connections.
     /// </summary>
-    /// <param name="root">The root node of the tree</param>
-    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
-    /// <param name="gap">Child separation factor k. Actual spaces between adjacent child subtrees = 1 + 2*k (always odd). Default: 0.</param>
-    /// <returns>String representation of the vertical tree</returns>
-    public static string ToVerticalTreeString(this NodeBase root, int leftOffset = 0, int gap = 0)
+    /// <param name="root">Root node.</param>
+    /// <param name="leftOffset">Extra left margin.</param>
+    /// <param name="gap">Child separation factor k (spaces between adjacent child subtrees = 1 + 2*k).</param>
+    /// <param name="missingChildPlaceholder">
+    /// Text to show for a missing Left or Right child when the sibling exists (pure leaves still suppressed).
+    /// Set to null or empty string to disable placeholder injection.
+    /// </param>
+    public static string ToVerticalTreeString(this NodeBase root, int leftOffset = 0, int gap = 0,
+        string? missingChildPlaceholder = DefaultMissingChildPlaceholder)
     {
         if (root is null) return string.Empty;
 
         var nodeInfos = new List<NodeInfo>();
         var parentMap = new Dictionary<NodeBase, NodeBase>();
 
-        // Collect all nodes with their level and position information
-        CollectNodeInfos(root, 0, nodeInfos, parentMap, null);
+        CollectNodeInfos(root, 0, nodeInfos, parentMap, null, missingChildPlaceholder);
 
-        // Calculate positions for each node
         CalculatePositions(nodeInfos, leftOffset, gap);
 
-        // Build the visual representation
         return BuildVerticalTree(nodeInfos, parentMap, leftOffset);
     }
 
     /// <summary>
-    /// Print vertical tree to console
+    /// Print vertical tree to console.
     /// </summary>
-    /// <param name="root">The root node of the tree</param>
-    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
-    /// <param name="gap">Child separation factor k. Actual spaces between adjacent child subtrees = 1 + 2*k (always odd). Default: 0.</param>
-    public static void PrintVerticalTree(this NodeBase root, int leftOffset = 0, int gap = 0)
-    {
-        Console.WriteLine(root.ToVerticalTreeString(leftOffset, gap));
-    }
+    public static void PrintVerticalTree(this NodeBase root, int leftOffset = 0, int gap = 0, string? missingChildPlaceholder = DefaultMissingChildPlaceholder)
+        => Console.WriteLine(root.ToVerticalTreeString(leftOffset, gap, missingChildPlaceholder));
 
     #region Private Helper Classes and Methods
 
@@ -53,19 +51,42 @@ public static class NodeBasePrintExtensionsVertical
         public int CenterColumn { get; set; }
         public int LeftBound { get; set; }
         public int RightBound { get; set; }
-
-        // Computed layout width that guarantees no overlap within this subtree
         public int SubtreeWidth { get; set; }
     }
 
-    private static void CollectNodeInfos(NodeBase? node, int level, List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, NodeBase? parent)
+    /// <summary>
+    /// Placeholder node used only for visualization when either Left or Right child is missing (but not both).
+    /// </summary>
+    private sealed class PlaceholderNode : NodeBase
+    {
+        public PlaceholderNode(string text) : base(text) { }
+    }
+
+    private static void CollectNodeInfos(
+        NodeBase? node,
+        int level,
+        List<NodeInfo> nodeInfos,
+        Dictionary<NodeBase, NodeBase> parentMap,
+        NodeBase? parent,
+        string? missingChildPlaceholder)
     {
         if (node is null) return;
 
         var children = new List<NodeBase>();
-        if (node.Left is not null) children.Add(node.Left);
-        if (node.Right is not null) children.Add(node.Right);
-        if (node.Other is not null) children.AddRange(node.Other);
+
+        bool hasLeft = node.Left is not null;
+        bool hasRight = node.Right is not null;
+        bool inject = !string.IsNullOrEmpty(missingChildPlaceholder) && (hasLeft || hasRight);
+
+        if (inject)
+        {
+            // Preserve positional semantics: always add two entries for L/R when at least one exists.
+            children.Add(hasLeft ? node.Left! : new PlaceholderNode(missingChildPlaceholder!));
+            children.Add(hasRight ? node.Right! : new PlaceholderNode(missingChildPlaceholder!));
+        }
+
+        if (node.Other is not null)
+            children.AddRange(node.Other);
 
         var nodeInfo = new NodeInfo
         {
@@ -78,28 +99,19 @@ public static class NodeBasePrintExtensionsVertical
         nodeInfos.Add(nodeInfo);
 
         if (parent is not null)
-        {
             parentMap[node] = parent;
-        }
 
-        // Process children in order
         foreach (var child in children)
-        {
-            CollectNodeInfos(child, level + 1, nodeInfos, parentMap, node);
-        }
+            CollectNodeInfos(child, level + 1, nodeInfos, parentMap, node, missingChildPlaceholder);
     }
 
     private static void CalculatePositions(List<NodeInfo> nodeInfos, int leftOffset, int gapFactor)
     {
-        // Minimal spacing between adjacent child subtrees is:
-        // spaces = 1 + 2*k  => minGap (in columns between bounds) = spaces + 1 = 2 + 2*k
         int k = Math.Max(0, gapFactor);
         int minGap = 2 + (2 * k);
 
-        // Quick lookups
         var map = nodeInfos.ToDictionary(n => n.Node, n => n);
 
-        // 1) Bottom-up: compute SubtreeWidth for each node so siblings fit with min gap
         foreach (var n in nodeInfos.OrderByDescending(n => n.Level))
         {
             int nodeTextWidth = Math.Max(1, n.Node.Text.Length);
@@ -110,7 +122,6 @@ public static class NodeBasePrintExtensionsVertical
                 continue;
             }
 
-            // Siblings in declared order
             var childInfos = n.Children.Select(c => map[c]).ToList();
             int childrenTotal = 0;
             for (int i = 0; i < childInfos.Count; i++)
@@ -122,11 +133,9 @@ public static class NodeBasePrintExtensionsVertical
             n.SubtreeWidth = Math.Max(nodeTextWidth, childrenTotal);
         }
 
-        // 2) Top-down: assign absolute positions, compact siblings, then center parent over compacted children
         var root = nodeInfos.First(n => n.Level == 0);
         AssignPositionsTopDown(root, leftOffset, minGap, map);
 
-        // 3) Bounds
         foreach (var n in nodeInfos)
         {
             BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
@@ -141,14 +150,12 @@ public static class NodeBasePrintExtensionsVertical
 
         if (parent.Children.Count == 0)
         {
-            // Leaf: center within its subtree
             parent.CenterColumn = subtreeLeft + nodeTextWidth / 2;
             return;
         }
 
         var children = parent.Children.Select(c => map[c]).ToList();
 
-        // First place children naively within the allotted subtree block
         int childrenTotal = 0;
         for (int i = 0; i < children.Count; i++)
         {
@@ -160,7 +167,6 @@ public static class NodeBasePrintExtensionsVertical
         int childrenLeft = subtreeLeft + Math.Max(0, (blockWidth - childrenTotal) / 2);
         int currentLeft = childrenLeft;
 
-        // Recurse into children to place their subtrees
         for (int i = 0; i < children.Count; i++)
         {
             var child = children[i];
@@ -168,37 +174,26 @@ public static class NodeBasePrintExtensionsVertical
             currentLeft += child.SubtreeWidth + (i < children.Count - 1 ? gap : 0);
         }
 
-        // Now compact siblings as much as allowed, left-to-right
         for (int i = 1; i < children.Count; i++)
         {
             var leftRoot = children[i - 1];
             var rightRoot = children[i];
-
             int maxShiftLeft = ComputeMaxLeftShift(rightRoot, leftRoot, map, gap);
             if (maxShiftLeft > 0)
-            {
                 ShiftSubtree(rightRoot, map, maxShiftLeft);
-            }
         }
 
-        // Parent placement rules:
-        // - Single child: offset parent one column to the LEFT or RIGHT of the child to show orientation (elbow).
-        // - Multiple children: center exactly between outermost child centers.
         if (children.Count == 1)
         {
             var child = children[0];
             bool isLeftChild = ReferenceEquals(parent.Node.Left, child.Node);
             bool isRightChild = ReferenceEquals(parent.Node.Right, child.Node);
-
             if (!isLeftChild && !isRightChild) isLeftChild = true;
-
-            const int singleChildOffset = 1; // ensures parentCol != childCol
+            const int singleChildOffset = 1;
             parent.CenterColumn = child.CenterColumn + (isLeftChild ? +singleChildOffset : -singleChildOffset);
-
             return;
         }
 
-        // Ensure perfect visual symmetry: if the span is odd, add one extra space by shifting the rightmost subtree.
         var ordered = children.OrderBy(c => c.CenterColumn).ToList();
         var leftMost = ordered.First();
         var rightMost = ordered.Last();
@@ -206,26 +201,15 @@ public static class NodeBasePrintExtensionsVertical
 
         if ((span & 1) == 1)
         {
-            // Add one column of spacing on the right to make the span even
             ShiftSubtreeBy(rightMost, map, +1);
-
-            // Recompute after shifting
             ordered = children.OrderBy(c => c.CenterColumn).ToList();
             leftMost = ordered.First();
             rightMost = ordered.Last();
         }
 
-        int leftChildCenter = leftMost.CenterColumn;
-        int rightChildCenter = rightMost.CenterColumn;
-
-        // With an even span, the midpoint is an integer and produces equal left/right distances
-        int proposedCenter = (leftChildCenter + rightChildCenter) / 2;
-        parent.CenterColumn = proposedCenter;
-
+        parent.CenterColumn = (leftMost.CenterColumn + rightMost.CenterColumn) / 2;
     }
 
-    // Compute how much we can move the 'right' subtree to the left without overlapping the 'left' subtree,
-    // considering all nodes that appear on the same absolute level.
     private static int ComputeMaxLeftShift(NodeInfo right, NodeInfo left, Dictionary<NodeBase, NodeInfo> map, int minGap)
     {
         var rightNodes = EnumerateSubtree(right, map);
@@ -267,19 +251,14 @@ public static class NodeBasePrintExtensionsVertical
     {
         if (shiftLeft <= 0) return;
         foreach (var n in EnumerateSubtree(root, map))
-        {
             n.CenterColumn -= shiftLeft;
-        }
     }
 
-    // Generic shift (can move left or right by any delta)
     private static void ShiftSubtreeBy(NodeInfo root, Dictionary<NodeBase, NodeInfo> map, int delta)
     {
         if (delta == 0) return;
         foreach (var n in EnumerateSubtree(root, map))
-        {
             n.CenterColumn += delta;
-        }
     }
 
     private static IEnumerable<NodeInfo> EnumerateSubtree(NodeInfo root, Dictionary<NodeBase, NodeInfo> map)
@@ -290,7 +269,6 @@ public static class NodeBasePrintExtensionsVertical
         {
             var n = stack.Pop();
             yield return n;
-            // Push children
             for (int i = n.Children.Count - 1; i >= 0; i--)
             {
                 var c = n.Children[i];
@@ -300,29 +278,9 @@ public static class NodeBasePrintExtensionsVertical
         }
     }
 
-    //private static (int minLeft, int maxRight) GetChildrenSpan(List<NodeInfo> children, Dictionary<NodeBase, NodeInfo> map)
-    //{
-    //    int minLeft = int.MaxValue;
-    //    int maxRight = int.MinValue;
-
-    //    foreach (var child in children)
-    //    {
-    //        foreach (var n in EnumerateSubtree(child, map))
-    //        {
-    //            BoundsFromCenter(n.CenterColumn, n.Node.Text.Length, out int lb, out int rb);
-    //            if (lb < minLeft) minLeft = lb;
-    //            if (rb > maxRight) maxRight = rb;
-    //        }
-    //    }
-
-    //    if (minLeft == int.MaxValue) minLeft = 0;
-    //    if (maxRight == int.MinValue) maxRight = 0;
-    //    return (minLeft, maxRight);
-    //}
-
     private static void BoundsFromCenter(int center, int textLen, out int leftBound, out int rightBound)
     {
-        int startCol = center - textLen / 2; // identical to PlaceNodeInGrid
+        int startCol = center - textLen / 2;
         leftBound = startCol;
         rightBound = startCol + textLen - 1;
     }
@@ -332,26 +290,22 @@ public static class NodeBasePrintExtensionsVertical
         var levelGroups = nodeInfos.GroupBy(n => n.Level).OrderBy(g => g.Key).ToList();
         var grid = new Dictionary<(int row, int col), char>();
 
-        int rowsPerLevel = 3; // Fixed 3 rows per level (node, connection, space)
+        int rowsPerLevel = 3;
 
         for (int levelIndex = 0; levelIndex < levelGroups.Count; levelIndex++)
         {
             var levelGroup = levelGroups[levelIndex];
             int nodeRow = levelIndex * rowsPerLevel;
 
-            // Place nodes
             foreach (var nodeInfo in levelGroup)
                 PlaceNodeInGrid(grid, nodeInfo, nodeRow);
 
-            // Draw connections to children (except for last level)
             if (levelIndex >= levelGroups.Count - 1) continue;
 
             foreach (var nodeInfo in levelGroup)
             {
                 if (nodeInfo.Children.Count > 0)
-                {
                     DrawConnections(grid, nodeInfo, nodeInfos, nodeRow);
-                }
             }
         }
 
@@ -362,14 +316,10 @@ public static class NodeBasePrintExtensionsVertical
     {
         string nodeText = nodeInfo.Node.Text;
         int startCol = nodeInfo.CenterColumn - nodeText.Length / 2;
-
-        // Ensure we don't go negative
         startCol = Math.Max(0, startCol);
 
         for (int i = 0; i < nodeText.Length; i++)
-        {
             grid[(row, startCol + i)] = nodeText[i];
-        }
     }
 
     private static void DrawConnections(Dictionary<(int row, int col), char> grid, NodeInfo parentNode, List<NodeInfo> allNodes, int parentRow)
@@ -382,7 +332,6 @@ public static class NodeBasePrintExtensionsVertical
 
         if (children.Count == 1)
         {
-            // Single child - must show LEFT/RIGHT orientation (never a vertical line)
             var child = children[0];
             int childCol = child.CenterColumn;
 
@@ -390,22 +339,16 @@ public static class NodeBasePrintExtensionsVertical
 
             int startCol = Math.Min(parentCol, childCol);
             int endCol = Math.Max(parentCol, childCol);
-
-            // Horizontal line
             for (int c = startCol; c <= endCol; c++)
-            {
                 grid[(connectionRow + 1, c)] = '─';
-            }
 
             if (childCol < parentCol)
             {
-                // Child is to the LEFT of parent
                 grid[(connectionRow + 1, parentCol)] = '┘';
                 grid[(connectionRow + 1, childCol)] = '└';
             }
             else
             {
-                // Child is to the RIGHT of parent
                 grid[(connectionRow + 1, parentCol)] = '└';
                 grid[(connectionRow + 1, childCol)] = '┘';
             }
@@ -414,41 +357,24 @@ public static class NodeBasePrintExtensionsVertical
             return;
         }
 
-
-        // Multiple children - use correct corner characters
         grid[(connectionRow, parentCol)] = '│';
 
         int leftmostCol = children.Min(c => c.CenterColumn);
         int rightmostCol = children.Max(c => c.CenterColumn);
 
-        // Horizontal line connecting all children
         for (int c = leftmostCol; c <= rightmostCol; c++)
-        {
             grid[(connectionRow + 1, c)] = '─';
-        }
 
-        // T-junction under parent
         grid[(connectionRow + 1, parentCol)] = '┴';
 
-        // Corners into each child
         foreach (var child in children)
         {
             int childCol = child.CenterColumn;
-            if (childCol < parentCol)
-            {
-                grid[(connectionRow + 1, childCol)] = '┌';
-            }
-            else if (childCol > parentCol)
-            {
-                grid[(connectionRow + 1, childCol)] = '┐';
-            }
-            else
-            {
-                grid[(connectionRow + 1, childCol)] = '┴';
-            }
+            if (childCol < parentCol) grid[(connectionRow + 1, childCol)] = '┌';
+            else if (childCol > parentCol) grid[(connectionRow + 1, childCol)] = '┐';
+            else grid[(connectionRow + 1, childCol)] = '┴';
             grid[(connectionRow + 2, childCol)] = '│';
         }
-
     }
 
     private static string GridToString(Dictionary<(int row, int col), char> grid)
@@ -459,21 +385,11 @@ public static class NodeBasePrintExtensionsVertical
         int maxCol = grid.Keys.Max(k => k.col);
 
         var lines = new List<string>();
-
         for (int row = 0; row <= maxRow; row++)
         {
             var line = new StringBuilder();
             for (int col = 0; col <= maxCol; col++)
-            {
-                if (grid.TryGetValue((row, col), out char c))
-                {
-                    line.Append(c);
-                }
-                else
-                {
-                    line.Append(' ');
-                }
-            }
+                line.Append(grid.TryGetValue((row, col), out char c) ? c : ' ');
             lines.Add(line.ToString().TrimEnd());
         }
 
