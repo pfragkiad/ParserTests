@@ -13,7 +13,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestFunctionWith2Arguments()
     {
-        var parserApp = App.GetParserApp<ParserBase>();
+        var parserApp = ParserApp.GetParserApp<ParserBase>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "a+tan(8+5) * sin(321,asd)"; //returns 43038
@@ -40,7 +40,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestSimpleIdentifierCase()
     {
-        var parserApp = App.GetParserApp<ParserBase>();
+        var parserApp = ParserApp.GetParserApp<ParserBase>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "a";
@@ -56,7 +56,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestCompactFunctionCall()
     {
-        var parserApp = App.GetParserApp<ParserBase>();
+        var parserApp = ParserApp.GetParserApp<ParserBase>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "tan(8)";
@@ -73,7 +73,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestFunctionWithExpression()
     {
-        var parserApp = App.GetParserApp<ParserBase>();
+        var parserApp = ParserApp.GetParserApp<ParserBase>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "a+f10(8+5) + f2(321+asd*2^2)"; //returns 860

@@ -4,7 +4,7 @@ using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 
-namespace ParserTests.Common;
+namespace ParserTests.Common.Parsers;
 
 public class ItemParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
 {
@@ -45,16 +45,16 @@ public class ItemParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> o
 
         return operatorName switch
         {
-            "+" => (isLeftInt && isRightInt) ? typeof(int) :
-                   (isLeftNumeric && isRightNumeric) ? typeof(double) :
-                   (isLeftItem && isRightItem) ? typeof(Item) :
-                   (isLeftInt || isRightInt) ? typeof(Item) :
-                   (isLeftItem || isRightItem) ? typeof(double) :
+            "+" => isLeftInt && isRightInt ? typeof(int) :
+                   isLeftNumeric && isRightNumeric ? typeof(double) :
+                   isLeftItem && isRightItem ? typeof(Item) :
+                   isLeftInt || isRightInt ? typeof(Item) :
+                   isLeftItem || isRightItem ? typeof(double) :
                    typeof(object),
-            "*" => (isLeftInt && isRightInt) ? typeof(int) :
-                   (isLeftNumeric && isRightNumeric) ? typeof(double) :
-                   (isLeftItem && (isRightInt || isRightNumeric)) ? typeof(Item) :
-                   ((isLeftInt || isLeftNumeric) && isRightItem) ? typeof(Item) :
+            "*" => isLeftInt && isRightInt ? typeof(int) :
+                   isLeftNumeric && isRightNumeric ? typeof(double) :
+                   isLeftItem && (isRightInt || isRightNumeric) ? typeof(Item) :
+                   (isLeftInt || isLeftNumeric) && isRightItem ? typeof(Item) :
                    typeof(object),
             _ => base.EvaluateOperatorType(operatorName, leftOperand, rightOperand)
         };

@@ -8,7 +8,7 @@ using System.Numerics;
 
 namespace ParserLibrary;
 
-public static class App
+public static class ParserApp
 {
     #region TokenizerOptions
 

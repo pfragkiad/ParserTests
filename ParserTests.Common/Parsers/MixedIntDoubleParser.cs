@@ -1,7 +1,10 @@
-﻿using ParserLibrary.Parsers;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
+using System.Globalization;
 
-namespace ParserUnitTests.Parsers;
+namespace ParserTests.Common.Parsers;
 
 public class MixedIntDoubleParser(
     ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)

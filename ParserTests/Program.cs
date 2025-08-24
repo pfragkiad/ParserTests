@@ -16,6 +16,7 @@ using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using ParserTests.Common.Parsers;
 
 
 
@@ -52,7 +53,7 @@ internal class Program
     {
         //var tokenizer = app.Services.GetTokenizer();
 
-        var tokenizer = App.GetCommonTokenizer();
+        var tokenizer = ParserApp.GetCommonTokenizer();
 
         //var tree = parser.Parse(expr);
         //tree.Root.PrintWithDashes();
@@ -75,7 +76,7 @@ internal class Program
         //ar tokens = tokenizer.GetInOrderTokens(expr);
 
         //expr = "-5.0+4.0";
-        var parser = App.GetDefaultParser();
+        var parser = ParserApp.GetDefaultParser();
         var tree = parser!.GetExpressionTree(expr);
         Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
         Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
@@ -92,7 +93,7 @@ internal class Program
 
         //var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
 
-        var app = App.GetCommonsApp();
+        var app = ParserApp.GetCommonsApp();
         var tokenizerOptions = app.Services.GetTokenizerOptions();
 
         Debugger.Break();
@@ -100,7 +101,7 @@ internal class Program
 
     private static void ComplexTests()
     {
-        var parser = App.GetComplexParser();
+        var parser = ParserApp.GetComplexParser();
         string expression = "cos(1+i)";
         var tree = parser.GetExpressionTree(expression);
         tree.Print(withSlashes: false);
@@ -114,7 +115,7 @@ internal class Program
     private static void CheckTypeTests()
     {
         //we need to store the host to keep the scope alive
-        var app = App.GetParserApp<ItemParser>("parsersettings.json"); 
+        var app = ParserApp.GetParserApp<ItemParser>("parsersettings.json"); 
         IParser parser = app.Services.GetParser();
 
         parser.RegisterFunction("myfunc(a,b) = a + b + 10");
@@ -187,7 +188,7 @@ internal class Program
     {
         // Parser Expression Test
         Console.WriteLine("--- Item Parser Performance Comparison ---");
-        var app = App.GetParserApp<ItemParser>("parsersettings.json");
+        var app = ParserApp.GetParserApp<ItemParser>("parsersettings.json");
         IParser parser = app.Services.GetParser();
 
         var i1 = new Item { Name = "item1", Value = 10 };

@@ -96,7 +96,7 @@ public class StatefulParserBase : ParserBase, IStatefulParser
         _postfixTokens = tree.GetPostfixTokens();
     }
 
-  
+
     protected Dictionary<string, object?> _variables = [];
 
     public Dictionary<string, object?> Variables
@@ -216,7 +216,7 @@ public class StatefulParserBase : ParserBase, IStatefulParser
 
     #endregion
 
-    public List<ValidationFailure> GetValidationFailures(string[] ignoreCaptureGroups)
+    public virtual List<ValidationFailure> Validate(string[]? ignoreIdentifierCaptureGroups = null)
     {
         if (string.IsNullOrWhiteSpace(_expression)) return [];
 
@@ -247,7 +247,7 @@ public class StatefulParserBase : ParserBase, IStatefulParser
 
         //stage 3 check identifier names (timeseries names ONLY are expected to be within brackets so they are ignored)
         var checkNamesResult = CheckVariableNames([.. _variables.Keys],
-            ignoreCaptureGroups: ignoreCaptureGroups);
+            ignoreCaptureGroups: ignoreIdentifierCaptureGroups ?? []);
 
         if (!checkNamesResult.IsSuccess)
         {

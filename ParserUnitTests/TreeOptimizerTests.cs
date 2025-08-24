@@ -3,8 +3,7 @@ using ParserLibrary;
 using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
-
-using ParserUnitTests.Parsers;
+using ParserTests.Common.Parsers;
 using Xunit;
 
 namespace ParserUnitTests;
@@ -15,7 +14,7 @@ public class TreeOptimizerTests
     public void TestTreeOptimizationWithMixedTypes()
     {
         // Arrange
-        var app = App.GetParserApp<ItemParser>();
+        var app = ParserApp.GetParserApp<ItemParser>();
         IParser parser = app.Services.GetParser();
         
         string expression = "a + 5 + b + 10.5 + c"; // Mixed types: Item + int + Item + double + Item
@@ -55,7 +54,7 @@ public class TreeOptimizerTests
     public void TestTreeOptimizationWithCommutativeOperations()
     {
         string expression = "x * 2.0 * y * 3"; // Multiplication with mixed types
-        IParser parser = App.GetDefaultParser()!;
+        IParser parser = ParserApp.GetDefaultParser()!;
 
         var variableTypes = new Dictionary<string, Type>
         {
@@ -88,7 +87,7 @@ public class TreeOptimizerTests
     public void TestTreeOptimizerWithItemTypes()
     {
         // Arrange
-        var app = App.GetParserApp<ItemParser>();
+        var app = ParserApp.GetParserApp<ItemParser>();
         IParser parser = app.Services.GetParser();
         
         string expression = "item1 + 10 + item2 + 5 + item3"; // Items mixed with integers
@@ -129,7 +128,7 @@ public class TreeOptimizerTests
     public void TestTreeOptimizerDirectUsage()
     {
         // Arrange
-        IParser parser = App.GetDefaultParser()!;
+        IParser parser = ParserApp.GetDefaultParser()!;
 
         string expression = "a + b + 1.0 + c + 2";
         var originalTree = parser.GetExpressionTree(expression);
@@ -163,7 +162,7 @@ public class TreeOptimizerTests
     public void TestTreeOptimizerWithNonCommutativeOperations()
     {
         // Arrange
-        IParser parser = App.GetDefaultParser()!;
+        IParser parser = ParserApp.GetDefaultParser()!;
 
         string expression = "a - b + c"; // Subtraction is not commutative
         
