@@ -222,6 +222,7 @@ public static class App
     }
 
     public static IParser GetParser(this IServiceProvider services) => services.GetRequiredService<IParser>();
+    public static IParser GetParser(this IHost host) => host.Services.GetRequiredService<IParser>();
 
     public static IServiceCollection AddParser<TParser>(
        this IServiceCollection services,
@@ -304,6 +305,7 @@ public static class App
     }
 
     public static IStatefulParser GetStatefulParser(this IServiceProvider services) => services.GetRequiredService<IStatefulParser>();
+    public static IStatefulParser GetStatefulParser(this IHost host) => host.Services.GetRequiredService<IStatefulParser>();
 
     public static IServiceCollection AddStatefulParser<TStatefulParser>(
         this IServiceCollection services,

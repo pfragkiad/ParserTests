@@ -15,7 +15,7 @@ public class UnitTestParser
     public void TestCustomIntParser()
     {
         var parserApp = App.GetParserApp<IntParser>();
-        IParser parser = parserApp.Services.GetParser();
+        IParser parser = parserApp.GetParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
         int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } })!;
@@ -26,13 +26,13 @@ public class UnitTestParser
     [Fact]
     public void TestCustomIntStatefulParser()
     {
-        var parserApp = App.GetStatefulParserApp();
-        var factory = parserApp.Services.GetStatefulParserFactory();
-        var parser = factory.Create<IntStatefulParser>(
-            "a+tan(8+5) + sin(321+asd*2^2)",
-            new() { { "a", 8 }, { "asd", 10 } }); //returns 860
-
-        int result = (int)parser.Evaluate();
+        var app = App.GetStatefulParserApp<IntStatefulParser>();
+        var parser = app.GetStatefulParser();
+        
+        int result =
+            (int)parser.Evaluate(
+                expression:  "a+tan(8+5) + sin(321+asd*2^2)", 
+                variables: new() { { "a", 8 }, { "asd", 10 } })!;
 
         Assert.Equal<int>(860, result);
     }
@@ -42,7 +42,7 @@ public class UnitTestParser
     public void TestDoubleIntCustomParser()
     {
         var app = App.GetParserApp<MixedIntDoubleParser>();
-        IParser parser = app.Services.GetParser();
+        IParser parser = app.GetParser();
 
         string s = "5.0+sin(2,3.0)";
         double result = (double)parser.Evaluate(s)!;
@@ -69,7 +69,7 @@ public class UnitTestParser
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<FunctionsOperandsParser>();
-        IParser parser = app.Services.GetParser();
+        IParser parser = app.GetParser();
         double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } })!;
         Assert.Equal(expected, result);
 
@@ -78,7 +78,8 @@ public class UnitTestParser
     [Fact]
     public void TestSimpleFunctionParser()
     {
-        var parser = App.GetCustomParser<SimpleFunctionParser>();
+        var app = App.GetParserApp<SimpleFunctionParser>(); 
+        var parser = app.GetParser();
         double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
             new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
 
@@ -88,7 +89,7 @@ public class UnitTestParser
     [Fact]
     public void TestCustomTypeParser()
     {
-        var parser = App.GetCustomParser<ItemParser>();
+        var parser = App.GetParserApp<ItemParser>().GetParser();
         Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
@@ -136,7 +137,7 @@ public class UnitTestParser
         //        {"a", new Item { Name="foo", Value = 3}  },
         //        {"b", new Item { Name="bar"}  }
         //     });
-        Item result = (Item)parser.Evaluate();
+        Item result = (Item)parser.Evaluate()!;
 
         Assert.Equal("foo bar 12", result.ToString());
     }
@@ -163,15 +164,15 @@ public class UnitTestParser
         {
             {"a", new Item { Name="test1", Value = 5 }},
             {"b", new Item { Name="test2", Value = 3 }}
-        };   
-        // Create multiple parsers with different expressions using the factory
-        var parser1 = App.GetStatefulParser<ItemStatefulParser>("a + 10", variables);
-        var parser2 = App.GetStatefulParser<ItemStatefulParser>("b * 5", variables);
+        };
 
-   
+        var app = App.GetStatefulParserApp<ItemStatefulParser>();
 
-        var result1 = (Item)parser1.Evaluate();
-        var result2 = (Item)parser2.Evaluate();
+        var parser1 = app.GetStatefulParser();
+        var parser2 = app.GetStatefulParser();
+
+        var result1 = (Item)parser1.Evaluate("a + 10", variables)!;
+        var result2 = (Item)parser2.Evaluate("b * 5", variables)!;
 
         Assert.Equal("test1 15", result1.ToString());
         Assert.Equal("test2 15", result2.ToString()); // 3 * 5 = 15
@@ -180,19 +181,16 @@ public class UnitTestParser
     [Fact]
     public void TestComplexParser()
     {
-        //Complex c1 = new(1, 1);
-
-        var cparser = App.GetCustomParser<ComplexParser>();
+        var parser = App.GetComplexParser();
 
         string expression = "cos(1+i)";
-        //var tree = cparser.GetExpressionTree(expression);
-        //tree.Print(withSlashes: false);
+        var result = (Complex)parser.Evaluate(expression)!;
+        //var result2 = (Complex)App.EvaluateComplex(expression)!;
 
-        var result = (Complex)cparser.Evaluate(expression)!;
 
         Assert.Equal(Complex.Cos(new Complex(1, 1)), result);
 
-        result = (Complex)cparser.Evaluate("cos( (1+i)/(8+9))")!;
+        result = (Complex)parser.Evaluate("cos( (1+i)/(8+9))")!;
         Assert.Equal(Complex.Cos(new Complex(1, 1) / (8 + 9)), result);
     }
 

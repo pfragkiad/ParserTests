@@ -50,12 +50,6 @@ internal class Program
 
     private static void MainTests()
     {
-        IHost app = GetHostBuilder("parsersettings.json")
-            .ConfigureServices((context, services) =>
-            {
-                services.AddTokenizer(context);
-            })
-            .Build();
         //var tokenizer = app.Services.GetTokenizer();
 
         var tokenizer = App.GetCommonTokenizer();
@@ -97,6 +91,8 @@ internal class Program
         //ComplexTests();
 
         //var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+
+        var app = App.GetCommonsApp();
         var tokenizerOptions = app.Services.GetTokenizerOptions();
 
         Debugger.Break();
@@ -104,22 +100,23 @@ internal class Program
 
     private static void ComplexTests()
     {
-        var cparser = App.GetComplexParser();
+        var parser = App.GetComplexParser();
         string expression = "cos(1+i)";
-        var tree = cparser.GetExpressionTree(expression);
+        var tree = parser.GetExpressionTree(expression);
         tree.Print(withSlashes: false);
 
-        Complex result = (Complex?)cparser.Evaluate("(1+3*i)/(2-3*i)") ?? Complex.Zero;
+        Complex result = (Complex?)parser.Evaluate("(1+3*i)/(2-3*i)") ?? Complex.Zero;
         Console.WriteLine(result);
-        Complex result2 = (Complex?)cparser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } }) ?? Complex.Zero;
+        Complex result2 = (Complex?)parser.Evaluate("(1+3*i)/b", new() { { "b", new Complex(2, -3) } }) ?? Complex.Zero;
         Console.WriteLine(result2);
     }
 
     private static void CheckTypeTests()
     {
-        var app = App.GetParserApp<ItemParser>("parsersettings.json");
-
+        //we need to store the host to keep the scope alive
+        var app = App.GetParserApp<ItemParser>("parsersettings.json"); 
         IParser parser = app.Services.GetParser();
+
         parser.RegisterFunction("myfunc(a,b) = a + b + 10");
 
 
