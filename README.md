@@ -694,3 +694,62 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
+# Expression Tree
+
+The library can build an expression tree for any parsed expression.  
+APIs involved (namespace `ParserLibrary.ExpressionTree`):
+- `Tree<T>` (for the parser you will use `Tree<Token>`)
+- `NodeBase` (base class of the internal node type used by the tree)
+- Printing extensions: `NodeBasePrintExtensions` (horizontal), `NodeBasePrintExtensionsVertical` (vertical)
+- `TreeOptimizer<T>` (optional reordering / optimization)
+- Traversal helpers via `Tree<Token>.GetPostfixTokens()` and `Tree<Token>.GetInfixTokens()`
+- Cloning via `Tree<Token>.DeepClone()`
+
+Basic usage:
+
+```cs
+using ParserLibrary;
+using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.ExpressionTree;
+using ParserLibrary.Tokenizers; // Token
+using System;
+
+// Acquire a parser (double arithmetic)
+var parser = ParserApp.GetDefaultParser();
+
+// Build the expression tree (variables only needed for evaluation, not structure)
+var tree = parser.GetExpressionTree("3 + 5 * (2 - 8) / a");
+
+// Vertical print (recommended)
+tree.Print2();                 // or: tree.Root.PrintVerticalTree(leftOffset: 0, gap: 0)
+
+// Horizontal print (legacy styles)
+tree.Root.PrintWithDashes();
+// tree.Root.PrintWithSlashes();
+
+// Metrics
+int height  = tree.GetHeight();
+int count   = tree.Count;
+int leaves  = tree.GetLeafNodesCount();
+
+// Traversals
+List<Token> postfix = tree.GetPostfixTokens();  // Reverse Polish
+List<Token> infix   = tree.GetInfixTokens();    // In-order tokens
+
+// Clone + optimize (commutative (+, *) regrouping heuristic)
+var optimizer  = new TreeOptimizer<Token>();
+var optimized  = optimizer.OptimizeForDataTypes(tree, new Dictionary<string, Type> { { "a", typeof(int) } });
+
+// Show both
+Console.WriteLine("Original:");
+tree.Print2();
+Console.WriteLine("Optimized:");
+optimized.Print2();
+```
+
+
+Notes:
+- `GetExpressionTree` is purely structural; variable values are only needed when you evaluate, not when you build the tree.
+- `Tree<Token>.GetPostfixTokens()` reproduces the postfix sequence derived from the tree (can be compared with the direct tokenizer result).
+- `TreeOptimizer<Token>` currently focuses on commutative operator grouping (`+`, `*`) and reordering.
+- Printing helpers write directly to the console; `ToVerticalTreeString()` (on the root via `root.ToVerticalTreeString()`) returns a string if you need to log or snapshot the layout.
