@@ -608,6 +608,9 @@ When you need:
 * validation before evaluation,
 use a stateful parser variant. A stateful parser derives from `StatefulParserBase` (which itself supplies all core functionality plus mutable `Expression` / `Variables`).
 
+StatefulParsers are Transient by default contrary to the common Parsers, which are Singletons and do not keep state.
+Because they are stateful, you can keep the expression (via the `Expression` property) and change the `Variables` before re-evaluation.
+
 The StatefulParser also has a `Validate` method, which can be used to check if the expression is valid without actually evaluating it. This can be useful in interactive applications.
 The method returns a collection of all the validation errors found.
 
