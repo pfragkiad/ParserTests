@@ -14,6 +14,8 @@ using OneOf;
 using ParserTests.Common;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 
 
 
@@ -35,11 +37,28 @@ using ParserLibrary.Parsers.Interfaces;
 
 internal class Program
 {
+
+    private static IHostBuilder GetHostBuilder(string settingsFile = "appsettings.json")
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((context, config) =>
+            {
+                if (settingsFile != "appsettings.json")
+                    config.AddJsonFile(settingsFile);  // Configure app configuration if needed
+            });
+    }
+
     private static void MainTests()
     {
-        var app = App.GetParserApp<DefaultParser>("parsersettings.json");
-        //or to immediately get the parser
-        var parser2 = App.GetCustomParser<DefaultParser>("parsersettings.json");
+        IHost app = GetHostBuilder("parsersettings.json")
+            .ConfigureServices((context, services) =>
+            {
+                services.AddTokenizer(context);
+            })
+            .Build();
+        //var tokenizer = app.Services.GetTokenizer();
+
+        var tokenizer = App.GetCommonTokenizer();
 
         //var tree = parser.Parse(expr);
         //tree.Root.PrintWithDashes();
@@ -63,7 +82,6 @@ internal class Program
 
         //expr = "-5.0+4.0";
         var parser = App.GetDefaultParser();
-        var tokenizer = app.Services.GetTokenizer();
         var tree = parser!.GetExpressionTree(expr);
         Console.WriteLine("Post order traversal: " + string.Join(" ", tree.Root.PostOrderNodes().Select(n => n.Text)));
         Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
@@ -78,7 +96,8 @@ internal class Program
         //Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)"));
         //ComplexTests();
 
-        var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+        //var tokenizerOptions = app.Services.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+        var tokenizerOptions = app.Services.GetTokenizerOptions();
 
         Debugger.Break();
     }

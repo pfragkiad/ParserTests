@@ -1,4 +1,5 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Interfaces;
 

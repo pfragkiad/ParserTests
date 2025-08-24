@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers.Interfaces;
+using System.Numerics;
 
 namespace ParserLibrary;
 
@@ -28,6 +30,16 @@ public static class App
         this IServiceCollection services,
         TokenizerOptions options) =>
         services.AddSingleton(Options.Create(options));
+
+    public static TokenizerOptions GetTokenizerOptions(this IServiceProvider provider, string? key = null)
+    { 
+        if(key is null)
+            return provider.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+        
+        return provider
+        .GetRequiredService<IOptionsMonitor<TokenizerOptions>>()
+        .Get(key);
+    }
 
     #endregion
 
@@ -320,31 +332,57 @@ public static class App
 
 
 
-    private static IHost CommonParsersHost;
+    private static IHost? _commonParsersHost;
 
-    static App()
+    private static void CreateCommonsHostIfNeeded()
     {
-        CommonParsersHost = Host.CreateDefaultBuilder()
-                 .ConfigureServices((context, services) =>
-                 {
-                     services.AddCommonParsers();
-                 })
-                 .Build();
+        _commonParsersHost ??= Host.CreateDefaultBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services
+                .AddTokenizer(TokenizerOptions.Default) // default tokenizer for default parsers
+                .AddCommonParsers();
+            })
+            .Build();
     }
 
+    public static IParser GetDefaultParser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetParser("Default");
+    }
 
-    public static IParser GetDefaultParser() => 
-        CommonParsersHost.Services.GetParser("Default");
+    public static IParser GetVector3Parser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetParser("Vector3");
+    }
 
-    public static IParser GetVector3Parser() =>
-        CommonParsersHost.Services.GetParser("Vector3");
-
-    public static IParser GetComplexParser() =>
-        CommonParsersHost.Services.GetParser("Complex");
+    public static IParser GetComplexParser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetParser("Complex");
+    }
 
     public static double? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
         return (double?)GetDefaultParser().Evaluate(expression, variables);
+    }
+
+    public static Complex? EvaluateComplex(string expression, Dictionary<string, object?>? variables = null)
+    {
+        return (Complex?)GetComplexParser().Evaluate(expression, variables);
+    }
+
+    public static Vector3? EvaluateVector3(string expression, Dictionary<string, object?>? variables = null)
+    {
+        return (Vector3?)GetVector3Parser().Evaluate(expression, variables);
+    }
+
+    public static ITokenizer GetCommonTokenizer()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetTokenizer();
     }
 
 
