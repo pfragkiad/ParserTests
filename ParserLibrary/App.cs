@@ -3,132 +3,352 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers;
-using Serilog;
 
 namespace ParserLibrary;
 
 public static class App
 {
-    //TODO: AddTokenizer, AddParser, ConfigureTokenizerOptions capability show
-    //TODO: Serilog control via appsettings.json
+    #region TokenizerOptions
 
-    public static IHost GetParserApp<TParser>(
-        string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : ParserBase
+    private static void CopyFrom(this TokenizerOptions target, TokenizerOptions source)
     {
-        IHost app = Host.CreateDefaultBuilder()
-           .ConfigureAppConfiguration(builder =>
-           {
-               if (configFile != "appsettings.json")
-                   builder.AddJsonFile(configFile, true, false);
-           })
-           .ConfigureServices((context, services) =>
-            {
-                services
-                .AddParserLibrary<TParser>(context, tokenizerSection);
-            })
-           .UseSerilog((context, configuration) =>
-           {
-               configuration.ReadFrom.Configuration(context.Configuration);
-               //configuration.MinimumLevel.Debug();
-               //configuration.WriteTo.Console();
-           })
-           .Build();
-        return app;
+        target.Version = source.Version;
+        target.CaseSensitive = source.CaseSensitive;
+        target.TokenPatterns = source.TokenPatterns; // shallow copy; deep clone if you mutate later
     }
 
-    public static IHost GetStatefulParserApp(
-        string configFile = "appsettings.json",
+    public static IServiceCollection ConfigureTokenizerOptions(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
+        services.Configure<TokenizerOptions>(context.Configuration.GetSection(tokenizerSection));
+
+    // Provide IOptions<TokenizerOptions> for default (unnamed) consumers
+    public static IServiceCollection ConfigureTokenizerOptions(
+        this IServiceCollection services,
+        TokenizerOptions options) =>
+        services.AddSingleton(Options.Create(options));
+
+    #endregion
+
+    #region Tokenizer
+
+    public static IServiceCollection AddTokenizer(
+        this IServiceCollection services,
+        HostBuilderContext context,
         string tokenizerSection = TokenizerOptions.TokenizerSection)
     {
-        IHost app = Host.CreateDefaultBuilder()
-           .ConfigureAppConfiguration(builder =>
-           {
-               if (configFile != "appsettings.json")
-                   builder.AddJsonFile(configFile, true, false);
-           })
-           .ConfigureServices((context, services) =>
-           {
-               services
-               .AddStatefulParserLibrary(context, tokenizerSection);
-           })
-           .UseSerilog((context, configuration) =>
-           {
-               configuration.ReadFrom.Configuration(context.Configuration);
-               //configuration.MinimumLevel.Debug();
-               //configuration.WriteTo.Console();
-           })
-           .Build();
-        return app;
+        return services
+            .ConfigureTokenizerOptions(context, tokenizerSection)
+            .AddSingleton<ITokenizer, Tokenizer>();
     }
 
-
-    #region Utility functions
-
-
-    public static IParser GetCustomParser<TParser>(
-        string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : ParserBase =>
-        GetParserApp<TParser>(configFile, tokenizerSection)
-            .Services
-            .GetParser();
-
-    public static IStatefulParser GetStatefulParser<TParser>(
-        string expression,
-        Dictionary<string, object?>? variables = null,
-        string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParserBase =>
-        GetStatefulParserApp(configFile, tokenizerSection)
-            .Services
-            .GetStatefulParserFactory()!
-            .Create<TParser>(expression,variables);
-
-    public static IParser GetDefaultParser(
-        string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) =>
-            GetParserApp<DefaultParser>(configFile, tokenizerSection)
-            .Services
-            .GetParser();
-
-    public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json", string tokenizerSection = TokenizerOptions.TokenizerSection) =>
-        GetParserApp<DefaultParser>(configFile)
-        .Services
-        .GetParser();
-
-    public static double Evaluate(string s, Dictionary<string, object?>? variables = null)
+    public static IServiceCollection AddTokenizer(
+    this IServiceCollection services,
+    TokenizerOptions options)
     {
-        return (double?)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables) ?? 0.0;
+        return services
+            .ConfigureTokenizerOptions(options)
+            .AddSingleton<ITokenizer, Tokenizer>();
     }
+
+    public static ITokenizer GetTokenizer(this IServiceProvider services) => services.GetRequiredService<ITokenizer>();
+
+    /// <summary>
+    /// Registers a TokenizerOptions (named) and a keyed Tokenizer bound to a configuration section.
+    /// key: logical name to later resolve the tokenizer.
+    /// sectionPath: configuration section path (e.g. "Tokenizers:Math" or "MathTokenizer").
+    /// </summary>
+    public static IServiceCollection AddTokenizer(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string key,
+        string tokenizerSectionPath = TokenizerOptions.TokenizerSection)
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+                .Bind(configuration.GetSection(tokenizerSectionPath))
+                .PostConfigure(o =>
+                {
+                    o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+                });
+
+        // Register keyed tokenizer
+        services.AddKeyedSingleton<ITokenizer, Tokenizer>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<Tokenizer>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return new Tokenizer(logger, Options.Create(opts));
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddTokenizer(
+        this IServiceCollection services,
+        string key,
+        TokenizerOptions options)
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+            .Configure(o => o.CopyFrom(options))
+            .PostConfigure(o =>
+            {
+                o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+            });
+
+        // Register keyed tokenizer
+        services.AddKeyedSingleton<ITokenizer, Tokenizer>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<Tokenizer>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return new Tokenizer(logger, Options.Create(opts));
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Bulk register all subsections under a parent section.
+    /// Example config:
+    /// "Tokenizers": {
+    ///   "Complex": { ... },
+    ///   "Vector": { ... }
+    /// }
+    /// Call: services.AddTokenizers(configuration, "Tokenizers");
+    /// Keys will be "Complex", "Vector".
+    /// </summary>
+    public static IServiceCollection AddTokenizers(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string parentSectionPath)
+    {
+        var parent = configuration.GetSection(parentSectionPath);
+        foreach (var child in parent.GetChildren())
+        {
+            services.AddTokenizer(configuration, child.Key, $"{parentSectionPath}:{child.Key}");
+        }
+        return services;
+    }
+
+    /// <summary>
+    /// Resolve a keyed tokenizer.
+    /// </summary>
+    public static ITokenizer GetTokenizer(this IServiceProvider services, string key) =>
+        services.GetRequiredKeyedService<ITokenizer>(key);
+
 
     #endregion
 
 
+    #region Parser
 
-    private static void Tests()
+    public static IServiceCollection AddParser<TParser>(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase
     {
-        //#1a
-        var builder = new ConfigurationBuilder();
-        builder.AddJsonFile("appsettings.json");
-        IConfiguration config = builder.Build();
-
-        //#1b
-        //IHost app = Host.CreateDefaultBuilder().Build();
-        //IConfiguration config = app.Services.GetService<IConfiguration>();
-
-        var tokenizer = new TokenizerOptions();
-        //#i
-        //config.GetSection(TokenizerOptions.TokenizerSection).Bind(tokenizer);
-        //#ii
-        config.Bind(TokenizerOptions.TokenizerSection, tokenizer);
-        //var s  = config["test"]; //works
-
-
-        //#2
-        //IHost app = Host.CreateDefaultBuilder()
-        //   .ConfigureServices((context, services) =>
-        //    services.Configure<TokenizerOptions>(context.Configuration.GetSection(TokenizerOptions.TokenizerSection))).Build();
-        //var tokenizer = app.Services.GetService<IOptions<TokenizerOptions>>().Value; //IOptionsMonitor, IOptionsSnapshot
-
+        return services
+            .ConfigureTokenizerOptions(context, tokenizerSectionPath)
+            .AddSingleton<IParser, TParser>();
     }
+
+    public static IServiceCollection AddParser<TParser>(
+        this IServiceCollection services,
+        TokenizerOptions options) where TParser : ParserBase
+    {
+        return services
+            .ConfigureTokenizerOptions(options)
+            .AddSingleton<IParser, TParser>();
+    }
+
+    public static IParser GetParser(this IServiceProvider services) => services.GetRequiredService<IParser>();
+
+    public static IServiceCollection AddParser<TParser>(
+       this IServiceCollection services,
+       IConfiguration configuration,
+       string key,
+       string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+                .Bind(configuration.GetSection(tokenizerSectionPath))
+                .PostConfigure(o =>
+                {
+                    o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+                });
+
+        // Register keyed tokenizer
+        services.AddKeyedSingleton<IParser, TParser>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ParserBase>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts));
+        });
+
+        return services;
+    }
+    public static IServiceCollection AddParser<TParser>(
+       this IServiceCollection services,
+       string key,
+       TokenizerOptions options) where TParser : ParserBase
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+            .Configure(o => o.CopyFrom(options))
+            .PostConfigure(o =>
+            {
+                o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+            });
+
+        // Register keyed tokenizer
+        services.AddKeyedSingleton<IParser, TParser>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ParserBase>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts));
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Resolve a keyed parser.
+    /// </summary>
+    public static IParser GetParser(this IServiceProvider services, string key) =>
+        services.GetRequiredKeyedService<IParser>(key);
+
+    #endregion
+
+    #region StatefulParser
+
+    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+        this IServiceCollection services,
+        HostBuilderContext context,
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TStatefulParser : StatefulParserBase
+    {
+        return services
+            .ConfigureTokenizerOptions(context, tokenizerSection)
+            .AddTransient<IStatefulParser, TStatefulParser>();
+    }
+
+    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+        this IServiceCollection services,
+        TokenizerOptions options) where TStatefulParser : StatefulParserBase
+    {
+        return services
+            .ConfigureTokenizerOptions(options)
+            .AddTransient<IStatefulParser, TStatefulParser>();
+    }
+
+    public static IStatefulParser GetStatefulParser(this IServiceProvider services) => services.GetRequiredService<IStatefulParser>();
+
+    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string key,
+        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : StatefulParserBase
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+                .Bind(configuration.GetSection(tokenizerSectionPath))
+                .PostConfigure(o =>
+                {
+                    o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+                });
+
+        // Register keyed tokenizer
+        services.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ParserBase>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts));
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+        this IServiceCollection services,
+        string key,
+        TokenizerOptions options) where TStatefulParser : StatefulParserBase
+    {
+        // Bind named options
+        services.AddOptions<TokenizerOptions>(key)
+            .Configure(o => o.CopyFrom(options))
+            .PostConfigure(o =>
+            {
+                o.TokenPatterns ??= TokenizerOptions.Default.TokenPatterns;
+            });
+
+        // Register keyed tokenizer
+        services.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, key) =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ParserBase>>();
+            var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            var opts = monitor.Get(key as string);
+            return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts));
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Resolve a keyed stateful parser.
+    /// </summary>
+    public static IStatefulParser GetStatefulParser(this IServiceProvider services, string key) =>
+        services.GetRequiredKeyedService<IStatefulParser>(key);
+
+
+    #endregion
+
+
+    #region Common parsers
+
+    public static IServiceCollection AddCommonParsers(this IServiceCollection services)
+    {
+        return services
+            .AddParser<DefaultParser>("Default", TokenizerOptions.Default)
+            .AddParser<Vector3Parser>("Vector3", TokenizerOptions.Default)
+            .AddParser<ComplexParser>("Complex", TokenizerOptions.Default);
+    }
+
+
+
+    private static IHost CommonParsersHost;
+
+    static App()
+    {
+        CommonParsersHost = Host.CreateDefaultBuilder()
+                 .ConfigureServices((context, services) =>
+                 {
+                     services.AddCommonParsers();
+                 })
+                 .Build();
+    }
+
+
+    public static IParser GetDefaultParser() => 
+        CommonParsersHost.Services.GetParser("Default");
+
+    public static IParser GetVector3Parser() =>
+        CommonParsersHost.Services.GetParser("Vector3");
+
+    public static IParser GetComplexParser() =>
+        CommonParsersHost.Services.GetParser("Complex");
+
+    public static double? Evaluate(string expression, Dictionary<string, object?>? variables = null)
+    {
+        return (double?)GetDefaultParser().Evaluate(expression, variables);
+    }
+
+
+    #endregion
+
+
 }
