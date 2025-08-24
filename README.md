@@ -601,11 +601,11 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-### `ItemStatefulParser`
+### `StatefulParser`
 
 When you need:
-* one parser instance bound to one evolving expression, or
-* to avoid concurrent access to mutable parser state (e.g. an interactive REPL),
+* expression optimization
+* validation before evaluation,
 use a stateful parser variant. A stateful parser derives from `StatefulParserBase` (which itself supplies all core functionality plus mutable `Expression` / `Variables`).
 
 The StatefulParser also has a `Validate` method, which can be used to check if the expression is valid without actually evaluating it. This can be useful in interactive applications.
@@ -654,7 +654,7 @@ public class ItemStatefulParser(
 }
 ```
 
-#### Using the StatefulParserFactory
+### Initializing a stateful parser
 
 There are many ways to create a statefule parser in a similar manner to the (stateless) `Parser` variants.
 
