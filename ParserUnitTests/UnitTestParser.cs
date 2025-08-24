@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Hosting;
+using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers;
 using ParserTests.Common.Parsers;
 using System.Numerics;
 
@@ -67,7 +70,7 @@ public class UnitTestParser
     {
         var app = ParserApp.GetParserApp<FunctionsOperandsParser>();
 
-        
+
         IParser parser = app.GetParser();
         double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } })!;
         Assert.Equal(expected, result);
@@ -86,9 +89,59 @@ public class UnitTestParser
     }
 
     [Fact]
+    public void TestSimpleFunctionParser_Host()
+    {
+        var app = Host.CreateDefaultBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services.AddParser<SimpleFunctionParser>(context);
+            }).Build();
+        var parser = app.GetParser();
+        double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
+            new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
+
+        Assert.Equal(8 + 5 + 2 * 3 + 3 * 3.0, result);
+    }
+
+    [Fact]
+    public void TestSimpleFunctionParser_Host_Keyed()
+    {
+        var app = Host.CreateDefaultBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services.AddParser<SimpleFunctionParser>("simple", TokenizerOptions.Default);
+                services.AddParser<ComplexParser>("complex", TokenizerOptions.Default);
+            }).Build();
+        var parser = app.GetParser("simple");
+        double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
+            new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
+
+        Assert.Equal(8 + 5 + 2 * 3 + 3 * 3.0, result);
+    }
+
+    [Fact]
     public void TestCustomTypeParser()
     {
-        var parser = ParserApp.GetParserApp<ItemParser>().GetParser();
+        //var parser = ParserApp.GetParserApp<ItemParser>().GetParser();
+        
+        var parser = ParserApp.GetParser<ItemParser>();
+
+        //var host  = Host.CreateDefaultBuilder()
+        //    .ConfigureServices((context, services) =>
+        //     {
+        //         services.AddParser<ItemParser>(context);
+        //     }).Build();
+        //var parser2 = host.GetParser();
+
+        //host with keyed parser named "item"
+        //var host = Host.CreateDefaultBuilder()
+        //    .ConfigureServices((context, services) =>
+        //    {
+        //        services.AddParser<ItemParser>("item", TokenizerOptions.Default);
+        //    }).Build();
+        //var parser = host.GetParser("item");
+
+
         Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
             new() {
                 {"a", new Item { Name="foo", Value = 3}  },
@@ -102,7 +155,8 @@ public class UnitTestParser
     public void TestCustomTypeStatefulParser()
     {
         //fast build a host and get the parser immediately
-        var parser = ParserApp.GetStatefulParserApp<ItemStatefulParser>().GetStatefulParser();
+        //var parser = ParserApp.GetStatefulParserApp<ItemStatefulParser>().GetStatefulParser();
+        var parser = ParserApp.GetStatefulParser<ItemStatefulParser>();
 
         //var host = Host.CreateDefaultBuilder()
         //    .ConfigureServices((context, services) =>

@@ -6,8 +6,8 @@ using ParserLibrary.Tokenizers;
 namespace ParserTests.Common.Parsers;
 
 public class IntStatefulParser(
-    ILogger<StatefulParserBase> logger,
-    IOptions<TokenizerOptions> options) : StatefulParserBase(logger, options)
+    ILogger<CoreStatefulParser> logger,
+    IOptions<TokenizerOptions> options) : CoreStatefulParser(logger, options)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);

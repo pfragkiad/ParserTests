@@ -3,7 +3,7 @@
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
+public class Vector3Parser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 {
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)

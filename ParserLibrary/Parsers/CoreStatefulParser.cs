@@ -10,7 +10,7 @@ namespace ParserLibrary.Parsers;
 /// <summary>
 /// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.
 /// </summary>
-public class StatefulParserBase : ParserBase, IStatefulParser
+public class CoreStatefulParser : CoreParser, IStatefulParser
 {
 
     //created for simplifying and caching dictionaries
@@ -21,8 +21,8 @@ public class StatefulParserBase : ParserBase, IStatefulParser
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
 
-    public StatefulParserBase(
-        ILogger<StatefulParserBase> logger,
+    public CoreStatefulParser(
+        ILogger<CoreStatefulParser> logger,
         IOptions<TokenizerOptions> options
         //, string? expression = null,
         //Dictionary<string, object?>? variables = null

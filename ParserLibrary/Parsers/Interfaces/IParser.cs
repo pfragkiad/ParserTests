@@ -11,7 +11,7 @@ public interface IParser : ITokenizer
 
 
     V? Evaluate<V>(
-        string s,
+        string expression,
         Func<string, V>? literalParser = null,
         Dictionary<string, V>? variables = null,
         Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
@@ -55,7 +55,7 @@ public interface IParser : ITokenizer
 
     Tree<Token> GetExpressionTree(List<Token> postfixTokens);
 
-    Tree<Token> GetExpressionTree(string s);
+    Tree<Token> GetExpressionTree(string expression);
 
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression);
 

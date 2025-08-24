@@ -6,8 +6,8 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserTests.Common.Parsers;
 
-public class FunctionsOperandsParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) :
-    DefaultParser(logger, options)
+public class FunctionsOperandsParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) :
+    DoubleParser(logger, options)
 {
     protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {

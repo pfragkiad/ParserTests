@@ -3,13 +3,13 @@ using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers;
 
-public class ParserBase : Tokenizer, IParser
+public class CoreParser : Tokenizer, IParser
 {
-    public ParserBase(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options)
+    public CoreParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
     { }
 
-    protected ParserBase(ILogger logger, IOptions<TokenizerOptions> options)
+    protected CoreParser(ILogger logger, IOptions<TokenizerOptions> options)
     : base(logger, options)
     { }
 
@@ -77,8 +77,6 @@ public class ParserBase : Tokenizer, IParser
             UnmatchedNames = [.. unmatchedNames]
         };
     }
-
-
 
     public List<string> GetMatchedFunctionNames(string expression)
     {
@@ -177,7 +175,7 @@ public class ParserBase : Tokenizer, IParser
     #region Evaluation methods
 
     public V? Evaluate<V>(
-        string s,
+        string expression,
         Func<string, V>? literalParser = null,
         Dictionary<string, V>? variables = null,
         Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
@@ -188,7 +186,7 @@ public class ParserBase : Tokenizer, IParser
         Dictionary<string, Func<V?, V?, V?, V?>>? funcs3Arg = null
     )
     {
-        var postfixTokens = GetPostfixTokens(s);
+        var postfixTokens = GetPostfixTokens(expression);
         return Evaluate(
             postfixTokens,
             literalParser, variables,
@@ -317,9 +315,9 @@ public class ParserBase : Tokenizer, IParser
         return variables;
     }
 
-    public virtual object? Evaluate(string s, Dictionary<string, object?>? variables = null)
+    public virtual object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
-        var postfixTokens = GetPostfixTokens(s);
+        var postfixTokens = GetPostfixTokens(expression);
         return Evaluate(postfixTokens, variables);
     }
 
@@ -343,9 +341,9 @@ public class ParserBase : Tokenizer, IParser
 
 
 
-    public virtual Type EvaluateType(string s, Dictionary<string, object?>? variables = null)
+    public virtual Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
     {
-        var postfixTokens = GetPostfixTokens(s);
+        var postfixTokens = GetPostfixTokens(expression);
         return EvaluateType(postfixTokens, variables);
     }
 
@@ -971,7 +969,7 @@ public class ParserBase : Tokenizer, IParser
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return ParserBase.CheckOrphanArgumentSeparators(tree.NodeDictionary);
+        return CoreParser.CheckOrphanArgumentSeparators(tree.NodeDictionary);
     }
 
 

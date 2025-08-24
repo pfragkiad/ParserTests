@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Parsers.Common;
 
-public class DefaultParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
+public class DoubleParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 {
 
     /// <summary>

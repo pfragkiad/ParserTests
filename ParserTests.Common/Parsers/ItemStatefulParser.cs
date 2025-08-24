@@ -8,7 +8,7 @@ namespace ParserTests.Common.Parsers;
 
 public class ItemStatefulParser(
     ILogger<ItemStatefulParser> logger,
-    IOptions<TokenizerOptions> options) : StatefulParserBase(logger, options)
+    IOptions<TokenizerOptions> options) : CoreStatefulParser(logger, options)
 {
 
     //we assume that LITERALS are integer numbers only

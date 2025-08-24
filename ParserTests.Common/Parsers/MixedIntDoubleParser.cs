@@ -7,7 +7,7 @@ using System.Globalization;
 namespace ParserTests.Common.Parsers;
 
 public class MixedIntDoubleParser(
-    ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
+    ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 {
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {

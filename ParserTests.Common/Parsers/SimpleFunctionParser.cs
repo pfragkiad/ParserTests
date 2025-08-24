@@ -6,7 +6,7 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserTests.Common.Parsers;
 
-public class SimpleFunctionParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : DefaultParser(logger, options)
+public class SimpleFunctionParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : DoubleParser(logger, options)
 {
 
     protected override object? EvaluateFunction(string functionName, object?[] args)

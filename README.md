@@ -37,13 +37,14 @@ dotnet add package ParserLibrary
 
 ### Namespaces
 
-At least the first 2 namespaces below, should be used in order to compile most of the following examples. The other 2 are for more advanced usage (expression trees and tokenizers).
+At least the first 2 namespaces below, should be used in order to compile most of the following examples. 
 
 ```cs
 //use at least these 2 namespaces
 using ParserLibrary;
 using ParserLibrary.Parsers;
 
+using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
 using ParserLibrary.ExpressionTree;
 ```
@@ -54,75 +55,121 @@ using ParserLibrary.ExpressionTree;
 
 ```cs
 //This is a simple expression, which uses variables and literals of type double, and the DefaultParser.
-double result = (double)App.Evaluate( "-5.0+2*a", new() { { "a", 5.0 } });
+double result = (double)ParserApp.Evaluate( "-5.0+2*a", new() { { "a", 5.0 } });
 Console.WriteLine(result);  //5
 
 //2 variables example (spaces are obviously ignored)
-double result2 = (double)App.Evaluate("-a + 500 * b + 2^3", new() { { "a", 5 }, { "b", 1 } });
+double result2 = (double)ParserApp.Evaluate("-a + 500 * b + 2^3", new() { { "a", 5 }, { "b", 1 } });
 Console.WriteLine(result2); //503
 ```
 
-The first example is the same with the example below: the second way uses explicitly the ```DefaultParser```, which can be later overriden in order to use a custom Parser.
+All examples below are equivalent; the first and the second examples explicitly retrieve the ```DefaultParser``` instance, which contains default arithmetic functionality.
 
 ```cs
-//The example below uses explicitly the DefaultParser.
-var app = App.GetParserApp<DefaultParser>();
-var parser = app.Services.GetParser();
+//The example below uses explicitly the DefaultParser. Use one of the alternatives below:
+
+//v1
+var app = ParserApp.GetCommonsApp(); //returns an IHost with the common parsers registered
+var parser = app.Services.GetParser("Default");
 double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
+
+//v2
+var parser = ParserApp.GetDefaultParser(); //returns an IHost with the common parsers registered
+double result = (double)parser.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
+
+//v3
+double result = (double)ParserApp.Evaluate("-5.0+2*a", new() { { "a", 5.0 } });
 ```
 
 Let's use some functions already defined in the `DefaultParser`:
 
 ```cs
-double result3 = (double)App.Evaluate("cosd(ph)^2+sind(ph)^2", new() { { "ph", 45 } });
+double result3 = (double)ParserApp.Evaluate("cosd(ph)^2+sind(ph)^2", new() { { "ph", 45 } });
 Console.WriteLine(result3); //  1.0000000000000002
 ```
 
 ...and some constants used in the `DefaultParser`:
 ```cs
-Console.WriteLine(App.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
+Console.WriteLine(ParserApp.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 2 + 3 -> 6
 ```
 
 ## `DefaultParser` examples #2 (custom functions)
 
-hat was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
-Note that the syntax has been simplified comparing to the previous API versions.
+That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
 ```cs
-private class SimpleFunctionParser : DefaultParser
+public class SimpleFunctionParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : DefaultParser(logger, options)
 {
-    public SimpleFunctionParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
-    {
-    }
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        double[] a = GetDoubleFunctionArguments(args);
+        double[] d = GetDoubleFunctionArguments(args);
 
         return functionName switch
         {
-            "add3" => a[0] + 2 * a[1] + 3 * a[2],
+            "add3" => d[0] + 2 * d[1] + 3 * d[2],
+
             //for all other functions use the base class stuff (DefaultParser)
             _ => base.EvaluateFunction(functionName, args)
         };
     }
+
 }
+
 ```
 
-Let's use our first customized `Parser`:
+Let's use our first customized `Parser`. There are many ways to retrieve the parser depending on the project needs. See some variants below:
 
 ```cs
-var parser = App.GetCustomParser<SimpleFunctionParser>();
-double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } }); // will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
+//v1
+var app = ParserApp.GetParserApp<SimpleFunctionParser>();
+var parser = app.GetParser();
+// will return 8 + (5 + 2 * 3 + 3 * 3.0) i.e -> 28
+double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)", new() { { "g", 3 } });
+
+//v2 (assuming you want to explicitly configure the host)
+var app = Host.CreateDefaultBuilder()
+    .ConfigureServices((context, services) =>
+    {
+        services.AddParser<SimpleFunctionParser>(context);
+    }).Build();
+var parser = app.GetParser();
+
+//v3 (assuming you want to add multiple parsers, a keyed version is suitable)
+var app = Host.CreateDefaultBuilder()
+    .ConfigureServices((context, services) =>
+    {
+        services.AddParser<SimpleFunctionParser>("simple", TokenizerOptions.Default);
+        services.AddParser<ComplexParser>("complex", TokenizerOptions.Default);
+    }).Build();
+var parser = app.GetParser("simple");
+...
 ```
 
 ## Single type parsing
 
-If we want to parse an expression that deals with a single data type, then we can avoid the use of creating a custom parser, using the `Parser.Evaluate` function. In the example below, we assume that the expression contains only `int` data types.
+If we want to parse an expression that deals with a single data type, then we can avoid the use of creating a custom parser, using the generic `Evaluate<T>` function.
+In the example below, we assume that the expression contains only `int` data types. For this case the `CoreParser` can be used. 
+The `CoreParser` can be created in many ways:
+
 ```cs
-//we use the base Parser here
-var parserApp = App.GetParserApp<Parser>();
-var parser = parserApp.Services.GetParser();
+//v1
+IParser parser = ParserApp.GetCoreParser();
+
+//v2 (explicitly creating the parser with a new host)
+IHost app = ParserApp.GetParserApp<CoreParser>();
+IParser parser = app.GetParser();
+
+//v3 (use the 'commons' app (host) which includes common parsers: "Core", "Default" or "Double", "Complex", "Vector3")
+IHost app = ParserApp.GetCommonsApp();
+IParser parser = app.GetParser("Core");
+```
+
+After retrieving the parser based on preference, the `Evaluate(T)` method is used as shown below. In this example, we define custom functions `f10` and `f2`, which multiply their argument by 10 and 2 respectively. We also define the operators `+`, `*` and `^` (power). The variables `a` and `asd` are also defined. The expression is evaluated to an integer value.
+
+```cs
+//we use the core Parser here
+IParser parser = ParserApp.GetCoreParser();
 
 int result = parser.Evaluate<int>( //returns 860
     "a+f10(8+5) + f2(321+asd*2^2)",
@@ -143,7 +190,7 @@ int result = parser.Evaluate<int>( //returns 860
 From the declaration of the function below, we can see that the `Evaluate` function supports functions from up to 3 arguments and the definition of custom operators. As shown in the example above, it is best to use the named parameters syntax.
 ```cs
  V Evaluate<V>(
-        string s,
+        string expression,
         Func<string, V> literalParser = null,
         Dictionary<string, V> variables = null,
         Dictionary<string, Func<V, V, V>> binaryOperators = null,
@@ -155,9 +202,11 @@ From the declaration of the function below, we can see that the `Evaluate` funct
         );
 ```
 
+
+
 # Custom Parsers
 
-Any `Parser` that uses custom types should inherit the `Parser` base class. 
+Any `Parser` that uses custom types should inherit the `CoreParser` base class. 
 Each custom parser should override the members:
 * `Constants`: if there is at least one "constant" such as `pi`, which should be defined by default.
 * `EvaluateLiteral`: if there is at least one literal value such as `0.421`. In most cases a simple parse function can be called for a `double` or `int`.
@@ -175,7 +224,7 @@ using System.Numerics;
 
 namespace ParserLibrary.Parsers;
 
-public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 {
  public override Dictionary<string, object?> Constants => 
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
@@ -282,7 +331,7 @@ Below is an example of usage of the `ComplexParser`:
 ```cs
 using System.Numerics; //needed if we want to further use the result
 ...
-var cparser = App.GetCustomParser<ComplexParser>();
+var cparser = ParserApp.GetComplexParser();
 
 //unless we override the i or j variables, both are considered to correspond to the imaginary unit
 //NOTE: because i is used as a variable (internally), the syntax for the imaginary part should be 3*i, NOT 3i
@@ -309,7 +358,7 @@ namespace ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-ppublic class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 {
    public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
@@ -418,7 +467,7 @@ Let's see some example usage too:
 ```cs
 using System.Numerics; //needed if we want to further use the result
 ...
-var vparser = App.GetCustomParser<Vector3Parser>();
+var vparser = ParserApp.GetVector3Parser();
 
 Vector3 v1 = new Vector3(1, 4, 2),
     v2 = new Vector3(2, -2, 0);
@@ -438,9 +487,9 @@ Console.WriteLine(vparser.Evaluate("lerp(v1, v2, 0.5)", // lerp (linear combinat
 
 Console.WriteLine(vparser.Evaluate("6*ux -12*uy + 14*uz")); //<6. -12. 14>
 ```
-## Custom parser examples #3: `CustomTypeParser` and the `CustomTypeStatefulParser`
+## Custom parser examples #3: `ItemParser` and the `ItemStatefulParser`
 
-Let's assume that we have a class named ```Item```, which we want to interact with integer numbers and with other ```Item``` objects:
+Let's assume that we have a class named `Item`, which we want to interact with integer numbers and with other `Item` objects:
 
 ```cs
 public class Item
@@ -450,7 +499,8 @@ public class Item
     public int Value { get; set; } = 0;
 
     //we define a custom operator for the type to simplify the evaluateoperator example later
-    //this is not 100% needed, but it keeps the code in the CustomTypeParser simpler
+    //this is not 100% needed, but it keeps the code in the custom parser simpler
+
     public static Item operator +(int v1, Item v2) =>
         new Item { Name = v2.Name , Value = v2.Value + v1 };
     public static Item operator +(Item v2, int v1) =>
@@ -464,14 +514,10 @@ public class Item
 }
 ```
 
-A custom parser that uses custom types derives from the ```Parser``` class. Because the ```Parser``` class does not assume any type in advance, we should override the ```EvaluateLiteral``` function which is used to parse the integer numbers in the string. In the following example we define the `+` operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so it is easier to write its implementation:
+A custom parser that uses custom types derives from the `CoreParser` class. Because the `CoreParser` class does not assume any type in advance, we should override the `EvaluateLiteral` function which is used to parse the integer numbers in the string. In the following example we define the `+` operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so it is easier to write its implementation:
 
 ```cs
-public class CustomTypeParser : Parser
-{
-    public CustomTypeParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
-    { }
-
+public class ItemParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
@@ -481,9 +527,7 @@ public class CustomTypeParser : Parser
 
         if (operatorName == "+")
         {
-            //ADDED:
             _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
-
 
             //we manage all combinations of Item/Item, Item/int, int/Item combinations here
             if (leftOperand is Item left && rightOperand is Item right)
@@ -515,10 +559,40 @@ public class CustomTypeParser : Parser
 }
 ```
 
-Now we can use the `CustomTypeParser` for parsing our custom expression:
+Now we can use the `ItemParser` for parsing our custom expression. To create the parser we can use many alternatives:
 
 ```cs
-var parser = App.GetCustomParser<CustomTypeParser>();
+//v1 (implicitly create host too) 
+var parser =  ParserApp.GetParser<ItemParser>();
+
+//v2 (explicitly create host)
+var parser = ParserApp.GetParserApp<ItemParser>().GetParser();
+
+//v3 (explicitly add to existing host) 
+var host  = Host.CreateDefaultBuilder()
+.ConfigureServices((context, services) =>
+    {
+        services.AddParser<ItemParser>(context); 
+        ...
+    }).Build();
+var parser = host.GetParser();
+
+//v4 (keyed version, if multiple parsers are used)
+var host = Host.CreateDefaultBuilder()
+    .ConfigureServices((context, services) =>
+    {
+        services.AddParser<ItemParser>("item", TokenizerOptions.Default);
+    }).Build();
+var parser = host.GetParser("item");
+
+```
+
+After retrieving the parser, we can evaluate an expression as shown below:
+
+
+```cs
+var parser = ParserApp.GetParser<ItemParser>();
+
 Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
     new() {
         {"a", new Item { Name="foo", Value = 3}  },
@@ -527,16 +601,21 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-### `CustomTypeStatefulParser` and the `StatefulParserFactory`
+### `ItemStatefulParser`
 
-In case, we want one of the following 2 cases:
-* a `Parser` instance per expression
-* a `Parser` that handles only non-parallel requests (such as the case of a terminal console),
+When you need:
+* one parser instance bound to one evolving expression, or
+* to avoid concurrent access to mutable parser state (e.g. an interactive REPL),
+use a stateful parser variant. A stateful parser derives from `StatefulParserBase` (which itself supplies all core functionality plus mutable `Expression` / `Variables`).
 
+The StatefulParser also has a `Validate` method, which can be used to check if the expression is valid without actually evaluating it. This can be useful in interactive applications.
+The method returns a collection of all the validation errors found.
+
+Minimal example (mirrors the logic of the stateless `ItemParser`):
 
 ```cs
-public class CustomTypeStatefulParser(
-    ILogger<CustomTypeStatefulParser> logger,
+public class ItemStatefulParser(
+    ILogger<ItemStatefulParser> logger,
     IOptions<TokenizerOptions> options,
     string expression,
     Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
@@ -564,7 +643,6 @@ public class CustomTypeStatefulParser(
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        //MODIFIED: used the CaseSensitive from the options in the configuration file. The options are retrieved via dependency injection.
         string actualFunctionName = _options.CaseSensitive ? functionName : functionName.ToLower();
         
         return actualFunctionName switch
@@ -578,45 +656,41 @@ public class CustomTypeStatefulParser(
 
 #### Using the StatefulParserFactory
 
-The recommended way to create `StatefulParser` instances is through the `StatefulParserFactory`, which properly handles dependency injection and provides the expression during construction. The factory pattern ensures that each parser instance is created with the correct dependencies and expression:
+There are many ways to create a statefule parser in a similar manner to the (stateless) `Parser` variants.
 
 ```cs
-// Using the factory pattern (recommended)
-var parser = App.GetStatefulParser<ItemStatefulParser>(
-    expression: "a + add(b,4) + 5",
-    variables: new() {
+//v1 (implicitly create host too) 
+var parser =  ParserApp.GetStatefulParser<ItemStatefulParser>();
+
+//v2 (explicitly create host)
+var parser = ParserApp.GetStatefulParserApp<ItemStatefulParser>().GetStatefulParser();
+
+//v3 (explicitly add to existing host) 
+var host  = Host.CreateDefaultBuilder()
+.ConfigureServices((context, services) =>
+    {
+        services.AddStatefulParser<ItemStatefulParser>(context); 
+        ...
+    }).Build();
+var parser = host.GetStatefulParser();
+
+//v4 (keyed version, if multiple parsers are used)
+var host = Host.CreateDefaultBuilder()
+    .ConfigureServices((context, services) =>
+    {
+        services.AddStatefulParser<ItemStatefulParser>("item", TokenizerOptions.Default);
+    }).Build();
+var parser = host.GetStatefulParser("item");
+
+```
+We can then evaluate the expression the same way.
+
+```cs
+Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
+    new() {
         {"a", new Item { Name="foo", Value = 3}  },
         {"b", new Item { Name="bar"}  }
     });
-Item result = (Item)parser.Evaluate();
-
 Console.WriteLine(result); // foo bar 12
 ```
-
-Alternatively, if you need direct access to the factory:
-
-```cs
-// Manual access to the factory
-var app = App.GetStatefulParserApp();
-var factory = app.Services.GetRequiredStatefulParserFactory();
-var parser = factory.Create<CustomTypeStatefulParser>(
-    expression: "a + add(b,4) + 5",
-    variables: new() {
-        {"a", new Item { Name="foo", Value = 3}  },
-        {"b", new Item { Name="bar"}  }
-    });
-Item result = (Item)parser.Evaluate();
-
-Console.WriteLine(result); // foo bar 12
-```
-
-The `StatefulParserFactory` approach has several advantages:
-- **Proper dependency injection**: The factory ensures all required services (logger, options) are correctly injected
-- **Expression binding**: The expression is set during construction, eliminating the need to manually set the `Expression` property
-- **Thread safety**: Each factory call creates a new instance, avoiding state conflicts
-- **Clean API**: Simpler usage pattern that follows dependency injection best practices
-
-
-
-
 
