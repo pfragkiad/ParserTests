@@ -38,7 +38,7 @@ public class UnitTestParserBase
         //IHost app = ParserApp.GetParserApp<ParserBase>();
         //IParser parser = app.GetParser();
         IHost app = ParserApp.GetCommonsApp();
-        IParser parser = app.GetParser("Base");
+        IParser parser = app.GetParser("Core");
 
         string epxression = "a+tan(8+5) * sin(321,asd)"; //returns 43038
 

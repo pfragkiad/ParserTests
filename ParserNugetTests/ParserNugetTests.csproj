@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="parsersettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 

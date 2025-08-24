@@ -382,6 +382,22 @@ internal class Program
         Console.WriteLine();
     }
 
+
+    private static void SimpleFunctionTests()
+    {
+        var parser = ParserApp.GetParser<SimpleFunctionParser>();
+
+        string expression = "-8 + add3(5.0,g,3.0)";
+
+        Console.WriteLine("Expression:");
+        var tree = parser.GetExpressionTree(expression);
+        tree.Print2();
+
+        Console.WriteLine("\nDetailed:");
+        Console.WriteLine(tree.Root.ToDetailedTreeString());
+
+
+    }
     private static void Main(string[] args)
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -395,7 +411,8 @@ internal class Program
 
         //ItemOperatorTests();
 
-        ItemParserTests();
+        //ItemParserTests();
+        SimpleFunctionTests();
 
         //CheckTypeTests();
 

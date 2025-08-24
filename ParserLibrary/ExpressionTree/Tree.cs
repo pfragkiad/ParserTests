@@ -28,6 +28,8 @@ public class Tree<T>
            Root.PrintVerticalTree(leftOffset, gap);
     }
 
+    public override string ToString() => Root.ToParenthesizedString();
+
     public int GetLeafNodesCount()
     {
         return NodeDictionary.

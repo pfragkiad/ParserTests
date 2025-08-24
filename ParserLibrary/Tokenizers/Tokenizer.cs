@@ -1,6 +1,8 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
+using Serilog.Parsing;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 
 namespace ParserLibrary.Tokenizers;
 
@@ -129,76 +131,11 @@ public class Tokenizer : ITokenizer
         }
 
         //sort by Match.Index (get "infix ordering")
+        
+        //this is critical becausea after this we will check for unary operators conflicts with binary operators
         tokens.Sort();
 
-        ////for each captured function we remove one captured open parenthesis AND one identifier! (the tokens must be sorted)
-        ////this should be refactored - 
-        //for (int i = tokens.Count - 2; i >= 1; i--)
-        //{
-        //    //if (tokens[i].TokenType == Token.FunctionOpenParenthesisTokenType)
-        //    //{
-        //    //    tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-        //    //    tokens.RemoveAt(i - 1); //this is the plain identifier
-        //    //    i--; //current token index is i-1, so counter is readjusted
-        //    //}
-        //    if (tokens[i].TokenType == TokenType.Function)
-        //    {
-        //        tokens.RemoveAt(i + 1); //this is the plain open parenthesis
-        //        tokens.RemoveAt(i); //remove this identifier and keep the plain one without the parenthesis
-        //        tokens[i - 1].TokenType = TokenType.Function; //this is the plain identifier
-        //        i--; //current token index is i-1, so counter is readjusted
-        //    }
-        //}
-
-        //search for unary operators (assuming they are the same with binary operators)
-        var potentialUnaryOperators = tokens.Where(t =>
-        t.TokenType == TokenType.Operator && tokenPatterns.Unary.Any(u => u.Name == t.Text));
-        //foreach (var token in potentialUnaryOperators)
-        for (int i = 0; i < tokens.Count; i++)
-        {
-            var token = tokens[i];
-
-            // Only process operators that could be unary
-            if (token.TokenType != TokenType.Operator ||
-                !tokenPatterns.Unary.Any(u => u.Name == token.Text))
-                continue;
-
-            //int i = tokens.IndexOf(token);
-            var unaryOp = tokenPatterns.Unary.First(u => u.Name == token.Text);
-
-
-            if (unaryOp.Prefix)
-            {
-                var prevToken = i > 0 ? tokens[i - 1] : null;
-
-                //if the previous token is an operator then the latter is a unary!
-                TokenType? previousTokenType = i > 0 ? prevToken!.TokenType : null;
-                if (i == 0 ||
-                    previousTokenType == TokenType.Operator ||
-                    previousTokenType == TokenType.ArgumentSeparator ||
-                    //the previous unary operator must not be prefix!
-                    previousTokenType == TokenType.OperatorUnary 
-                        //&&  _options.TokenPatterns.UnaryOperatorDictionary[prevToken!.Text].Prefix 
-                    || previousTokenType == TokenType.OpenParenthesis ||
-                    previousTokenType == TokenType.Function)
-                    token.TokenType = TokenType.OperatorUnary;
-
-                continue;
-            }
-
-            //unary.postfix (needs testing)
-            //if the previous token is an operator then the latter is a unary!
-            var nextToken = i < tokens.Count - 1 ? tokens[i + 1] : null;
-            TokenType? nextTokenType = i < tokens.Count - 1 ? nextToken!.TokenType : null;
-            if (i == tokens.Count - 1 ||
-                nextTokenType == TokenType.Operator ||
-                nextTokenType == TokenType.ArgumentSeparator ||
-                //the previous unary operator must not be prefix!
-                nextTokenType == TokenType.OperatorUnary
-                    //&& !_options.TokenPatterns.UnaryOperatorDictionary[nextToken!.Text].Prefix
-                || nextTokenType == TokenType.ClosedParenthesis)
-                token.TokenType = TokenType.OperatorUnary;
-        }
+        FixUnaryOperators(tokens);
 
         //now we need to convert to postfix
         //https://youtu.be/PAceaOSnxQs
@@ -216,8 +153,74 @@ public class Tokenizer : ITokenizer
         return tokens;
     }
 
+    private void FixUnaryOperators(List<Token> tokens)
+    {
+        var unaryDictionary = _options.TokenPatterns.UnaryOperatorDictionary;
 
-    //Infix to postfix 
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (token.TokenType != TokenType.Operator) continue;
+
+            // Only process operators that could be unary
+            bool foundSameUnary = _options.TokenPatterns.UnaryOperatorDictionary.TryGetValue(token.Text, out UnaryOperator? matchedUnaryOp);
+            if (!foundSameUnary) continue;
+
+            UnaryOperator unary = matchedUnaryOp!;
+            if (i == 0 && unary.Prefix || i == tokens.Count - 1 && !unary.Prefix)
+            {
+                token.TokenType = TokenType.OperatorUnary; continue;
+            }
+
+            Token previousToken = tokens[i - 1];
+            TokenType previousTokenType = previousToken!.TokenType;
+
+            if (unary.Prefix)
+            {
+                if (previousTokenType == TokenType.Literal || previousTokenType == TokenType.Identifier)
+                    continue; //the previous is a variable/literal so this is binary
+
+                //assume the check is at "-"
+                if (previousTokenType == TokenType.Operator ||    // + -2    the previous is binarys
+                    previousTokenType == TokenType.ArgumentSeparator ||     // , -2
+
+                    previousTokenType == TokenType.OperatorUnary &&
+                        unaryDictionary[previousToken.Text].Prefix ||  // ---2  the last one is prefix unary because the previous is unary too
+
+                    previousTokenType == TokenType.OpenParenthesis ||  //  (-2   parenthesis before
+                    previousTokenType == TokenType.Function) // func(-2  similar to parenthesis
+
+                    token.TokenType = TokenType.OperatorUnary;
+
+                continue;
+            }
+
+            //unary.postfix case from now on (assuming in comments that '*' is also a unary postfix operator)
+
+            //%*, a*, 5*, *+
+            bool canBePostfix = previousTokenType == TokenType.Literal || previousTokenType == TokenType.Identifier || //check for function
+                (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); //previous is postfix
+            if (!canBePostfix) continue; //stay as binary
+
+            Token nextToken = tokens[i + 1];
+            TokenType nextTokenType = nextToken.TokenType;
+
+            //the next is a variable/literal or function or open parenthesis so this is binary
+            //*2, *a, *func(, *(
+            if (nextTokenType == TokenType.Literal || nextTokenType == TokenType.Identifier || nextTokenType == TokenType.Function ||
+                    nextTokenType == TokenType.OpenParenthesis) continue; //stay as binary
+
+            //a*), a*
+            if (nextTokenType == TokenType.ClosedParenthesis || nextTokenType == TokenType.ArgumentSeparator || nextTokenType == TokenType.Operator)
+            {
+                token.TokenType = TokenType.OperatorUnary; continue;
+            } //assume unary
+
+        }
+    }
+
+
+    //Infix to postfix (example)
     //https://www.youtube.com/watch?v=PAceaOSnxQs
     public List<Token> GetPostfixTokens(List<Token> infixTokens)
     {
@@ -421,7 +424,7 @@ public class Tokenizer : ITokenizer
         return GetPostfixTokens(infixTokens);
     }
 
-    
+
 
     #region Utility methods
 
@@ -533,7 +536,7 @@ public class Tokenizer : ITokenizer
 
     public List<string> GetVariableNames(List<Token> infixTokens)
     {
-      return [.. infixTokens
+        return [.. infixTokens
                 .Where(t => t.TokenType == TokenType.Identifier)
                 .Select(t => t.Text)
                 .Distinct()];
@@ -546,7 +549,7 @@ public class Tokenizer : ITokenizer
         string[] ignorePostfixes)
     {
         var tokens = GetInfixTokens(expression);
-       return CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
+        return CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
     }
 
     public VariableNamesCheckResult CheckVariableNames(

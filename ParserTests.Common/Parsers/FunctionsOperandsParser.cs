@@ -33,5 +33,4 @@ public class FunctionsOperandsParser(ILogger<CoreParser> logger, IOptions<Tokeni
         };
     }
 
-
 }

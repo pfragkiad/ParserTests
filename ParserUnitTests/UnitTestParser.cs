@@ -3,6 +3,7 @@ using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
 using ParserTests.Common.Parsers;
+using System.Diagnostics;
 using System.Numerics;
 
 namespace ParserUnitTests;
@@ -64,11 +65,11 @@ public class UnitTestParser
     [InlineData("aDD3(-1,-2,-3)", -1 - 2 * 2 - 3 * 3)]
     [InlineData("-round(10.3513,1)", -10.4)]
     //% in action has higher priority than *, and ! has higher than - [to sum up -> the closest to the operand has the highest priority]
-    //[InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
+    [InlineData("-!!a%*++2", (-2 * 2 * 5 + 2) * 3 + 2)] //! doubles, % adds 2, * triples (all unary with same priority) 
     [InlineData("-!!a%*", (-2 * 2 * 5 + 2) * 3)] //! doubles, % adds 2, * triples (all unary with same priority) 
     public void TestMultipleExpressions(string s, double expected)
     {
-        var app = ParserApp.GetParserApp<FunctionsOperandsParser>();
+        var app = ParserApp.GetParserApp<FunctionsOperandsParser>(TokenizerOptions.Default);
 
 
         IParser parser = app.GetParser();
@@ -78,11 +79,35 @@ public class UnitTestParser
     }
 
     [Fact]
+    public void TestPostfixExpression()
+    {
+        var app = ParserApp.GetParserApp<FunctionsOperandsParser>(TokenizerOptions.Default);
+        IParser parser = app.GetParser();
+
+        string expression = "-!!a%*++2";
+        var tree = parser.GetExpressionTree(expression);
+        tree.Print2();
+
+
+        double result = (double)parser.Evaluate(
+            expression,
+            new() { { "a", 5.0 } })!; // will return (-2 * 2 * 5 + 2) * 3 + 2
+        Assert.Equal((-2 * 2 * 5 + 2) * 3 + 2, result);
+    }   
+
+    [Fact]
     public void TestSimpleFunctionParser()
     {
         var app = ParserApp.GetParserApp<SimpleFunctionParser>();
         var parser = app.GetParser();
-        double result = (double)parser.Evaluate("8 + add3(5.0,g,3.0)",
+
+        string expression = "8 + add3(5.0,g,3.0)";
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeVerticalString = tree.Root.ToVerticalTreeString();
+        Debugger.Break();
+
+        double result = (double)parser.Evaluate(expression ,
             new() { { "g", 3 } })!; // will return 8 + 5 + 2 * 3 + 3 * 3.0
 
         Assert.Equal(8 + 5 + 2 * 3 + 3 * 3.0, result);
