@@ -104,7 +104,7 @@ internal class Program
 
     private static void ComplexTests()
     {
-        var cparser = App.GetCustomParser<ComplexParser>();
+        var cparser = App.GetComplexParser();
         string expression = "cos(1+i)";
         var tree = cparser.GetExpressionTree(expression);
         tree.Print(withSlashes: false);
