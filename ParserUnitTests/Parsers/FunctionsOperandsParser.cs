@@ -6,7 +6,7 @@ namespace ParserUnitTests.Parsers;
 
 public class FunctionsOperandsParser : DefaultParser
 {
-    public FunctionsOperandsParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
+    public FunctionsOperandsParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     {
     }
 

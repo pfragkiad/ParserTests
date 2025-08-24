@@ -27,7 +27,7 @@ public class ItemStatefulParser(
     ILogger<ItemStatefulParser> logger,
     IOptions<TokenizerOptions> options,
     string expression,
-    Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
+    Dictionary<string, object?>? variables = null) : StatefulParserBase(logger, options, expression, variables)
 {
 
     //we assume that LITERALS are integer numbers only

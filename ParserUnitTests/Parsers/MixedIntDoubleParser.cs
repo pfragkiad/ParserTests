@@ -4,7 +4,7 @@ using ParserLibrary.Tokenizers;
 namespace ParserUnitTests.Parsers;
 
 public class MixedIntDoubleParser(
-    ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+    ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
 {
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {

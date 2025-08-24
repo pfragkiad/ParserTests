@@ -6,7 +6,7 @@ namespace ParserUnitTests.Parsers;
 
 public class SimpleFunctionParser : DefaultParser
 {
-    public SimpleFunctionParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : base(logger, options)
+    public SimpleFunctionParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : base(logger, options)
     {
     }
 

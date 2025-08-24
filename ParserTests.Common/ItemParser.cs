@@ -6,7 +6,7 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserTests.Common;
 
-public class ItemParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class ItemParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
 {
     protected override object EvaluateLiteral(string s)
     {

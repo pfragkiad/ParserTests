@@ -100,7 +100,7 @@ internal class Program
     {
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
 
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
         parser.RegisterFunction("myfunc(a,b) = a + b + 10");
 
 
@@ -172,7 +172,7 @@ internal class Program
         // Parser Expression Test
         Console.WriteLine("--- Item Parser Performance Comparison ---");
         var app = App.GetParserApp<ItemParser>("parsersettings.json");
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
 
         var i1 = new Item { Name = "item1", Value = 10 };
         var i2 = new Item { Name = "item2", Value = 5 };

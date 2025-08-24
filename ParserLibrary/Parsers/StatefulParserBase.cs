@@ -10,7 +10,7 @@ namespace ParserLibrary.Parsers;
 /// <summary>
 /// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.
 /// </summary>
-public class StatefulParser : Parser, IStatefulParser
+public class StatefulParserBase : ParserBase, IStatefulParser
 {
 
     //created for simplifying and caching dictionaries
@@ -21,18 +21,19 @@ public class StatefulParser : Parser, IStatefulParser
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
 
-    public StatefulParser(
-        ILogger<StatefulParser> logger,
-        IOptions<TokenizerOptions> options,
-        string? expression = null,
-        Dictionary<string, object?>? variables = null)
+    public StatefulParserBase(
+        ILogger<StatefulParserBase> logger,
+        IOptions<TokenizerOptions> options
+        //, string? expression = null,
+        //Dictionary<string, object?>? variables = null
+        )
         : base(logger, options)
     {
-        //assign expression if not null or whitespace
-        if (!string.IsNullOrWhiteSpace(expression))
-            Expression = expression;
+        ////assign expression if not null or whitespace
+        //if (!string.IsNullOrWhiteSpace(expression))
+        //    Expression = expression;
 
-        Variables = variables ?? [];
+        //Variables = variables ?? [];
 
     }
 
@@ -95,6 +96,7 @@ public class StatefulParser : Parser, IStatefulParser
         _postfixTokens = tree.GetPostfixTokens();
     }
 
+  
     protected Dictionary<string, object?> _variables = [];
 
     public Dictionary<string, object?> Variables
@@ -102,15 +104,11 @@ public class StatefulParser : Parser, IStatefulParser
         get => _variables;
         set
         {
-            _variables = value ?? [];
-            _variables = MergeVariableConstants(_variables);
+            _variables = MergeVariableConstants(value);
         }
     }
 
     #endregion
-
-
-
 
     //also resets the internal expression
     public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)

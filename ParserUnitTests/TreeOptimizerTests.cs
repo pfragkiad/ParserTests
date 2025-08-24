@@ -16,7 +16,7 @@ public class TreeOptimizerTests
     {
         // Arrange
         var app = App.GetParserApp<ItemParser>();
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
         
         string expression = "a + 5 + b + 10.5 + c"; // Mixed types: Item + int + Item + double + Item
         
@@ -89,7 +89,7 @@ public class TreeOptimizerTests
     {
         // Arrange
         var app = App.GetParserApp<ItemParser>();
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
         
         string expression = "item1 + 10 + item2 + 5 + item3"; // Items mixed with integers
         

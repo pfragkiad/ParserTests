@@ -3,13 +3,13 @@ using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers;
 
-public class Parser : Tokenizer, IParser
+public class ParserBase : Tokenizer, IParser
 {
-    public Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options)
+    public ParserBase(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
     { }
 
-    protected Parser(ILogger logger, IOptions<TokenizerOptions> options)
+    protected ParserBase(ILogger logger, IOptions<TokenizerOptions> options)
     : base(logger, options)
     { }
 
@@ -971,7 +971,7 @@ public class Parser : Tokenizer, IParser
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return Parser.CheckOrphanArgumentSeparators(tree.NodeDictionary);
+        return ParserBase.CheckOrphanArgumentSeparators(tree.NodeDictionary);
     }
 
 

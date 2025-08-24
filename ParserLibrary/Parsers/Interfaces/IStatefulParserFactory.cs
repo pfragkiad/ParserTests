@@ -10,5 +10,5 @@ public interface IStatefulParserFactory
     /// <returns>A new StatefulParser instance configured with the expression</returns>
     TParser Create<TParser>(
         string? expression,
-        Dictionary<string, object?>? variables = null) where TParser : StatefulParser;
+        Dictionary<string, object?>? variables = null) where TParser : StatefulParserBase;
 }

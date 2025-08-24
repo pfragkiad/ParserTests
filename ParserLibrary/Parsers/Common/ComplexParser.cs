@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Parsers.Common;
 
-public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class ComplexParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : ParserBase(logger, options)
 {
     //protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     //{

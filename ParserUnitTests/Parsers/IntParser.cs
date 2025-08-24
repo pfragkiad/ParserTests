@@ -4,7 +4,7 @@ using ParserLibrary.Tokenizers;
 namespace ParserUnitTests.Parsers;
 
 
-public class IntParser(ILogger<Parser> logger,  IOptions<TokenizerOptions> options) : Parser(logger, options)
+public class IntParser(ILogger<ParserBase> logger,  IOptions<TokenizerOptions> options) : ParserBase(logger, options)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);
@@ -47,10 +47,10 @@ public class IntParser(ILogger<Parser> logger,  IOptions<TokenizerOptions> optio
 }
 
 public class IntStatefulParser(
-    ILogger<StatefulParser> logger,
+    ILogger<StatefulParserBase> logger,
     IOptions<TokenizerOptions> options,
     string expression,
-    Dictionary<string,object?>? variables = null) : StatefulParser(logger, options, expression, variables)
+    Dictionary<string,object?>? variables = null) : StatefulParserBase(logger, options, expression, variables)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);

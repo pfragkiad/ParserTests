@@ -15,7 +15,7 @@ public static class App
 
     public static IHost GetParserApp<TParser>(
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : ParserBase
     {
         IHost app = Host.CreateDefaultBuilder()
            .ConfigureAppConfiguration(builder =>
@@ -69,22 +69,22 @@ public static class App
 
     public static IParser GetCustomParser<TParser>(
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : Parser =>
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : ParserBase =>
         GetParserApp<TParser>(configFile, tokenizerSection)
             .Services
-            .GetRequiredParser();
+            .GetParser();
 
     public static IStatefulParser GetStatefulParser<TParser>(
         string expression,
         Dictionary<string, object?>? variables = null,
         string configFile = "appsettings.json",
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParser =>
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParser : StatefulParserBase =>
         GetStatefulParserApp(configFile, tokenizerSection)
             .Services
             .GetStatefulParserFactory()!
             .Create<TParser>(expression,variables);
 
-    public static IParser? GetDefaultParser(
+    public static IParser GetDefaultParser(
         string configFile = "appsettings.json",
         string tokenizerSection = TokenizerOptions.TokenizerSection) =>
             GetParserApp<DefaultParser>(configFile, tokenizerSection)
@@ -94,11 +94,11 @@ public static class App
     public static IParser GetRequiredDefaultParser(string configFile = "appsettings.json", string tokenizerSection = TokenizerOptions.TokenizerSection) =>
         GetParserApp<DefaultParser>(configFile)
         .Services
-        .GetRequiredParser();
+        .GetParser();
 
     public static double Evaluate(string s, Dictionary<string, object?>? variables = null)
     {
-        return (double?)GetParserApp<DefaultParser>().Services.GetRequiredParser().Evaluate(s, variables) ?? 0.0;
+        return (double?)GetParserApp<DefaultParser>().Services.GetParser().Evaluate(s, variables) ?? 0.0;
     }
 
     #endregion

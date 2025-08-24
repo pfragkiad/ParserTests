@@ -15,7 +15,7 @@ public class UnitTestParser
     public void TestCustomIntParser()
     {
         var parserApp = App.GetParserApp<IntParser>();
-        IParser parser = parserApp.Services.GetRequiredParser();
+        IParser parser = parserApp.Services.GetParser();
 
         string expr = "a+tan(8+5) + sin(321+asd*2^2)"; //returns 860
         int result = (int)parser.Evaluate(expr, new() { { "a", 8 }, { "asd", 10 } })!;
@@ -42,7 +42,7 @@ public class UnitTestParser
     public void TestDoubleIntCustomParser()
     {
         var app = App.GetParserApp<MixedIntDoubleParser>();
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
 
         string s = "5.0+sin(2,3.0)";
         double result = (double)parser.Evaluate(s)!;
@@ -69,7 +69,7 @@ public class UnitTestParser
     public void TestMultipleExpressions(string s, double expected)
     {
         var app = App.GetParserApp<FunctionsOperandsParser>();
-        IParser parser = app.Services.GetRequiredParser();
+        IParser parser = app.Services.GetParser();
         double result = (double)parser.Evaluate(s, new() { { "a", 5.0 } })!;
         Assert.Equal(expected, result);
 
