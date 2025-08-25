@@ -86,7 +86,7 @@ public class UnitTestParser
 
         string expression = "-!!a%*++2";
         var tree = parser.GetExpressionTree(expression);
-        tree.Print2();
+        tree.Print();
 
 
         double result = (double)parser.Evaluate(

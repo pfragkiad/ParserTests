@@ -2,11 +2,41 @@
 
 namespace ParserLibrary.ExpressionTree;
 
+public enum PrintType
+{
+    Ascii,
+    SimpleTree,
+    Horizontal,
+    Parenthesized,
+    Detailed,
+    Vertical,
+}
+
 /// <summary>
 /// Alternative tree printing extensions that generate strings instead of directly printing to console
 /// </summary>
 public static class NodeBasePrintExtensions2
 {
+    public static string ToString(this NodeBase root, PrintType printType)
+    {
+        return printType switch
+        {
+            PrintType.SimpleTree => root.ToSimpleTreeString(),
+            PrintType.Ascii => root.ToAsciiTreeString(),
+            PrintType.Horizontal => root.ToHorizontalTreeString(),
+            PrintType.Detailed => root.ToDetailedTreeString(),
+            PrintType.Vertical => root.ToVerticalTreeString(),
+            //PrintType.Parenthesized => root.ToParenthesizedString(),
+            _ => root.ToSimpleTreeString(),
+        };
+    }
+
+    public static void Print(this NodeBase root, PrintType printType)
+    {
+        Console.WriteLine(root.ToString(printType));
+    }
+
+
     /// <summary>
     /// Simple tree representation using indentation and ASCII characters
     /// </summary>
@@ -110,13 +140,13 @@ public static class NodeBasePrintExtensions2
 
         // Add node information
         string nodeInfo = $"{root.Text}";
-        if (root.Left != null || root.Right != null || (root.Other?.Count ?? 0) > 0)
-        {
-            var childCount = (root.Left != null ? 1 : 0) +
-                           (root.Right != null ? 1 : 0) +
-                           (root.Other?.Count ?? 0);
-            nodeInfo += $" [{childCount} children]";
-        }
+        //if (root.Left != null || root.Right != null || (root.Other?.Count ?? 0) > 0)
+        //{
+        //    var childCount = (root.Left != null ? 1 : 0) +
+        //                   (root.Right != null ? 1 : 0) +
+        //                   (root.Other?.Count ?? 0);
+        //    nodeInfo += $" [{childCount} children]";
+        //}
 
         result.AppendLine(indent + connector + nodeInfo);
 
@@ -160,45 +190,45 @@ public static class NodeBasePrintExtensions2
         return result.ToString();
     }
 
-    /// <summary>
-    /// Print simple tree to console
-    /// </summary>
-    public static void PrintSimpleTree(this NodeBase root)
-    {
-        Console.WriteLine(root.ToSimpleTreeString());
-    }
+    ///// <summary>
+    ///// Print simple tree to console
+    ///// </summary>
+    //public static void PrintSimpleTree(this NodeBase root)
+    //{
+    //    Console.WriteLine(root.ToSimpleTreeString());
+    //}
 
-    /// <summary>
-    /// Print ASCII tree to console
-    /// </summary>
-    public static void PrintAsciiTree(this NodeBase root)
-    {
-        Console.WriteLine(root.ToAsciiTreeString());
-    }
+    ///// <summary>
+    ///// Print ASCII tree to console
+    ///// </summary>
+    //public static void PrintAsciiTree(this NodeBase root)
+    //{
+    //    Console.WriteLine(root.ToAsciiTreeString());
+    //}
 
-    /// <summary>
-    /// Print horizontal tree to console
-    /// </summary>
-    public static void PrintHorizontalTree(this NodeBase root, int spacing = 4)
-    {
-        Console.WriteLine(root.ToHorizontalTreeString(spacing));
-    }
+    ///// <summary>
+    ///// Print horizontal tree to console
+    ///// </summary>
+    //public static void PrintHorizontalTree(this NodeBase root, int spacing = 4)
+    //{
+    //    Console.WriteLine(root.ToHorizontalTreeString(spacing));
+    //}
 
-    /// <summary>
-    /// Print detailed tree to console
-    /// </summary>
-    public static void PrintDetailedTree(this NodeBase root)
-    {
-        Console.WriteLine(root.ToDetailedTreeString());
-    }
+    ///// <summary>
+    ///// Print detailed tree to console
+    ///// </summary>
+    //public static void PrintDetailedTree(this NodeBase root)
+    //{
+    //    Console.WriteLine(root.ToDetailedTreeString());
+    //}
 
-    /// <summary>
-    /// Print parenthesized representation to console
-    /// </summary>
-    public static void PrintParenthesized(this NodeBase root)
-    {
-        Console.WriteLine(root.ToParenthesizedString());
-    }
+    ///// <summary>
+    ///// Print parenthesized representation to console
+    ///// </summary>
+    //public static void PrintParenthesized(this NodeBase root)
+    //{
+    //    Console.WriteLine(root.ToParenthesizedString());
+    //}
 
     #region Private Helper Methods
 

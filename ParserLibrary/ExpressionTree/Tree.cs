@@ -11,24 +11,18 @@ public class Tree<T>
     public int GetHeight() => (Root?.GetHeight() - 1) ?? 0;
 
 
-    [Obsolete]
-    public void Print(int topMargin = 2, int leftMargin = 2, bool withSlashes = false)
-    {
-        if (withSlashes)
-            Root.PrintWithSlashes(topMargin: topMargin, leftMargin: leftMargin);
-        else Root.PrintWithDashes(topMargin: topMargin, leftMargin: leftMargin);
-    }
+    #region Printing
 
-    /// <summary>
-    /// Print vertical tree with optional left positioning parameter
-    /// </summary>
-    /// <param name="leftOffset">Extra character offset from the left margin (default: 0)</param>
-    public void Print2(int leftOffset = 1, int gap = 1)
+    public void Print(PrintType printType = PrintType.Vertical)
     {
-           Root.PrintVerticalTree(leftOffset, gap);
+        Console.WriteLine(ToString(printType));
     }
 
     public override string ToString() => Root.ToParenthesizedString();
+
+    public string ToString(PrintType type) => Root.ToString(type);
+
+    #endregion
 
     public int GetLeafNodesCount()
     {

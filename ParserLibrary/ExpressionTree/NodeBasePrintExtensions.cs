@@ -13,6 +13,7 @@ public static class NodeBasePrintExtensions
         public NodeInfo? Parent, Left, Right;
     }
 
+    [Obsolete]
     public static void PrintWithDashes(this NodeBase root, int topMargin = 2, int leftMargin = 2)
     {
         if (root is null) return ;
@@ -81,6 +82,7 @@ public static class NodeBasePrintExtensions
         //return result;
     }
 
+   
     private static void Print(NodeInfo item, int top)
     {
         //SwapColors();
@@ -113,6 +115,7 @@ public static class NodeBasePrintExtensions
     //    Console.BackgroundColor = color;
     //}
 
+    [Obsolete]
     public static void PrintWithSlashes(this NodeBase root, int spacing = 1, int topMargin = 2, int leftMargin = 2)
     {
         if (root is null) return;

@@ -82,7 +82,7 @@ internal class Program
         Console.WriteLine("Pre order traversal: " + string.Join(" ", tree.Root.PreOrderNodes().Select(n => n.Text)));
         Console.WriteLine("In order traversal: " + string.Join(" ", tree.Root.InOrderNodes().Select(n => n.Text)));
         //Console.WriteLine(parser.Evaluate(expr));
-        tree.Print(withSlashes: false);
+        tree.Print();
 
         //TODO: SHOW EXAMPLE WITHOUT SERILOG (show examples using _loggger).
         //TODO: SHOW TREE
@@ -104,7 +104,7 @@ internal class Program
         var parser = ParserApp.GetComplexParser();
         string expression = "cos(1+i)";
         var tree = parser.GetExpressionTree(expression);
-        tree.Print(withSlashes: false);
+        tree.Print();
 
         Complex result = (Complex?)parser.Evaluate("(1+3*i)/(2-3*i)") ?? Complex.Zero;
         Console.WriteLine(result);
@@ -217,7 +217,7 @@ internal class Program
             { "item2", typeof(Item) }
         };
         var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        optimizedTree.Print(withSlashes: false);
+        optimizedTree.Print();
 
         Console.WriteLine($"Original Tree: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}");
         Console.WriteLine($"Optimized Tree: Nodes={optimizedTree.Count}, Height={optimizedTree.GetHeight()}");
@@ -325,9 +325,9 @@ internal class Program
         //originalTree.Root.PrintHorizontalTree();
         //originalTree.Root.PrintDetailedTree();
         Console.WriteLine("   Vertical:");
-        originalTree.Root.PrintVerticalTree();
+        originalTree.Print();
         Console.WriteLine("   Parenthesized:");
-        originalTree.Root.PrintParenthesized();
+        originalTree.Print(PrintType.Parenthesized);
         Console.WriteLine();
 
 
@@ -338,9 +338,9 @@ internal class Program
         //optimizedTree.Root.PrintHorizontalTree();
         //optimizedTree.Root.PrintDetailedTree();
         Console.WriteLine("   Vertical:");
-        optimizedTree.Print2();  // NEW! From NodeBasePrintExtensionsVertical
+        optimizedTree.Print(PrintType.Vertical);  // NEW! From NodeBasePrintExtensionsVertical
         Console.WriteLine("   Parenthesized:");
-        optimizedTree.Root.PrintParenthesized();
+        optimizedTree.Print(PrintType.Parenthesized);
         Console.WriteLine();
 
         // Final summary
@@ -387,14 +387,31 @@ internal class Program
     {
         var parser = ParserApp.GetParser<SimpleFunctionParser>();
 
-        string expression = "-8 + add3(5.0,g,3.0)";
+        //string expression = "-8 + add3(5.0,g,3.0)";
+        //string expression = "-add(-2,-4)*2+-abs(-2)";
+        string expression = "1 + max([TS_1],[TS_2]) + 2 + 4";
 
-        Console.WriteLine("Expression:");
+        Console.WriteLine("Original:");
         var tree = parser.GetExpressionTree(expression);
-        tree.Print2();
+        tree.Print();
 
-        Console.WriteLine("\nDetailed:");
-        Console.WriteLine(tree.Root.ToDetailedTreeString());
+        Console.WriteLine("  Parenthesized:");
+        tree.Print(PrintType.Parenthesized);
+
+
+        Console.WriteLine("Optimized:");
+        var optimizer = new TreeOptimizer<Token>();
+        var optimizedTree = optimizer.OptimizeForDataTypes(tree,
+            new Dictionary<string, Type>
+            {
+                { "TS_1", typeof(Item) },
+                { "TS_2", typeof(Item) }
+            });
+        optimizedTree.Print();
+        Console.WriteLine("  Parenthesized:");
+        optimizedTree.Print(PrintType.Parenthesized);
+
+
 
 
     }

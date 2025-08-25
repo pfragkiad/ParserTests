@@ -24,7 +24,7 @@ public static class ParserApp
         return Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((context, config) =>
             {
-                if (!string.IsNullOrWhiteSpace(settingsFile))
+                if (!string.IsNullOrWhiteSpace(settingsFile) && settingsFile != "appsettings.json")
                     config.AddJsonFile(settingsFile);  // Configure app configuration if needed
             });
     }
@@ -286,8 +286,12 @@ public static class ParserApp
             .Build();
     }
 
+    public static IParser GetParser<TParser>() where TParser : CoreParser =>
+        GetParserApp<TParser>(TokenizerOptions.Default).GetParser();
+
     public static IParser GetParser<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser  =>
         GetParserApp<TParser>(settingsFile, tokenizerSectionPath).GetParser();
+
 
     public static IParser GetParser<TParser>(TokenizerOptions options) where TParser : CoreParser =>
         GetParserApp<TParser>(options).GetParser();
@@ -388,6 +392,10 @@ public static class ParserApp
 
     public static IStatefulParser GetStatefulParser<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser=>
         GetStatefulParserApp<TStatefulParser>(options).GetStatefulParser();
+
+    public static IStatefulParser GetStatefulParser<TStatefulParser>() where TStatefulParser : CoreStatefulParser =>
+        GetStatefulParserApp<TStatefulParser>(TokenizerOptions.Default).GetStatefulParser();
+
 
     #endregion
 
