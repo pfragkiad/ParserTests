@@ -115,7 +115,7 @@ internal class Program
     private static void CheckTypeTests()
     {
         //we need to store the host to keep the scope alive
-        var app = ParserApp.GetParserApp<ItemParser>("parsersettings.json"); 
+        var app = ParserApp.GetParserApp<ItemParser>("parsersettings.json");
         IParser parser = app.Services.GetParser();
 
         parser.RegisterFunction("myfunc(a,b) = a + b + 10");
@@ -401,15 +401,23 @@ internal class Program
 
         Console.WriteLine("Optimized:");
         var optimizer = new TreeOptimizer<Token>();
-        var optimizedTree = optimizer.OptimizeForDataTypes(tree,
+        var optimizedTreeResult = optimizer.OptimizeForDataTypes(tree,
             new Dictionary<string, Type>
             {
                 { "TS_1", typeof(Item) },
                 { "TS_2", typeof(Item) }
-            });
-        optimizedTree.Print();
+            },
+            new Dictionary<string, Type>
+            { 
+                { "max", typeof(Item) }
+            }); // or typeof(double) if numeric );
+        var newTree = optimizedTreeResult.Tree;
+
+        Console.WriteLine($"Before: {optimizedTreeResult.NonAllNumericBefore}, After: {optimizedTreeResult.NonAllNumericAfter}");
+
+        newTree.Print();
         Console.WriteLine("  Parenthesized:");
-        optimizedTree.Print(PrintType.Parenthesized);
+        newTree.Print(PrintType.Parenthesized);
 
 
 

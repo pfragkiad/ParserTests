@@ -142,7 +142,8 @@ public class TreeOptimizerTests
         
         // Act - Use TreeOptimizer directly
         var optimizer = new TreeOptimizer<Token>();
-        var optimizedTree = optimizer.OptimizeForDataTypes(originalTree, variableTypes);
+        var optimizedTreeResult = optimizer.OptimizeForDataTypes(originalTree, variableTypes);
+        var optimizedTree = optimizedTreeResult.Tree;
         
         // Assert
         Assert.NotNull(optimizedTree);

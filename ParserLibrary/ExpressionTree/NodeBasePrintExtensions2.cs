@@ -27,7 +27,7 @@ public static class NodeBasePrintExtensions2
             PrintType.Detailed => root.ToDetailedTreeString(),
             PrintType.Vertical => root.ToVerticalTreeString(),
             //PrintType.Parenthesized => root.ToParenthesizedString(),
-            _ => root.ToSimpleTreeString(),
+            _ => root.ToParenthesizedString(),
         };
     }
 
