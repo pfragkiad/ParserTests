@@ -396,36 +396,52 @@ internal class Program
         Console.WriteLine("Original Tree:");
         var tree = parser.GetExpressionTree(expression);
         tree.Print();
-
         Console.WriteLine("Original Parenthesized:");
         tree.Print(PrintType.Parenthesized);
 
+        // Prepare type maps
+        var variableTypes = new Dictionary<string, Type>
+        {
+            { "TS_1", typeof(Item) },
+            { "TS_2", typeof(Item) }
+        };
 
-        Console.WriteLine("Optimized Tree:");
-        var optimizer = new TreeOptimizer<Token>();
-        var optimizedTreeResult = optimizer.OptimizeForDataTypes(tree,
-            new Dictionary<string, Type>
-            {
-                { "TS_1", typeof(Item) },
-                { "TS_2", typeof(Item) }
-            },
-            new Dictionary<string, Type>
-            { 
-                { "max", typeof(Item) }
-            }); // or typeof(double) if numeric );
-        var newTree = optimizedTreeResult.Tree;
+        // If max were present in expression, declare its return type (Item => non-numeric)
+        var functionReturnTypes = new Dictionary<string, Type>
+        {
+            { "max", typeof(Item) } // change to typeof(double) if you want it considered numeric
+        };
 
-        newTree.Print();
+        // Optimize (extension method now returns TreeOptimizerResult)
+        var optimizationResult = tree.OptimizeForDataTypes(variableTypes, functionReturnTypes);
+        var optimizedTree = optimizationResult.Tree;
+
+        Console.WriteLine("\nOptimized Tree:");
+        optimizedTree.Print(PrintType.Vertical);
         Console.WriteLine("Optimized Parenthesized:");
-        newTree.Print(PrintType.Parenthesized);
-        //newTree.GetInfixTokens().ForEach(t => Console.Write(t.Text + " "));
+        optimizedTree.Print(PrintType.Parenthesized);
 
-        Console.WriteLine($"\nOriginal expression: {expression}");
-        Console.WriteLine($"Optimized expression: {newTree.GetExpressionString(parser.TokenizerOptions)}");
+        // Expressions (with/without spacing)
+        var originalExprTight = tree.GetExpressionString(parser.TokenizerOptions);
+        var optimizedExprTight = optimizedTree.GetExpressionString(parser.TokenizerOptions);
+        var originalExprSpaced = tree.GetExpressionString(parser.TokenizerOptions, spacesAroundOperators: true);
+        var optimizedExprSpaced = optimizedTree.GetExpressionString(parser.TokenizerOptions, spacesAroundOperators: true);
 
-        Console.WriteLine($"Series ops:  Before {optimizedTreeResult.NonAllNumericBefore}, After {optimizedTreeResult.NonAllNumericAfter}");
+        Console.WriteLine($"\nOriginal expression (tight): {originalExprTight}");
+        Console.WriteLine($"Optimized expression (tight): {optimizedExprTight}");
+        Console.WriteLine($"Original expression (spaced): {originalExprSpaced}");
+        Console.WriteLine($"Optimized expression (spaced): {optimizedExprSpaced}");
 
+        Console.WriteLine($"\nNon all-numeric operations: Before={optimizationResult.NonAllNumericBefore}, After={optimizationResult.NonAllNumericAfter}, " +
+                          $"Improvement={optimizationResult.Improvement}");
 
+        // Optional: show difference only if improved
+        if (optimizationResult.Improvement > 0)
+            Console.WriteLine("Optimization reduced mixed (numeric + non-numeric) operations.");
+        else if (optimizationResult.Improvement == 0)
+            Console.WriteLine("No change in mixed operation count (either already optimal or homogeneous operands).");
+        else
+            Console.WriteLine("Unexpected increase in mixed operations (review optimizer logic).");
     }
     private static void Main(string[] args)
     {
