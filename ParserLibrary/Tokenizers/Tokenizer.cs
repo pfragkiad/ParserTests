@@ -9,7 +9,7 @@ namespace ParserLibrary.Tokenizers;
 public class Tokenizer : ITokenizer
 {
     protected readonly ILogger _logger;
-    protected readonly TokenizerOptions _options;
+
     protected Operator? ArgumentOperator;
 
     public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options)
@@ -29,6 +29,10 @@ public class Tokenizer : ITokenizer
         if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
 
     }
+
+
+    protected readonly TokenizerOptions _options;
+    public TokenizerOptions TokenizerOptions => _options;
 
 
     //The second property contains the number of arguments needed by each corresponding function.

@@ -4,6 +4,8 @@ namespace ParserLibrary.Tokenizers.Interfaces;
 
 public interface ITokenizer
 {
+    TokenizerOptions TokenizerOptions { get; }
+
     List<Token> GetInfixTokens(string expression);
 
     List<Token> GetPostfixTokens(List<Token> infixTokens);

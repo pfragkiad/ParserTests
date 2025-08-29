@@ -142,10 +142,9 @@ public class TreeOptimizer<T>
             list.Add(operand);
         }
 
-        return typeGroups
+        return [.. typeGroups
             .OrderBy(kvp => kvp.Key)
-            .Select(kvp => kvp.Value)
-            .ToList();
+            .Select(kvp => kvp.Value)];
     }
 
     private int GetTypePriority(
@@ -157,9 +156,9 @@ public class TreeOptimizer<T>
 
         return token.TokenType switch
         {
-            TokenType.Literal => GetLiteralTypePriority(token.Text),
+            TokenType.Literal => TreeOptimizer<T>.GetLiteralTypePriority(token.Text),
             TokenType.Identifier when variableTypes.TryGetValue(token.Text, out var type)
-                => GetTypePriorityValue(type),
+                => TreeOptimizer<T>.GetTypePriorityValue(type),
             TokenType.Function => GetFunctionPriority(token, functionReturnTypes),
             _ => int.MaxValue
         };
@@ -167,14 +166,14 @@ public class TreeOptimizer<T>
 
     private int GetFunctionPriority(Token token, Dictionary<string, Type> functionReturnTypes)
     {
-        var name = ExtractFunctionName(token.Text);
+        var name = TreeOptimizer<T>.ExtractFunctionName(token.Text);
         if (functionReturnTypes.TryGetValue(name, out var retType))
-            return GetTypePriorityValue(retType);
+            return TreeOptimizer<T>.GetTypePriorityValue(retType);
         // Unknown function return type => treat as non-numeric, push to the end.
         return 1000;
     }
 
-    private string ExtractFunctionName(string text)
+    private static string ExtractFunctionName(string text)
     {
         // If tokens include parentheses (e.g., "max(") or full calls, strip at first '(' or whitespace.
         int idx = text.IndexOf('(');
@@ -184,14 +183,14 @@ public class TreeOptimizer<T>
         return text;
     }
 
-    private int GetLiteralTypePriority(string literalText)
+    private static int GetLiteralTypePriority(string literalText)
     {
         if (int.TryParse(literalText, out _)) return 2; // Int
         if (double.TryParse(literalText, System.Globalization.CultureInfo.InvariantCulture, out _)) return 1; // Float-like
         return 0; // Other literals (kept leftmost so numeric chains aggregate early)
     }
 
-    private int GetTypePriorityValue(Type type)
+    private static int GetTypePriorityValue(Type type)
     {
         if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return 1;
         if (type == typeof(int) || type == typeof(long)) return 2;
@@ -232,7 +231,7 @@ public class TreeOptimizer<T>
     // Numeric subtree detection & counting
     // ----------------------------------------------------------------
 
-    private static readonly HashSet<string> NumericOperators = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> _numericOperators = new(StringComparer.Ordinal)
     {
         "+","-","*","/","^"
     };
@@ -277,7 +276,7 @@ public class TreeOptimizer<T>
 
     private bool IsNumericFunction(Token token, Dictionary<string, Type> functionReturnTypes)
     {
-        var name = ExtractFunctionName(token.Text);
+        string name = TreeOptimizer<T>.ExtractFunctionName(token.Text);
         if (functionReturnTypes.TryGetValue(name, out var retType))
             return IsNumericType(retType);
         return false;
@@ -296,7 +295,7 @@ public class TreeOptimizer<T>
         bool leftNumeric = IsNumericSubtreeAndAccumulate(left, variableTypes, functionReturnTypes, ref count);
         bool rightNumeric = IsNumericSubtreeAndAccumulate(right, variableTypes, functionReturnTypes, ref count);
 
-        bool isArithmetic = NumericOperators.Contains(opToken.Text);
+        bool isArithmetic = _numericOperators.Contains(opToken.Text);
         bool thisNumeric = isArithmetic && leftNumeric && rightNumeric;
 
         if (!(leftNumeric && rightNumeric))

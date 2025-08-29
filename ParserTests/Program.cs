@@ -389,17 +389,19 @@ internal class Program
 
         //string expression = "-8 + add3(5.0,g,3.0)";
         //string expression = "-add(-2,-4)*2+-abs(-2)";
-        string expression = "1 + max([TS_1],[TS_2]) + 2 + 4";
+        //string expression = "[TS_3] + max([TS_1],[TS_2]) + 2 + 4";
+        string expression = "1 + [TS_2] + 2 + 4 + 6* ([TS_1]+5+2)";
 
-        Console.WriteLine("Original:");
+        Console.WriteLine($"Expression: {expression}");
+        Console.WriteLine("Original Tree:");
         var tree = parser.GetExpressionTree(expression);
         tree.Print();
 
-        Console.WriteLine("  Parenthesized:");
+        Console.WriteLine("Original Parenthesized:");
         tree.Print(PrintType.Parenthesized);
 
 
-        Console.WriteLine("Optimized:");
+        Console.WriteLine("Optimized Tree:");
         var optimizer = new TreeOptimizer<Token>();
         var optimizedTreeResult = optimizer.OptimizeForDataTypes(tree,
             new Dictionary<string, Type>
@@ -413,13 +415,15 @@ internal class Program
             }); // or typeof(double) if numeric );
         var newTree = optimizedTreeResult.Tree;
 
-        Console.WriteLine($"Before: {optimizedTreeResult.NonAllNumericBefore}, After: {optimizedTreeResult.NonAllNumericAfter}");
-
         newTree.Print();
-        Console.WriteLine("  Parenthesized:");
+        Console.WriteLine("Optimized Parenthesized:");
         newTree.Print(PrintType.Parenthesized);
+        //newTree.GetInfixTokens().ForEach(t => Console.Write(t.Text + " "));
 
+        Console.WriteLine($"\nOriginal expression: {expression}");
+        Console.WriteLine($"Optimized expression: {newTree.GetExpressionString(parser.TokenizerOptions)}");
 
+        Console.WriteLine($"Series ops:  Before {optimizedTreeResult.NonAllNumericBefore}, After {optimizedTreeResult.NonAllNumericAfter}");
 
 
     }

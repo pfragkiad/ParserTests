@@ -590,6 +590,7 @@ public class CoreParser : Tokenizer, IParser
 
     #endregion
 
+
     #region NodeDictionary calculations
 
     protected object? EvaluateOperator(
@@ -761,6 +762,7 @@ public class CoreParser : Tokenizer, IParser
     }
 
     #endregion
+
 
     #region Get arguments
 
