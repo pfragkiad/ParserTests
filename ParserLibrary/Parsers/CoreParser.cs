@@ -154,17 +154,26 @@ public class CoreParser : Tokenizer, IParser
 
     // Add this method to your Parser class
 
-    public Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type>? variableTypes = null)
+    public TreeOptimizerResult GetOptimizedExpressionTreeResult(string expression, Dictionary<string, Type>? variableTypes = null)
     {
         var tree = GetExpressionTree(expression);
-        return tree.OptimizeForDataTypes(variableTypes).Tree;
+        //return tree.OptimizeForDataTypes(variableTypes).Tree;
+        return tree.OptimizeForDataTypes(variableTypes);
     }
 
-    public Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null)
+    public Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type>? variableTypes = null) =>
+        GetOptimizedExpressionTreeResult(expression, variableTypes).Tree;
+
+
+    public TreeOptimizerResult GetOptimizedExpressionTreeResult(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null)
     {
         var tree = GetExpressionTree(postfixTokens);
-        return tree.OptimizeForDataTypes(variableTypes).Tree;
+        //return tree.OptimizeForDataTypes(variableTypes).Tree;
+        return tree.OptimizeForDataTypes(variableTypes);
     }
+
+    public Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null) =>
+        GetOptimizedExpressionTreeResult(postfixTokens, variableTypes).Tree;
 
 
     #endregion
