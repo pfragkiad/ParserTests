@@ -141,7 +141,8 @@ public class TreeOptimizerTests
         };
         
         // Act - Use TreeOptimizer directly
-        var optimizedTreeResult = originalTree.OptimizeForDataTypes(variableTypes);
+        var optimizedTreeResult = originalTree.OptimizeForDataTypes(
+            parser.TokenizerOptions.TokenPatterns, variableTypes);
         var optimizedTree = optimizedTreeResult.Tree;
         
         // Assert

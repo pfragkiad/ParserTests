@@ -413,7 +413,8 @@ internal class Program
         };
 
         // Optimize (extension method now returns TreeOptimizerResult)
-        var optimizationResult = tree.OptimizeForDataTypes(variableTypes, functionReturnTypes);
+        var optimizationResult = tree.OptimizeForDataTypes(
+            parser.TokenizerOptions.TokenPatterns,variableTypes, functionReturnTypes);
         var optimizedTree = optimizationResult.Tree;
 
         Console.WriteLine("\nOptimized Tree:");
@@ -424,13 +425,9 @@ internal class Program
         // Expressions (with/without spacing)
         var originalExprTight = tree.GetExpressionString(parser.TokenizerOptions);
         var optimizedExprTight = optimizedTree.GetExpressionString(parser.TokenizerOptions);
-        var originalExprSpaced = tree.GetExpressionString(parser.TokenizerOptions, spacesAroundOperators: true);
-        var optimizedExprSpaced = optimizedTree.GetExpressionString(parser.TokenizerOptions, spacesAroundOperators: true);
 
-        Console.WriteLine($"\nOriginal expression (tight): {originalExprTight}");
-        Console.WriteLine($"Optimized expression (tight): {optimizedExprTight}");
-        Console.WriteLine($"Original expression (spaced): {originalExprSpaced}");
-        Console.WriteLine($"Optimized expression (spaced): {optimizedExprSpaced}");
+        Console.WriteLine($"\nOriginal expression: {originalExprTight}");
+        Console.WriteLine($"Optimized expression: {optimizedExprTight}");
 
         Console.WriteLine($"\nNon all-numeric operations: Before={optimizationResult.NonAllNumericBefore}, After={optimizationResult.NonAllNumericAfter}, " +
                           $"Improvement={optimizationResult.Improvement}");
