@@ -53,9 +53,9 @@ public interface IParser : ITokenizer
     //    Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables
     //);
 
-    Tree<Token> GetExpressionTree(List<Token> postfixTokens);
+    TokenTree GetExpressionTree(List<Token> postfixTokens);
 
-    Tree<Token> GetExpressionTree(string expression);
+    TokenTree GetExpressionTree(string expression);
 
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression);
 
@@ -64,8 +64,9 @@ public interface IParser : ITokenizer
     InvalidOperatorsCheckResult CheckOperators(string expression);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression);
-    Tree<Token> GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes);
-    Tree<Token> GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes);
+    TokenTree GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes);
+    TokenTree GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes);
     TreeOptimizerResult GetOptimizedExpressionTreeResult(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null);
     TreeOptimizerResult GetOptimizedExpressionTreeResult(string expression, Dictionary<string, Type>? variableTypes = null);
+    TreeOptimizerResult GetOptimizedExpressionUsingParser(string expression, Dictionary<string, object?>? variables = null);
 }

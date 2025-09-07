@@ -1,8 +1,5 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
-using Serilog.Parsing;
-using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 
 namespace ParserLibrary.Tokenizers;
 
@@ -427,7 +424,6 @@ public class Tokenizer : ITokenizer
         var infixTokens = GetInfixTokens(expression);
         return GetPostfixTokens(infixTokens);
     }
-
 
 
     #region Utility methods

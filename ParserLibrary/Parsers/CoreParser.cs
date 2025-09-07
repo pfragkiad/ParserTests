@@ -93,13 +93,13 @@ public class CoreParser : Tokenizer, IParser
 
     #region Expression trees
 
-    public Tree<Token> GetExpressionTree(string s)
+    public TokenTree GetExpressionTree(string expression)
     {
-        var postfixTokens = GetPostfixTokens(s);
+        var postfixTokens = GetPostfixTokens(expression);
         return GetExpressionTree(postfixTokens);
     }
 
-    public Tree<Token> GetExpressionTree(List<Token> postfixTokens)
+    public TokenTree GetExpressionTree(List<Token> postfixTokens)
     {
         _logger.LogDebug("Building expresion tree from postfix tokens...");
 
@@ -136,12 +136,14 @@ public class CoreParser : Tokenizer, IParser
         ThrowExceptionIfStackIsInvalid(stack);
 
         var root = nodeDictionary[stack.Pop()];
-        return new Tree<Token>
+        return new TokenTree
         {
             Root = root,
             NodeDictionary = nodeDictionary
         };
     }
+
+
 
     // ---------------- Tree Optimizer integration (UPDATED) ----------------
 
@@ -162,7 +164,7 @@ public class CoreParser : Tokenizer, IParser
             ambiguousFunctionReturnTypes);
     }
 
-    public Tree<Token> GetOptimizedExpressionTree(
+    public TokenTree GetOptimizedExpressionTree(
         string expression,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -187,7 +189,7 @@ public class CoreParser : Tokenizer, IParser
             ambiguousFunctionReturnTypes);
     }
 
-    public Tree<Token> GetOptimizedExpressionTree(
+    public TokenTree GetOptimizedExpressionTree(
         List<Token> postfixTokens,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -205,11 +207,19 @@ public class CoreParser : Tokenizer, IParser
     TreeOptimizerResult IParser.GetOptimizedExpressionTreeResult(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes) =>
         GetOptimizedExpressionTreeResult(postfixTokens, variableTypes);
 
-    Tree<Token> IParser.GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes) =>
+    TokenTree IParser.GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes) =>
         GetOptimizedExpressionTree(expression, variableTypes);
 
-    Tree<Token> IParser.GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes) =>
+    TokenTree IParser.GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes) =>
         GetOptimizedExpressionTree(postfixTokens, variableTypes);
+
+    public TreeOptimizerResult GetOptimizedExpressionUsingParser(
+        string expression,
+        Dictionary<string, object?>? variables = null)
+    {
+        var tree = GetExpressionTree(expression);
+        return tree.OptimizeForDataTypesUsingParser(this,variables);
+    }
 
     #endregion
 
@@ -355,9 +365,9 @@ public class CoreParser : Tokenizer, IParser
         return EvaluateWithTreeOptimizer(optimizedTree, variables);
     }
 
-    protected virtual object? EvaluateWithTreeOptimizer(Tree<Token> tree, Dictionary<string, object?>? variables = null)
+    protected virtual object? EvaluateWithTreeOptimizer(TokenTree optimizedTree, Dictionary<string, object?>? variables = null)
     {
-        var postfixTokens = tree.GetPostfixTokens();
+        var postfixTokens = optimizedTree.GetPostfixTokens();
         return Evaluate(postfixTokens, variables);
     }
 
@@ -901,4 +911,117 @@ public class CoreParser : Tokenizer, IParser
     }
 
     #endregion
+
+    /// <summary>
+    /// Infers (and caches) the Type of every node in an existing expression tree using the parser's
+    /// standard Evaluate* virtual methods. Returned dictionary maps each Node to its resolved Type (null if unknown).
+    /// </summary>
+    /// <param name="tree">Already built expression tree</param>
+    /// <param name="variables">Optional variable instances (or Types) for identifiers</param>
+    protected internal Dictionary<Node<Token>, Type?> InferNodeTypes(
+        TokenTree tree,
+        Dictionary<string, object?>? variables = null)
+    {
+        // Merge constants (consistent with EvaluateType)
+        variables = MergeVariableConstants(variables);
+
+        // We reuse the existing tree nodes; we only need a postfix walk to ensure children first.
+        var postfixTokens = tree.GetPostfixTokens();
+        // Token -> Node lookup is in tree.NodeDictionary already.
+
+        Dictionary<Node<Token>, Type?> nodeTypeMap = [];
+
+        // Local helper: get node for token
+        Node<Token> GetNode(Token t) => tree.NodeDictionary[t];
+
+        // For building "argument value dictionary" similar to EvaluateType (values here are Types)
+        Dictionary<Node<Token>, object?> boxedMap = new();
+
+        foreach (var token in postfixTokens)
+        {
+            var node = GetNode(token);
+
+            switch (token.TokenType)
+            {
+                case TokenType.Literal:
+                    {
+                        var t = EvaluateLiteralType(token.Text);
+                        nodeTypeMap[node] = t;
+                        boxedMap[node] = t;
+                        break;
+                    }
+                case TokenType.Identifier:
+                    {
+                        Type? t = null;
+                        if (variables is not null && variables.TryGetValue(token.Text, out var v))
+                        {
+                            if (v is Type vt) t = vt;
+                            else t = v?.GetType();
+                        }
+                        nodeTypeMap[node] = t;
+                        boxedMap[node] = t;
+                        break;
+                    }
+                case TokenType.Function:
+                    {
+                        // Arguments have already been processed (postfix)
+                        var args = node.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, boxedMap);
+                        var ft = EvaluateFunctionType(token.Text, args);
+                        nodeTypeMap[node] = ft;
+                        boxedMap[node] = ft;
+                        break;
+                    }
+                case TokenType.Operator:
+                    {
+                        var (lNode, rNode) = node.GetBinaryArgumentNodes();
+                        var lt = nodeTypeMap.GetValueOrDefault(lNode);
+                        var rt = nodeTypeMap.GetValueOrDefault(rNode);
+                        Type? result = null;
+                        try
+                        {
+                            result = EvaluateOperatorType(token.Text, lt, rt);
+                        }
+                        catch
+                        {
+                            // Unknown operator type -> leave null
+                        }
+                        nodeTypeMap[node] = result;
+                        boxedMap[node] = result;
+                        break;
+                    }
+                case TokenType.OperatorUnary:
+                    {
+                        bool isPrefix = _options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix;
+                        var child = node.GetUnaryArgumentNode(isPrefix);
+                        var ct = nodeTypeMap.GetValueOrDefault(child);
+                        Type? result = null;
+                        try
+                        {
+                            result = EvaluateUnaryOperatorType(token.Text, ct);
+                        }
+                        catch
+                        {
+                            // Leave null
+                        }
+                        nodeTypeMap[node] = result;
+                        boxedMap[node] = result;
+                        break;
+                    }
+                case TokenType.ArgumentSeparator:
+                    {
+                        // Treat argument separator nodes as producing no type
+                        nodeTypeMap[node] = null;
+                        boxedMap[node] = null;
+                        break;
+                    }
+                default:
+                    nodeTypeMap[node] = null;
+                    boxedMap[node] = null;
+                    break;
+            }
+        }
+
+        return nodeTypeMap;
+    }
+
 }

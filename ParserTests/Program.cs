@@ -417,17 +417,19 @@ internal class Program
             parser.TokenizerOptions.TokenPatterns,variableTypes, functionReturnTypes);
         var optimizedTree = optimizationResult.Tree;
 
+        //var optimizedResult2 = parser.GetOptimizedExpressionUsingParser(expression, variableTypes);
+
         Console.WriteLine("\nOptimized Tree:");
         optimizedTree.Print(PrintType.Vertical);
         Console.WriteLine("Optimized Parenthesized:");
         optimizedTree.Print(PrintType.Parenthesized);
 
         // Expressions (with/without spacing)
-        var originalExprTight = tree.GetExpressionString(parser.TokenizerOptions);
-        var optimizedExprTight = optimizedTree.GetExpressionString(parser.TokenizerOptions);
+        var originalExpression = tree.GetExpressionString(parser.TokenizerOptions);
+        var optimizedExpression = optimizedTree.GetExpressionString(parser.TokenizerOptions);
 
-        Console.WriteLine($"\nOriginal expression: {originalExprTight}");
-        Console.WriteLine($"Optimized expression: {optimizedExprTight}");
+        Console.WriteLine($"\nOriginal expression: {originalExpression}");
+        Console.WriteLine($"Optimized expression: {optimizedExpression}");
 
         Console.WriteLine($"\nNon all-numeric operations: Before={optimizationResult.NonAllNumericBefore}, After={optimizationResult.NonAllNumericAfter}, " +
                           $"Improvement={optimizationResult.Improvement}");

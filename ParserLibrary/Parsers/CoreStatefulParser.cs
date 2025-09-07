@@ -1,19 +1,15 @@
 ﻿using FluentValidation.Results;
-using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
-using System.Linq.Expressions;
+using ParserLibrary.ExpressionTree;
 
 namespace ParserLibrary.Parsers;
 
-/// <summary>
-/// This class can be use for a single evaluation, not for parallel evaluations, because the nodeValueDictionary and stack fields keep the state of the currently evaluated expression.
-/// </summary>
 public class CoreStatefulParser : CoreParser, IStatefulParser
 {
-
-    //created for simplifying and caching dictionaries
+    // Replaced previous inner enum with public enum ExpressionOptimizationMode (see interface)
+    
     protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
     protected Stack<Token> _stack = [];
@@ -23,142 +19,168 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
     public CoreStatefulParser(
         ILogger<CoreStatefulParser> logger,
-        IOptions<TokenizerOptions> options
-        //, string? expression = null,
-        //Dictionary<string, object?>? variables = null
-        )
-        : base(logger, options)
-    {
-        ////assign expression if not null or whitespace
-        //if (!string.IsNullOrWhiteSpace(expression))
-        //    Expression = expression;
-
-        //Variables = variables ?? [];
-
-    }
-
-    //protected TransientParser(ILogger logger, IOptions<TokenizerOptions> options, string expression)
-    //: base(logger, options)
-    //{ 
-
-    //}
-
-    #region Reset Evaluate methods
-
-
-    #region Expression fields
+        IOptions<TokenizerOptions> options)
+        : base(logger, options) { }
 
     protected void Reset()
     {
         _infixTokens = [];
         _postfixTokens = [];
-
         _nodeValueDictionary = [];
         _nodeDictionary = [];
         _stack = [];
-        //_variables = [];
     }
 
     private string? _expression;
     public string? Expression { get => _expression; set => _expression = value; }
 
-    private void PrepareExpression(string? expression, bool useOptimizer, Dictionary<string, object?>? variables = null)
+    private void PrepareExpression(
+        string? expression,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
         _expression = expression;
-        PrepareExpression(useOptimizer, variables);
+        PrepareExpressionInternal(
+            optimizationMode,
+            variables,
+            variableTypes,
+            functionReturnTypes,
+            ambiguousFunctionReturnTypes);
     }
 
-    private void PrepareExpression(bool useOptimizer, Dictionary<string, object?>? variables = null)
+    private void PrepareExpressionInternal(
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
         Reset();
         if (string.IsNullOrWhiteSpace(_expression)) return;
 
         Variables = variables ?? [];
 
-        if (!useOptimizer)
+        switch (optimizationMode)
         {
-            _infixTokens = GetInfixTokens(_expression!);
-            _postfixTokens = GetPostfixTokens(_infixTokens);
-            return;
+            case ExpressionOptimizationMode.None:
+                _infixTokens = GetInfixTokens(_expression!);
+                _postfixTokens = GetPostfixTokens(_infixTokens);
+                return;
+
+            case ExpressionOptimizationMode.StaticTypeMaps:
+            {
+                variableTypes ??= BuildVariableTypesFromVariables(Variables);
+                var optimizedTree = GetOptimizedExpressionTree(
+                    _expression!,
+                    variableTypes,
+                    functionReturnTypes,
+                    ambiguousFunctionReturnTypes);
+
+                _infixTokens = optimizedTree.GetInfixTokens();
+                _postfixTokens = optimizedTree.GetPostfixTokens();
+                return;
+            }
+
+            case ExpressionOptimizationMode.ParserInference:
+            {
+                var initialTree = GetExpressionTree(_expression!);
+                var result = initialTree.OptimizeForDataTypesUsingParser(this, Variables);
+                var optimizedTree = result.Tree;
+                _infixTokens = optimizedTree.GetInfixTokens();
+                _postfixTokens = optimizedTree.GetPostfixTokens();
+                return;
+            }
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(optimizationMode), optimizationMode, null);
         }
-
-        //use optimizer
-
-        var tree = GetOptimizedExpressionTree(
-            _expression!,
-           _variables?
-           .Where(kv => kv.Value is not null)
-           .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType()) ?? []);
-
-        //parses all tokens
-        _infixTokens = tree.GetInfixTokens();
-        //_postfixTokens = GetPostfixTokens(_infixTokens);
-        _postfixTokens = tree.GetPostfixTokens();
     }
 
+    private static Dictionary<string, Type> BuildVariableTypesFromVariables(Dictionary<string, object?> variables) =>
+        variables
+            .Where(kv => kv.Value is not null)
+            .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
 
     protected Dictionary<string, object?> _variables = [];
-
     public Dictionary<string, object?> Variables
     {
         get => _variables;
-        set
-        {
-            _variables = MergeVariableConstants(value);
-        }
+        set => _variables = MergeVariableConstants(value);
     }
 
-    #endregion
+    #region Public evaluation API
 
-    //also resets the internal expression
     public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(expression, useOptimizer: false, variables);
+        PrepareExpression(expression, ExpressionOptimizationMode.None, variables);
         return Evaluate();
     }
 
-    //Evaluates without tree optimization
     public virtual object? Evaluate(Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(useOptimizer: false, variables);
+        PrepareExpressionInternal(ExpressionOptimizationMode.None, variables);
         return Evaluate();
     }
-
 
     public override object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(expression, useOptimizer: true, variables);
+        PrepareExpression(
+            expression,
+            ExpressionOptimizationMode.StaticTypeMaps,
+            variables);
         return Evaluate();
     }
 
-    public virtual object? EvaluateWithTreeOptimizer(Dictionary<string, object?>? variables = null)
+    public virtual object? EvaluateWithTreeOptimizer(
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.StaticTypeMaps)
     {
-        PrepareExpression(useOptimizer: true, variables);
+        PrepareExpressionInternal(
+            optimizationMode,
+            variables,
+            variableTypes,
+            functionReturnTypes,
+            ambiguousFunctionReturnTypes);
         return Evaluate();
     }
 
-
-    //also resets the internal expression
+    public object? EvaluateWithParserInferenceOptimizer(
+        string expression,
+        Dictionary<string, object?>? variables = null)
+    {
+        PrepareExpression(
+            expression,
+            ExpressionOptimizationMode.ParserInference,
+            variables);
+        return Evaluate();
+    }
 
     public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(expression, useOptimizer: false, variables); //no need to optimize for type evaluation
+        PrepareExpression(
+            expression,
+            ExpressionOptimizationMode.None,
+            variables);
         return EvaluateType();
     }
 
     public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(useOptimizer: false, variables);
+        PrepareExpressionInternal(ExpressionOptimizationMode.None, variables);
         return EvaluateType();
     }
-
 
     public object? Evaluate() =>
         Evaluate(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
 
     public Type EvaluateType() =>
         EvaluateType(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
-
 
     #endregion
 
@@ -313,5 +335,6 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
 
     #endregion
+
 
 }

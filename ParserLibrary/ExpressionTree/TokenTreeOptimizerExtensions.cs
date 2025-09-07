@@ -2,9 +2,7 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserLibrary.ExpressionTree;
 
-
-
-public static class TreeOptimizerExtensions
+public static class TokenTreeOptimizerExtensions
 {
     private static readonly HashSet<string> _numericOperators =
         new(StringComparer.Ordinal) { "+", "-", "*", "/", "^" };
@@ -14,7 +12,7 @@ public static class TreeOptimizerExtensions
     /// Requires the TokenPatterns used by the Tokenizer so the same argument separator is honored.
     /// </summary>
     public static TreeOptimizerResult OptimizeForDataTypes(
-        this Tree<Token> originalTree,
+        this TokenTree originalTree,
         TokenPatterns tokenPatterns,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -32,8 +30,11 @@ public static class TreeOptimizerExtensions
 
         int before = CountNonAllNumericOperations(originalTree.Root, ctx);
 
-        var optimizedTree = originalTree.DeepClone();
+        var optimizedTree = (TokenTree)originalTree.DeepClone();
         OptimizeNode(optimizedTree.Root, ctx);
+
+        // Keep dictionary in sync with the new structure
+        optimizedTree.RebuildNodeDictionaryFromStructure();
 
         int after = CountNonAllNumericOperations(optimizedTree.Root, ctx);
 
@@ -44,31 +45,6 @@ public static class TreeOptimizerExtensions
             NonAllNumericAfter = after
         };
     }
-
-    // Removed: legacy overload that internally created a new TokenPatterns instance (per request).
-
-    #region Internal context
-    private sealed class TypeResolutionContext
-    {
-        public readonly Dictionary<string, Type> VariableTypes;
-        public readonly Dictionary<string, Type> FunctionReturnTypes;
-        public readonly Dictionary<string, Func<Type?[], Type?>> AmbiguousFunctionReturnTypes;
-        public readonly Dictionary<Node<Token>, Type?> TypeCache = new();
-        public readonly string ArgumentSeparator;
-
-        public TypeResolutionContext(
-            Dictionary<string, Type> variableTypes,
-            Dictionary<string, Type> functionReturnTypes,
-            Dictionary<string, Func<Type?[], Type?>> ambiguous,
-            string argumentSeparator)
-        {
-            VariableTypes = variableTypes;
-            FunctionReturnTypes = functionReturnTypes;
-            AmbiguousFunctionReturnTypes = ambiguous;
-            ArgumentSeparator = argumentSeparator;
-        }
-    }
-    #endregion
 
     #region Optimization
     private static void OptimizeNode(Node<Token>? node, TypeResolutionContext ctx)
