@@ -699,14 +699,15 @@ Console.WriteLine(result); // foo bar 12
 
 # Expression Tree
 
-The library can build an expression tree for any parsed expression.  
+The library can build an expression tree for any parsed expression.
 APIs involved (namespace `ParserLibrary.ExpressionTree`):
-- `Tree<T>` (for the parser you will use `Tree<Token>`)
-- `NodeBase` (base class of the internal node type used by the tree)
-- Printing extensions: `NodeBasePrintExtensions` (horizontal), `NodeBasePrintExtensionsVertical` (vertical)
-- `TreeOptimizer<T>` (optional reordering / optimization)
-- Traversal helpers via `Tree<Token>.GetPostfixTokens()` and `Tree<Token>.GetInfixTokens()`
-- Cloning via `Tree<Token>.DeepClone()`
+- `TokenTree` (specialized expression tree for `Token`)
+- `Tree<T>` (generic base)
+- `NodeBase` (base node for all trees)
+- Printing: `PrintType` and string builders (`ToVerticalTreeString`, `ToHorizontalTreeString`, etc.)
+- Optimizers: `OptimizeForDataTypes(...)`, `OptimizeForDataTypesUsingParser(...)`
+- Traversal: `TokenTree.GetPostfixTokens()`, `TokenTree.GetInfixTokens()`
+- Cloning: `tree.DeepClone()` (returns a `TokenTree` at runtime)
 
 Basic usage:
 
@@ -749,10 +750,3 @@ tree.Print2();
 Console.WriteLine("Optimized:");
 optimized.Print2();
 ```
-
-
-Notes:
-- `GetExpressionTree` is purely structural; variable values are only needed when you evaluate, not when you build the tree.
-- `Tree<Token>.GetPostfixTokens()` reproduces the postfix sequence derived from the tree (can be compared with the direct tokenizer result).
-- `TreeOptimizer<Token>` currently focuses on commutative operator grouping (`+`, `*`) and reordering.
-- Printing helpers write directly to the console; `ToVerticalTreeString()` (on the root via `root.ToVerticalTreeString()`) returns a string if you need to log or snapshot the layout.
