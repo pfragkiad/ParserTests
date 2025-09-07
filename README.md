@@ -699,15 +699,15 @@ Console.WriteLine(result); // foo bar 12
 
 # Expression Tree
 
-The library can build an expression tree for any parsed expression.
+The library can build an expression tree for any parsed expression.  
 APIs involved (namespace `ParserLibrary.ExpressionTree`):
 - `TokenTree` (specialized expression tree for `Token`)
 - `Tree<T>` (generic base)
-- `NodeBase` (base node for all trees)
-- Printing: `PrintType` and string builders (`ToVerticalTreeString`, `ToHorizontalTreeString`, etc.)
+- `NodeBase` (base class of the internal node type used by the tree)
+- Printing via `Tree.Print(PrintType)` and string builders on `NodeBase` (`ToVerticalTreeString`, `ToHorizontalTreeString`, etc.)
 - Optimizers: `OptimizeForDataTypes(...)`, `OptimizeForDataTypesUsingParser(...)`
-- Traversal: `TokenTree.GetPostfixTokens()`, `TokenTree.GetInfixTokens()`
-- Cloning: `tree.DeepClone()` (returns a `TokenTree` at runtime)
+- Traversal helpers via `TokenTree.GetPostfixTokens()` and `TokenTree.GetInfixTokens()`
+- Cloning via `tree.DeepClone()` (returns a `TokenTree` at runtime)
 
 Basic usage:
 
@@ -749,4 +749,3 @@ Console.WriteLine("Original:");
 tree.Print2();
 Console.WriteLine("Optimized:");
 optimized.Print2();
-```
