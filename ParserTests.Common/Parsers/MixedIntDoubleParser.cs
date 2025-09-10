@@ -1,13 +1,19 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Interfaces;
 using System.Globalization;
 
 namespace ParserTests.Common.Parsers;
 
 public class MixedIntDoubleParser(
-    ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+    ILogger<DoubleParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : DoubleParser(logger, options, tokenizerValidator, parserValidator)
 {
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {

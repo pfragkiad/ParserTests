@@ -3,11 +3,17 @@ using Microsoft.Extensions.Options;
 using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserTests.Common.Parsers;
 
-public class FunctionsOperandsParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) :
-    DoubleParser(logger, options)
+public class FunctionsOperandsParser(
+    ILogger<DoubleParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : DoubleParser(logger, options, tokenizerValidator, parserValidator)
 {
     protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {

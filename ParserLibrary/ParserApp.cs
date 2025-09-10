@@ -20,15 +20,7 @@ public static class ParserApp
         target.TokenPatterns = source.TokenPatterns; // shallow copy; deep clone if you mutate later
     }
 
-    private static IHostBuilder GetHostBuilder(string? settingsFile = null)
-    {
-        return Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((context, config) =>
-            {
-                if (!string.IsNullOrWhiteSpace(settingsFile) && settingsFile != "appsettings.json")
-                    config.AddJsonFile(settingsFile);  // Configure app configuration if needed
-            });
-    }
+
 
     public static IServiceCollection AddTokenizerOptions(
         this IServiceCollection services,
@@ -211,29 +203,12 @@ public static class ParserApp
     public static ITokenizerValidator GetTokenizerValidator(this IServiceProvider services, string key) =>
         services.GetRequiredKeyedService<ITokenizerValidator>(key);
 
-    public static IHost GetTokenizerApp(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection)
-    {
-        return GetHostBuilder(settingsFile)
-            .ConfigureServices((context, services) =>
-            {
-                services.AddTokenizer(context, tokenizerSectionPath);
-            })
-            .Build();
-    }
-    public static IHost GetTokenizerApp(TokenizerOptions options)
-    {
-        return GetHostBuilder()
-            .ConfigureServices((context, services) =>
-            {
-                services.AddTokenizer(options);
-            })
-            .Build();
-    }
+  
 
     #endregion
 
 
-    #region Parser
+    #region Add Parser/Stateful Parser fo ServiceCollection
 
     // Non-keyed: AddParser — add IParserValidator so DI can satisfy CoreParser constructor
     public static IServiceCollection AddParser<TParser>(
@@ -478,35 +453,6 @@ public static class ParserApp
             });
     }
 
-    public static IHost GetStatefulParserApp<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser
-    {
-        return GetHostBuilder(settingsFile)
-            .ConfigureServices((context, services) =>
-            {
-                services.AddStatefulParser<TStatefulParser>(context, tokenizerSectionPath);
-            })
-            .Build();
-    }
-
-    public static IHost GetStatefulParserApp<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser
-    {
-        return GetHostBuilder()
-            .ConfigureServices((context, services) =>
-            {
-                services.AddStatefulParser<TStatefulParser>(options);
-            })
-            .Build();
-    }
-
-    public static IStatefulParser GetStatefulParser<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(settingsFile, tokenizerSectionPath).GetStatefulParser();
-
-    public static IStatefulParser GetStatefulParser<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(options).GetStatefulParser();
-
-    public static IStatefulParser GetStatefulParser<TStatefulParser>() where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(TokenizerOptions.Default).GetStatefulParser();
-
 
     #endregion
 
@@ -598,6 +544,7 @@ public static class ParserApp
 
     #endregion
 
+
     #region GetParser/GetStatefulParser from service/hosts
 
     public static ITokenizer GetTokenizer(this IServiceProvider services) => services.GetRequiredService<ITokenizer>();
@@ -640,6 +587,99 @@ public static class ParserApp
         services.GetRequiredKeyedService<IStatefulParser>(key);
 
     #endregion
+
+
+    #region Get apps and parsers (for single cases only)
+
+    private static IHostBuilder GetHostBuilder(string? settingsFile = null)
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((context, config) =>
+            {
+                if (!string.IsNullOrWhiteSpace(settingsFile) && settingsFile != "appsettings.json")
+                    config.AddJsonFile(settingsFile);  // Configure app configuration if needed
+            });
+    }
+
+    public static IHost GetTokenizerApp(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection)
+    {
+        return GetHostBuilder(settingsFile)
+            .ConfigureServices((context, services) =>
+            {
+                services.AddTokenizer(context, tokenizerSectionPath);
+            })
+            .Build();
+    }
+    public static IHost GetTokenizerApp(TokenizerOptions options)
+    {
+        return GetHostBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services.AddTokenizer(options);
+            })
+            .Build();
+    }
+
+    public static IHost GetStatefulParserApp<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser
+    {
+        return GetHostBuilder(settingsFile)
+            .ConfigureServices((context, services) =>
+            {
+                services.AddStatefulParser<TStatefulParser>(context, tokenizerSectionPath);
+            })
+            .Build();
+    }
+
+    public static IHost GetStatefulParserApp<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser
+    {
+        return GetHostBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services.AddStatefulParser<TStatefulParser>(options);
+            })
+            .Build();
+    }
+
+    public static IHost GetParserApp<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser
+    {
+        return GetHostBuilder(settingsFile)
+            .ConfigureServices((context, services) =>
+            {
+                services.AddParser<TParser>(context, tokenizerSectionPath);
+            })
+            .Build();
+    }
+
+    public static IHost GetParserApp<TParser>(TokenizerOptions options) where TParser : CoreParser
+    {
+        return GetHostBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                services.AddParser<TParser>(options);
+            })
+            .Build();
+    }
+
+    public static IStatefulParser GetStatefulParser<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser =>
+        GetStatefulParserApp<TStatefulParser>(settingsFile, tokenizerSectionPath).GetStatefulParser();
+
+    public static IStatefulParser GetStatefulParser<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser =>
+        GetStatefulParserApp<TStatefulParser>(options).GetStatefulParser();
+
+    public static IStatefulParser GetStatefulParser<TStatefulParser>() where TStatefulParser : CoreStatefulParser =>
+        GetStatefulParserApp<TStatefulParser>(TokenizerOptions.Default).GetStatefulParser();
+
+    public static IParser GetParser<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser =>
+        GetParserApp<TParser>(settingsFile, tokenizerSectionPath).GetParser();
+
+    public static IParser GetParser<TParser>(TokenizerOptions options) where TParser : CoreParser =>
+        GetParserApp<TParser>(options).GetParser();
+
+    public static IParser GetParser<TParser>() where TParser : CoreParser =>
+        GetParserApp<TParser>(TokenizerOptions.Default).GetParser();
+
+    #endregion
+
 
 }
 

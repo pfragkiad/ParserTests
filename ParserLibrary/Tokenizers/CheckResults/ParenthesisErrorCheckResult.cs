@@ -10,6 +10,8 @@ public class ParenthesisErrorCheckResult : CheckResult
 
     public override bool IsSuccess => UnmatchedClosed.Count == 0 && UnmatchedOpen.Count == 0;
 
+    public static ParenthesisErrorCheckResult Success { get => new(); }
+
     public override IList<ValidationFailure> GetValidationFailures()
     {
         //report in the order of the position of the unmatched parenthesis

@@ -1,8 +1,15 @@
 ﻿using System.Numerics;
+using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Common;
 
-public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class ComplexParser(
+    ILogger<ComplexParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
     //protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
     //{
@@ -17,7 +24,7 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
     //    return base.Evaluate(postfixTokens, variables);
     //}
 
-    public override Dictionary<string, object?> Constants => 
+    public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "i", Complex.ImaginaryOne },
@@ -29,7 +36,6 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
     protected override object EvaluateLiteral(string s) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
-
     #region Auxiliary functions to get operands
 
     private static Complex GetComplex(object? value)
@@ -38,8 +44,7 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
         if (value is double) return new Complex(Convert.ToDouble(value), 0);
         if (value is not Complex) return Complex.Zero;
         return (Complex)value;
-    }  
-    
+    }
 
     public static (Complex Left, Complex Right) GetComplexBinaryOperands(object? leftOperand, object? rightOperand) => (
         Left: GetComplex(leftOperand),
@@ -65,10 +70,9 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
         };
     }
 
-
     protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        var (Left, Right) = GetComplexBinaryOperands( leftOperand,rightOperand);
+        var (Left, Right) = GetComplexBinaryOperands(leftOperand, rightOperand);
         return operatorName switch
         {
             "+" => Complex.Add(Left, Right),
@@ -76,7 +80,7 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
             "*" => Left * Right,
             "/" => Left / Right,
             "^" => Complex.Pow(Left, Right),
-            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand),
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand),
         };
     }
 
@@ -114,5 +118,4 @@ public class ComplexParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions
             _ => base.EvaluateFunction(functionName, args),
         };
     }
-
 }

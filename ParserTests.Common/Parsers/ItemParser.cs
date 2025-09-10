@@ -1,12 +1,19 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ParserLibrary.ExpressionTree;
+
 using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserTests.Common.Parsers;
 
-public class ItemParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class ItemParser(
+    ILogger<CoreParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
     protected override object EvaluateLiteral(string s)
     {

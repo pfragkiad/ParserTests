@@ -1,8 +1,18 @@
-﻿using ParserLibrary.Tokenizers;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Common;
 
-public class DoubleParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class DoubleParser(
+    ILogger<DoubleParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
 
     /// <summary>

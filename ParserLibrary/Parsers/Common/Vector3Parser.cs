@@ -1,9 +1,15 @@
-﻿namespace ParserLibrary.Parsers.Common;
+﻿using System.Numerics;
+using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers.Interfaces;
 
-using ParserLibrary.Tokenizers;
-using System.Numerics;
+namespace ParserLibrary.Parsers.Common;
 
-public class Vector3Parser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class Vector3Parser(
+    ILogger<Vector3Parser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)

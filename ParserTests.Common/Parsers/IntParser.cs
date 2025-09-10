@@ -2,11 +2,18 @@
 using Microsoft.Extensions.Options;
 using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserTests.Common.Parsers;
 
 
-public class IntParser(ILogger<CoreParser> logger,  IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class IntParser(
+    ILogger<CoreParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
     protected override object EvaluateLiteral(string s)
         => int.Parse(s);
