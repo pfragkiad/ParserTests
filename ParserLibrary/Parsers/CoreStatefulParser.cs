@@ -5,6 +5,7 @@ using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
+// Ensure stateful parser passes both validators to CoreParser
 public class CoreStatefulParser : CoreParser, IStatefulParser
 {
     // Replaced previous inner enum with public enum ExpressionOptimizationMode (see interface)
@@ -19,8 +20,9 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
     public CoreStatefulParser(
         ILogger<CoreStatefulParser> logger,
         IOptions<TokenizerOptions> options,
-        ITokenizerValidator tokenizerValidator)
-        : base(logger, options, tokenizerValidator)
+        ITokenizerValidator tokenizerValidator,
+        IParserValidator parserValidator)
+        : base(logger, options, tokenizerValidator, parserValidator)
     {
     }
 
@@ -190,52 +192,56 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
     #region Tokenizer 
     public bool AreParenthesesMatched() =>
-        Expression is null || AreParenthesesMatched(Expression!);
+        string.IsNullOrWhiteSpace(Expression) || PreValidateParentheses(Expression!, out _);
 
-    public ParenthesisErrorCheckResult CheckParentheses() =>
-        CheckParentheses(_infixTokens);
+    public ParenthesisErrorCheckResult CheckParentheses()
+    {
+        if (string.IsNullOrWhiteSpace(Expression))
+            return new ParenthesisErrorCheckResult { UnmatchedClosed = [], UnmatchedOpen = [] };
+
+        _ = PreValidateParentheses(Expression!, out var detail);
+        return detail ?? new ParenthesisErrorCheckResult { UnmatchedClosed = [], UnmatchedOpen = [] };
+    }
 
     public List<string> GetVariableNames() =>
         GetVariableNames(_infixTokens);
 
+    // MODIFIED: delegate variable-name checks directly to tokenizer validator (infix-based)
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> identifierNames,
         string[] ignorePrefixes,
         string[] ignorePostfixes) =>
-        CheckVariableNames(_infixTokens, identifierNames, ignorePrefixes, ignorePostfixes);
+        _tokenizerValidator.CheckVariableNames(_infixTokens, identifierNames, ignorePrefixes, ignorePostfixes);
 
     public VariableNamesCheckResult CheckVariableNames(
        HashSet<string> identifierNames,
        Regex? ignoreIdentifierPattern = null) =>
-       CheckVariableNames(_infixTokens, identifierNames, ignoreIdentifierPattern);
+       _tokenizerValidator.CheckVariableNames(_infixTokens, identifierNames, ignoreIdentifierPattern);
 
 
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> identifierNames,
         string[] ignoreCaptureGroups) =>
-        CheckVariableNames(_infixTokens, identifierNames, ignoreCaptureGroups);
+        _tokenizerValidator.CheckVariableNames(_infixTokens, identifierNames, ignoreCaptureGroups);
     #endregion
 
     #region Parser
 
+    // MODIFIED: parser-level checks now delegate to IParserValidator (infix/tree-based)
     public FunctionNamesCheckResult CheckFunctionNames() =>
-        CheckFunctionNames(_infixTokens);
-
-    public List<string> GetMatchedFunctionNames() =>
-        GetMatchedFunctionNames(_infixTokens);
-
+        _parserValidator.CheckFunctionNames(_infixTokens, (IParserFunctionMetadata)this);
 
     public InvalidOperatorsCheckResult CheckOperators() =>
-      CheckOperators(_nodeDictionary);
+        _parserValidator.CheckOperators(_nodeDictionary);
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
-        CheckOrphanArgumentSeparators(_nodeDictionary);
+        _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
-        CheckFunctionArgumentsCount(_nodeDictionary);
+        _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IParserFunctionMetadata)this, _options.TokenPatterns);
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
-        CheckEmptyFunctionArguments(_nodeDictionary);
+        _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary, _options.TokenPatterns);
 
 
     #endregion

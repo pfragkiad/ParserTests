@@ -8,21 +8,28 @@ public partial class CoreParser : Tokenizer, IParser
 {
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
+    // NEW: keep a parser-level validator reference for derived usage
+    protected readonly IParserValidator _parserValidator;
+
     public CoreParser(
         ILogger<CoreParser> logger,
         IOptions<TokenizerOptions> options,
-        ITokenizerValidator tokenizerValidator)
+        ITokenizerValidator tokenizerValidator,
+        IParserValidator parserValidator)
         : base(logger, options, tokenizerValidator)
     {
+        _parserValidator = parserValidator ?? throw new ArgumentNullException(nameof(parserValidator));
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
     protected CoreParser(
         ILogger logger,
         IOptions<TokenizerOptions> options,
-        ITokenizerValidator tokenizerValidator)
+        ITokenizerValidator tokenizerValidator,
+        IParserValidator parserValidator)
         : base(logger, options, tokenizerValidator)
     {
+        _parserValidator = parserValidator ?? throw new ArgumentNullException(nameof(parserValidator));
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
@@ -65,7 +72,7 @@ public partial class CoreParser : Tokenizer, IParser
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
         var tokens = GetInfixTokens(expression);
-        return CheckFunctionNames(tokens);
+        return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
     }
 
     public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
@@ -692,214 +699,25 @@ public partial class CoreParser : Tokenizer, IParser
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return CheckEmptyFunctionArguments(tree.NodeDictionary);
-    }
-
-    protected EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        List<FunctionArgumentCheckResult> ValidFunctions = [];
-        List<FunctionArgumentCheckResult> InvalidFunctions = [];
-        foreach (var entry in nodeDictionary)
-        {
-            var token = entry.Key;
-            var node = entry.Value;
-            if (token.TokenType != TokenType.Function) continue;
-
-            var arguments = GetFunctionArgumentNodes(node);
-            var newCheckResult = new FunctionArgumentCheckResult
-            {
-                FunctionName = token.Text,
-                Position = token.Index + 1
-            };
-
-            if (arguments.Any(n => n.Value!.IsNull))
-                InvalidFunctions.Add(newCheckResult);
-            else
-                ValidFunctions.Add(newCheckResult);
-        }
-
-        return new EmptyFunctionArgumentsCheckResult
-        {
-            ValidFunctions = [.. ValidFunctions],
-            InvalidFunctions = [.. InvalidFunctions]
-        };
+        return _parserValidator.CheckEmptyFunctionArguments(tree.NodeDictionary, _options.TokenPatterns);
     }
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return CheckFunctionArgumentsCount(tree.NodeDictionary);
-    }
-
-    protected FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        HashSet<FunctionArgumentCheckResult> validFunctions = [];
-        HashSet<FunctionArgumentCheckResult> invalidFunctions = [];
-
-        foreach (var entry in nodeDictionary)
-        {
-            var node = entry.Value;
-            if (node.Value!.TokenType != TokenType.Function) continue;
-
-            string functionName = node.Value.Text;
-            int actualArgumentsCount = node.GetFunctionArgumentsCount(_options.TokenPatterns.ArgumentSeparator.ToString());
-
-            if (CustomFunctions.TryGetValue(functionName, out var funcDef))
-            {
-                int expectedArgumentsCount = funcDef.Parameters.Length;
-                var checkResult = new FunctionArgumentCheckResult
-                {
-                    ActualArgumentsCount = actualArgumentsCount,
-                    ExpectedArgumentsCount = expectedArgumentsCount,
-                    FunctionName = functionName,
-                    Position = node.Value.Index + 1
-                };
-                if (actualArgumentsCount != expectedArgumentsCount)
-                    invalidFunctions.Add(checkResult);
-                else validFunctions.Add(checkResult);
-                continue;
-            }
-
-            if (MainFunctionsArgumentsCount.TryGetValue(functionName, out int expectedCount))
-            {
-                var checkResult = new FunctionArgumentCheckResult
-                {
-                    ActualArgumentsCount = actualArgumentsCount,
-                    ExpectedArgumentsCount = expectedCount,
-                    FunctionName = functionName,
-                    Position = node.Value.Index + 1
-                };
-                if (actualArgumentsCount != expectedCount)
-                    invalidFunctions.Add(checkResult);
-                else validFunctions.Add(checkResult);
-                continue;
-            }
-
-            if (MainFunctionsMinVariableArgumentsCount.TryGetValue(functionName, out int minExpectedCount))
-            {
-                var checkResult = new FunctionArgumentCheckResult
-                {
-                    ActualArgumentsCount = actualArgumentsCount,
-                    MinExpectedArgumentsCount = minExpectedCount,
-                    FunctionName = functionName,
-                    Position = node.Value.Index + 1
-                };
-                if (actualArgumentsCount < minExpectedCount)
-                    invalidFunctions.Add(checkResult);
-                else validFunctions.Add(checkResult);
-                continue;
-            }
-
-            invalidFunctions.Add(new FunctionArgumentCheckResult
-            {
-                ActualArgumentsCount = actualArgumentsCount,
-                ExpectedArgumentsCount = 0,
-                FunctionName = functionName
-            });
-        }
-
-        return new FunctionArgumentsCountCheckResult
-        {
-            ValidFunctions = [.. validFunctions],
-            InvalidFunctions = [.. invalidFunctions]
-        };
+        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IParserFunctionMetadata)this, _options.TokenPatterns);
     }
 
     public InvalidOperatorsCheckResult CheckOperators(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return CheckOperators(tree.NodeDictionary);
-    }
-
-    protected static InvalidOperatorsCheckResult CheckOperators(Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        List<OperatorArgumentCheckResult> ValidOperators = [];
-        List<OperatorArgumentCheckResult> InvalidOperators = [];
-        foreach (var entry in nodeDictionary)
-        {
-            var token = entry.Key;
-            var node = entry.Value;
-            if (token.TokenType != TokenType.Operator) continue;
-            if (token.TokenType == TokenType.ArgumentSeparator) continue;
-
-            var (LeftOperand, RightOperand) = node.GetBinaryArgumentNodes();
-            var newCheckResult = new OperatorArgumentCheckResult
-            {
-                Operator = token.Text,
-                Position = token.Index + 1
-            };
-
-            if (LeftOperand.Value!.IsNull || RightOperand.Value!.IsNull)
-                InvalidOperators.Add(newCheckResult);
-            else
-                ValidOperators.Add(newCheckResult);
-        }
-
-        return new InvalidOperatorsCheckResult
-        {
-            ValidOperators = [.. ValidOperators],
-            InvalidOperators = [.. InvalidOperators]
-        };
+        return _parserValidator.CheckOperators(tree.NodeDictionary);
     }
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return CheckOrphanArgumentSeparators(tree.NodeDictionary);
-    }
-
-    protected static InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        List<int> validPositions = [];
-        List<int> invalidPositions = [];
-
-        // Traverse the tree and check for argument separators that have a parent other than argument separator or a function
-        foreach (var entry in nodeDictionary)
-        {
-            var token = entry.Key;
-            var node = entry.Value;
-
-            //// Only check tokens that are argument separators
-            //if (token.TokenType != TokenType.Operator ||
-            //    //token.Text[0] != _options.TokenPatterns.ArgumentSeparator
-            //    token.TokenType != TokenType.ArgumentSeparator
-            //    )
-            //    continue;
-
-            if(token.TokenType != TokenType.ArgumentSeparator)
-                continue;
-
-            var parentFound = false;
-            foreach (var parentEntry in nodeDictionary)
-            {
-                var parentNode = parentEntry.Value;
-
-                // Check if parentNode has this argument separator as one of its children
-                if ((parentNode.Left == node || parentNode.Right == node) &&
-                    (parentEntry.Key.TokenType == TokenType.Function ||
-                     parentEntry.Key.TokenType == TokenType.ArgumentSeparator))
-                     //(parentEntry.Key.TokenType == TokenType.Operator &&
-                     // //parentEntry.Key.Text[0] == _options.TokenPatterns.ArgumentSeparator
-                     // parentEntry.Key.TokenType == TokenType.ArgumentSeparator
-                     // )))
-                {
-                    // Valid: Parent is either a function or an argument separator
-                    validPositions.Add(token.Index + 1); // 1-based index
-                    parentFound = true;
-                    break;
-                }
-            }
-
-            // If no valid parent was found, the argument separator is invalid
-            if (!parentFound)
-                invalidPositions.Add(token.Index + 1); // 1-based index
-        }
-
-        return new InvalidArgumentSeparatorsCheckResult
-        {
-            ValidPositions = [.. validPositions],
-            InvalidPositions = [.. invalidPositions]
-        };
+        return _parserValidator.CheckOrphanArgumentSeparators(tree.NodeDictionary);
     }
 
     #endregion
