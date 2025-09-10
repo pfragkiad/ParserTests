@@ -2,7 +2,7 @@ using ParserLibrary.Tokenizers;
 
 namespace ParserLibrary.ExpressionTree;
 
-public static class TokenTreeOptimizerExtensions
+public partial class TokenTree
 {
     private static readonly HashSet<string> _numericOperators =
         new(StringComparer.Ordinal) { "+", "-", "*", "/", "^" };
@@ -11,8 +11,7 @@ public static class TokenTreeOptimizerExtensions
     /// Optimizes commutative chains (+, *) by grouping numeric subtrees first when a mix of numeric and non-numeric operands exists.
     /// Requires the TokenPatterns used by the Tokenizer so the same argument separator is honored.
     /// </summary>
-    public static TreeOptimizerResult OptimizeForDataTypes(
-        this TokenTree originalTree,
+    public TreeOptimizerResult OptimizeForDataTypes(
         TokenPatterns tokenPatterns,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -28,9 +27,9 @@ public static class TokenTreeOptimizerExtensions
             ambiguousFunctionReturnTypes,
             tokenPatterns.ArgumentSeparator);
 
-        int before = CountNonAllNumericOperations(originalTree.Root, ctx);
+        int before = CountNonAllNumericOperations(Root, ctx);
 
-        var optimizedTree = (TokenTree)originalTree.DeepClone();
+        var optimizedTree = (TokenTree)DeepClone();
         OptimizeNode(optimizedTree.Root, ctx);
 
         // Keep dictionary in sync with the new structure
@@ -46,7 +45,6 @@ public static class TokenTreeOptimizerExtensions
         };
     }
 
-    #region Optimization
     private static void OptimizeNode(Node<Token>? node, TypeResolutionContext ctx)
     {
         if (node is null) return;
@@ -83,9 +81,7 @@ public static class TokenTreeOptimizerExtensions
         node.Left = optimized.Left;
         node.Right = optimized.Right;
     }
-    #endregion
 
-    #region Operand collection
     private static List<Node<Token>> CollectCommutativeOperands(Node<Token> node, string operatorText)
     {
         var list = new List<Node<Token>>();
@@ -107,9 +103,7 @@ public static class TokenTreeOptimizerExtensions
             operands.Add(node);
         }
     }
-    #endregion
 
-    #region Grouping / priority
     private static List<List<Node<Token>>> GroupOperandsByTypePriority(
         List<Node<Token>> operands,
         TypeResolutionContext ctx)
@@ -171,9 +165,7 @@ public static class TokenTreeOptimizerExtensions
             type == typeof(byte) || type == typeof(sbyte)) return 2;
         return 50;
     }
-    #endregion
 
-    #region Tree rebuild
     private static Node<Token> BuildOptimizedTree(List<List<Node<Token>>> grouped, string opText)
     {
         var flat = grouped.SelectMany(g => g).ToList();
@@ -196,18 +188,14 @@ public static class TokenTreeOptimizerExtensions
 
     private static Node<Token> CreateOperatorNode(string opText) =>
         new(new Token(TokenType.Operator, opText, -1));
-    #endregion
 
-    #region Counting mixed operations
     private static int CountNonAllNumericOperations(Node<Token>? root, TypeResolutionContext ctx)
     {
         int count = 0;
         IsNumericSubtreeAndAccumulate(root, ctx, ref count);
         return count;
     }
-    #endregion
 
-    #region Type & numeric resolution
     private static bool IsNumericSubtree(Node<Token>? node, TypeResolutionContext ctx)
     {
         int dummy = 0;
@@ -321,9 +309,7 @@ public static class TokenTreeOptimizerExtensions
         }
         return null;
     }
-    #endregion
 
-    #region Helpers
     private static string GetOperatorText(Node<Token> node) =>
         node.Value?.Text ?? string.Empty;
 
@@ -357,5 +343,4 @@ public static class TokenTreeOptimizerExtensions
         type == typeof(long) || type == typeof(ulong) ||
         type == typeof(float) || type == typeof(double) ||
         type == typeof(decimal);
-    #endregion
 }

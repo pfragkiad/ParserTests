@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Tokenizers.CheckResults;
 
-public class ParenthesisCheckResult : CheckResult
+public class ParenthesisErrorCheckResult : CheckResult
 {
     public List<int> UnmatchedClosed { get; init; } = [];
 

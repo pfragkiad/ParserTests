@@ -2,7 +2,7 @@
 
 public readonly struct PrecalcCheckResults
 {
-    public ParenthesisCheckResult ParenthesisCheckResult { get; init; }
+    public ParenthesisErrorCheckResult ParenthesisCheckResult { get; init; }
 
     public FunctionNamesCheckResult? FunctionNamesCheckResult { get; init; }
 

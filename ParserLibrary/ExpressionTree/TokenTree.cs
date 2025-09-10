@@ -4,7 +4,7 @@
 /// Extension methods that apply only when the tree holds Token nodes (Tree&lt;Token&gt;).
 /// Moved out of the generic Tree&lt;T&gt; to isolate Token-specific concerns.
 /// </summary>
-public class TokenTree : Tree<Token>
+public partial class TokenTree : Tree<Token>
 {
     #region Token sequence extraction
     public List<Token> GetPostfixTokens() =>

@@ -1,8 +1,6 @@
 ﻿using FluentValidation.Results;
 using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
-using ParserLibrary.ExpressionTree;
 
 namespace ParserLibrary.Parsers;
 
@@ -87,7 +85,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
             case ExpressionOptimizationMode.ParserInference:
             {
                 var initialTree = GetExpressionTree(_expression!);
-                var result = initialTree.OptimizeForDataTypesUsingParser(this, Variables);
+                var result = OptimizeTreeUsingInference(initialTree, Variables);
                 var optimizedTree = result.Tree;
                 _infixTokens = optimizedTree.GetInfixTokens();
                 _postfixTokens = optimizedTree.GetPostfixTokens();
@@ -190,7 +188,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
     public bool AreParenthesesMatched() =>
         Expression is null || AreParenthesesMatched(Expression!);
 
-    public ParenthesisCheckResult CheckParentheses() =>
+    public ParenthesisErrorCheckResult CheckParentheses() =>
         CheckParentheses(_infixTokens);
 
     public List<string> GetVariableNames() =>

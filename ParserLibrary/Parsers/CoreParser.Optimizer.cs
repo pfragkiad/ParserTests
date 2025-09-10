@@ -1,25 +1,41 @@
-using ParserLibrary.Parsers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ParserLibrary.ExpressionTree;
 using ParserLibrary.Tokenizers;
 
-namespace ParserLibrary.ExpressionTree;
+namespace ParserLibrary.Parsers;
 
-public static class ParserTreeOptimizerExtensions
+public partial class CoreParser
 {
-    public static TreeOptimizerResult OptimizeForDataTypesUsingParser(
-        this TokenTree tree,
-        CoreParser parser,
+    /// <summary>
+    /// Optimizes an expression by building its tree and applying a type-informed commutative reordering.
+    /// Uses runtime variables for type inference.
+    /// </summary>
+    public TreeOptimizerResult GetOptimizedExpressionUsingParser(
+        string expression,
         Dictionary<string, object?>? variables = null)
     {
-        var typeMap = parser.InferNodeTypes(tree, variables);
+        var tree = GetExpressionTree(expression);
+        return OptimizeTreeUsingInference(tree, variables);
+    }
+
+    /// <summary>
+    /// Optimizes an existing TokenTree using the parser's runtime type inference (variables map).
+    /// Performs in-place operator reuse; no NodeDictionary rebuild required.
+    /// </summary>
+    public TreeOptimizerResult OptimizeTreeUsingInference(
+        TokenTree tree,
+        Dictionary<string, object?>? variables = null)
+    {
+        var typeMap = InferNodeTypes(tree, variables);
 
         int before = CountMixed(tree.Root, typeMap);
 
         var cloned = (TokenTree)tree.DeepClone();
         OptimizeNode(cloned.Root, typeMap);
 
-        // No dictionary rebuild needed if we reuse operator nodes in-place.
-
-        var newTypeMap = parser.InferNodeTypes(cloned, variables);
+        var newTypeMap = InferNodeTypes(cloned, variables);
         int after = CountMixed(cloned.Root, newTypeMap);
 
         return new TreeOptimizerResult
@@ -102,7 +118,6 @@ public static class ParserTreeOptimizerExtensions
             opNode.Right = ordered[i + 1];
             acc = opNode;
         }
-        // 'acc' is the last operator node which equals 'root' by construction (post-order ensures root is last)
     }
 
     private static bool IsNumeric(Node<Token> node, Dictionary<Node<Token>, Type?> typeMap)

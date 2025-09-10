@@ -1,18 +1,23 @@
 ﻿using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.CheckResults;
-using ParserLibrary.ExpressionTree;   // ADDED for TreeOptimizerResult & extension
 
 namespace ParserLibrary.Parsers;
 
-public class CoreParser : Tokenizer, IParser
+public partial class CoreParser : Tokenizer, IParser
 {
+    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
+
     public CoreParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
-    { }
+    {
+        CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+    }
 
     protected CoreParser(ILogger logger, IOptions<TokenizerOptions> options)
         : base(logger, options)
-    { }
+    {
+        CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// The dictionary stores the main functions with their names and the exact number of arguments.
@@ -25,8 +30,6 @@ public class CoreParser : Tokenizer, IParser
     protected virtual Dictionary<string, int> MainFunctionsMinVariableArgumentsCount => [];
 
     #region Custom functions
-
-    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     public void RegisterFunction(string definition)
     {
@@ -200,28 +203,7 @@ public class CoreParser : Tokenizer, IParser
             functionReturnTypes,
             ambiguousFunctionReturnTypes).Tree;
 
-    // Legacy compatibility (interface expects methods without function maps):
-    TreeOptimizerResult IParser.GetOptimizedExpressionTreeResult(string expression, Dictionary<string, Type>? variableTypes) =>
-        GetOptimizedExpressionTreeResult(expression, variableTypes);
-
-    TreeOptimizerResult IParser.GetOptimizedExpressionTreeResult(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes) =>
-        GetOptimizedExpressionTreeResult(postfixTokens, variableTypes);
-
-    TokenTree IParser.GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes) =>
-        GetOptimizedExpressionTree(expression, variableTypes);
-
-    TokenTree IParser.GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes) =>
-        GetOptimizedExpressionTree(postfixTokens, variableTypes);
-
-    public TreeOptimizerResult GetOptimizedExpressionUsingParser(
-        string expression,
-        Dictionary<string, object?>? variables = null)
-    {
-        var tree = GetExpressionTree(expression);
-        return tree.OptimizeForDataTypesUsingParser(this,variables);
-    }
-
-    #endregion
+    #endregion  // close "Expression trees" region
 
     #region Evaluation methods
 
@@ -440,8 +422,10 @@ public class CoreParser : Tokenizer, IParser
                     _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
+                {
                     _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
-            }
+                }
+            }   
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
@@ -516,6 +500,8 @@ public class CoreParser : Tokenizer, IParser
         return nodeValueDictionary[root];
     }
 
+    #endregion
+
     private Node<Token> CreateFunctionNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
         Node<Token> functionNode = new(token);
@@ -579,27 +565,25 @@ public class CoreParser : Tokenizer, IParser
         }
     }
 
-    #endregion
-
     #region NodeDictionary calculations
 
     protected object? EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        string operatorName = _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         return EvaluateOperator(operatorName, LeftOperand, RightOperand);
     }
 
     protected Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        string operatorName = _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
     }
 
     protected object? EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string operatorName = _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         var operand = operatorNode.GetUnaryArgument(
             _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
             nodeValueDictionary);
@@ -608,7 +592,7 @@ public class CoreParser : Tokenizer, IParser
 
     protected Type EvaluateUnaryOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string operatorName = _options.CaseSensitive ? operatorNode.Text.ToLower() : operatorNode.Text;
+        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         var operand = operatorNode.GetUnaryArgument(
             _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
             nodeValueDictionary);
@@ -617,7 +601,7 @@ public class CoreParser : Tokenizer, IParser
 
     protected object? EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string functionName = _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
+        string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
         object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
@@ -637,7 +621,7 @@ public class CoreParser : Tokenizer, IParser
 
     protected Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string functionName = _options.CaseSensitive ? functionNode.Text.ToLower() : functionNode.Text;
+        string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
         object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
@@ -868,14 +852,16 @@ public class CoreParser : Tokenizer, IParser
             var token = entry.Key;
             var node = entry.Value;
 
-            // Only check tokens that are argument separators
-            if (token.TokenType != TokenType.Operator ||
-                //token.Text[0] != _options.TokenPatterns.ArgumentSeparator
-                token.TokenType != TokenType.ArgumentSeparator
-                )
+            //// Only check tokens that are argument separators
+            //if (token.TokenType != TokenType.Operator ||
+            //    //token.Text[0] != _options.TokenPatterns.ArgumentSeparator
+            //    token.TokenType != TokenType.ArgumentSeparator
+            //    )
+            //    continue;
+
+            if(token.TokenType != TokenType.ArgumentSeparator)
                 continue;
 
-            // Find the parent node of this argument separator
             var parentFound = false;
             foreach (var parentEntry in nodeDictionary)
             {
@@ -884,10 +870,11 @@ public class CoreParser : Tokenizer, IParser
                 // Check if parentNode has this argument separator as one of its children
                 if ((parentNode.Left == node || parentNode.Right == node) &&
                     (parentEntry.Key.TokenType == TokenType.Function ||
-                     (parentEntry.Key.TokenType == TokenType.Operator &&
-                      //parentEntry.Key.Text[0] == _options.TokenPatterns.ArgumentSeparator
-                      parentEntry.Key.TokenType == TokenType.ArgumentSeparator
-                      )))
+                     parentEntry.Key.TokenType == TokenType.ArgumentSeparator))
+                     //(parentEntry.Key.TokenType == TokenType.Operator &&
+                     // //parentEntry.Key.Text[0] == _options.TokenPatterns.ArgumentSeparator
+                     // parentEntry.Key.TokenType == TokenType.ArgumentSeparator
+                     // )))
                 {
                     // Valid: Parent is either a function or an argument separator
                     validPositions.Add(token.Index + 1); // 1-based index
@@ -898,9 +885,7 @@ public class CoreParser : Tokenizer, IParser
 
             // If no valid parent was found, the argument separator is invalid
             if (!parentFound)
-            {
                 invalidPositions.Add(token.Index + 1); // 1-based index
-            }
         }
 
         return new InvalidArgumentSeparatorsCheckResult

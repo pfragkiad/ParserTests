@@ -1,5 +1,7 @@
 ﻿using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Tokenizers;
+using ParserLibrary.ExpressionTree;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -16,7 +18,6 @@ public interface IParser : ITokenizer
         Dictionary<string, V>? variables = null,
         Dictionary<string, Func<V?, V?, V?>>? binaryOperators = null,
         Dictionary<string, Func<V?, V?>>? unaryOperators = null,
-
         Dictionary<string, Func<V?, V?>>? funcs1Arg = null,
         Dictionary<string, Func<V?, V?, V?>>? funcs2Arg = null,
         Dictionary<string, Func<V?, V?, V?, V?>>? funcs3Arg = null
@@ -27,31 +28,6 @@ public interface IParser : ITokenizer
     Type EvaluateType(string expression, Dictionary<string, object?>? variables = null);
 
     object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null);
-
-    //OneOf<T1, T2> Evaluate<T1, T2>(
-    //    string s,
-    //    Dictionary<string, OneOf<T1, T2>> variables
-    //);
-
-    //OneOf<T1, T2, T3> Evaluate<T1, T2, T3>(
-    //    string s,
-    //    Dictionary<string, OneOf<T1, T2, T3>> variables
-    //);
-
-    //OneOf<T1, T2, T3, T4> Evaluate<T1, T2, T3, T4>(
-    //    string s,
-    //    Dictionary<string, OneOf<T1, T2, T3, T4>> variables
-    //);
-
-    //OneOf<T1, T2, T3, T4, T5> Evaluate<T1, T2, T3, T4, T5>(
-    //    string s,
-    //    Dictionary<string, OneOf<T1, T2, T3, T4, T5>> variables
-    //);
-
-    //OneOf<T1, T2, T3, T4, T5, T6> Evaluate<T1, T2, T3, T4, T5, T6>(
-    //    string s,
-    //    Dictionary<string, OneOf<T1, T2, T3, T4, T5, T6>> variables
-    //);
 
     TokenTree GetExpressionTree(List<Token> postfixTokens);
 
@@ -64,9 +40,33 @@ public interface IParser : ITokenizer
     InvalidOperatorsCheckResult CheckOperators(string expression);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression);
-    TokenTree GetOptimizedExpressionTree(string expression, Dictionary<string, Type> variableTypes);
-    TokenTree GetOptimizedExpressionTree(List<Token> postfixTokens, Dictionary<string, Type> variableTypes);
-    TreeOptimizerResult GetOptimizedExpressionTreeResult(List<Token> postfixTokens, Dictionary<string, Type>? variableTypes = null);
-    TreeOptimizerResult GetOptimizedExpressionTreeResult(string expression, Dictionary<string, Type>? variableTypes = null);
+
+    // Optimizer APIs (full signatures)
+    TreeOptimizerResult GetOptimizedExpressionTreeResult(
+        string expression,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    TreeOptimizerResult GetOptimizedExpressionTreeResult(
+        List<Token> postfixTokens,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    TokenTree GetOptimizedExpressionTree(
+        string expression,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    TokenTree GetOptimizedExpressionTree(
+        List<Token> postfixTokens,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    // Parser-driven optimizer (runtime inference)
     TreeOptimizerResult GetOptimizedExpressionUsingParser(string expression, Dictionary<string, object?>? variables = null);
+    TreeOptimizerResult OptimizeTreeUsingInference(TokenTree tree, Dictionary<string, object?>? variables = null);
 }

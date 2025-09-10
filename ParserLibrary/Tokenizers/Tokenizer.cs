@@ -9,24 +9,18 @@ public class Tokenizer : ITokenizer
 
     protected Operator? ArgumentOperator;
 
-    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options)
+    protected readonly ITokenizerValidator _tokenizerValidator;
+    
+    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options, ITokenizerValidator validator)
     {
         _logger = logger;
         _options = options.Value;
 
         if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
 
-    }
-
-    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options)
-    {
-        _logger = logger;
-        _options = options.Value;
-
-        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
+        _tokenizerValidator = validator ?? throw new ArgumentNullException(nameof(validator));
 
     }
-
 
     protected readonly TokenizerOptions _options;
     public TokenizerOptions TokenizerOptions => _options;
@@ -132,7 +126,7 @@ public class Tokenizer : ITokenizer
         }
 
         //sort by Match.Index (get "infix ordering")
-        
+
         //this is critical becausea after this we will check for unary operators conflicts with binary operators
         tokens.Sort();
 
@@ -425,108 +419,6 @@ public class Tokenizer : ITokenizer
         return GetPostfixTokens(infixTokens);
     }
 
-
-    #region Utility methods
-
-    public bool AreParenthesesMatched(string expression)
-    {
-        var open = _options.TokenPatterns.OpenParenthesis;
-        var close = _options.TokenPatterns.CloseParenthesis;
-
-        int count = 0;
-        foreach (char c in expression)
-        {
-            //if (c.ToString() == open)
-            if (c == open)
-            {
-                count++;
-                continue;
-            }
-
-            //if (c.ToString() != close) continue;
-            if (c != close) continue;
-
-            count--;
-            if (count < 0)
-                return false;
-        }
-        return count == 0;
-    }
-
-    public ParenthesisCheckResult CheckParentheses(string expression)
-    {
-        var open = _options.TokenPatterns.OpenParenthesis; //char 
-        var close = _options.TokenPatterns.CloseParenthesis; //char
-
-        List<int> unmatchedClosed = [];
-        List<int> openPositions = [];
-
-        for (int i = 0; i < expression.Length; i++)
-        {
-            char c = expression[i];
-
-            //if (c.ToString() == open)
-            if (c == open)
-            {
-                openPositions.Add(i);
-                continue;
-            }
-
-            //if (c.ToString() != close) continue;
-            if (c != close)
-                continue;
-
-            if (openPositions.Count == 0)
-            {
-                unmatchedClosed.Add(i);
-            }
-            else
-            {
-                openPositions.RemoveAt(openPositions.Count - 1);
-            }
-        }
-
-        return new ParenthesisCheckResult
-        {
-            UnmatchedClosed = unmatchedClosed,
-            UnmatchedOpen = openPositions
-        };
-    }
-
-
-    public ParenthesisCheckResult CheckParentheses(List<Token> infixTokens)
-    {
-        var open = _options.TokenPatterns.OpenParenthesis; //char 
-        var close = _options.TokenPatterns.CloseParenthesis; //char
-        List<int> unmatchedClosed = [];
-        List<int> openPositions = [];
-        for (int i = 0; i < infixTokens.Count; i++)
-        {
-            var token = infixTokens[i];
-            if (token.Text == open.ToString())
-            {
-                openPositions.Add(token.Index);
-                continue;
-            }
-            if (token.Text != close.ToString())
-                continue;
-            if (openPositions.Count == 0)
-            {
-                unmatchedClosed.Add(token.Index);
-            }
-            else
-            {
-                openPositions.RemoveAt(openPositions.Count - 1);
-            }
-        }
-        return new ParenthesisCheckResult
-        {
-            UnmatchedClosed = unmatchedClosed,
-            UnmatchedOpen = openPositions
-        };
-    }
-
-
     public List<string> GetVariableNames(string expression)
     {
         //returns the identifiers in the expression
@@ -542,143 +434,54 @@ public class Tokenizer : ITokenizer
                 .Distinct()];
     }
 
+
+    #region Utility methods
+
+    public bool PreValidateParentheses(string expression, out ParenthesisErrorCheckResult? result)
+    {
+        return _tokenizerValidator.PreValidateParentheses(expression, out result);
+    }
+
+    // Public string-based overloads: added optional checkParentheses guard (default false)
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
         string[] ignorePrefixes,
-        string[] ignorePostfixes)
+        string[] ignorePostfixes,
+        bool checkParentheses = false)
     {
+        if (checkParentheses && !PreValidateParentheses(expression, out _))
+            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
+
         var tokens = GetInfixTokens(expression);
-        return CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
-    }
-
-    public VariableNamesCheckResult CheckVariableNames(
-        List<Token> infixTokens,
-        HashSet<string> identifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes)
-    {
-        HashSet<string> matchedNames = [];
-        HashSet<string> unmatchedNames = [];
-        HashSet<string> ignoredNames = [];
-
-        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
-        {
-            if (
-                identifierNames.Contains(t.Text))
-            {
-                matchedNames.Add(t.Text);
-                continue;
-            }
-
-            if (ignorePrefixes.Any(p => t.Text.StartsWith(p) ||
-                ignorePostfixes.Any(s => t.Text.EndsWith(s))))
-            {
-                ignoredNames.Add(t.Text);
-                continue;
-            }
-
-
-            unmatchedNames.Add(t.Text);
-        }
-
-        return new VariableNamesCheckResult
-        {
-            MatchedNames = [.. matchedNames],
-            UnmatchedNames = [.. unmatchedNames],
-            IgnoredNames = [.. ignoredNames]
-        };
+        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
     }
 
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
-        Regex? ignoreIdentifierPattern = null)
+        Regex? ignoreIdentifierPattern = null,
+        bool checkParentheses = false)
     {
-        //returns the identifiers in the expression
+        if (checkParentheses && !PreValidateParentheses(expression, out _))
+            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
+
         var tokens = GetInfixTokens(expression);
-        return CheckVariableNames(tokens, identifierNames, ignoreIdentifierPattern);
+        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreIdentifierPattern);
     }
-
-    public VariableNamesCheckResult CheckVariableNames(
-        List<Token> infixTokens,
-        HashSet<string> identifierNames,
-        Regex? ignoreIdentifierPattern = null)
-    {
-        HashSet<string> matchedNames = [];
-        HashSet<string> unmatchedNames = [];
-        HashSet<string> ignoredNames = [];
-        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
-        {
-            if (identifierNames.Contains(t.Text))
-            {
-                matchedNames.Add(t.Text);
-                continue;
-            }
-
-            if (ignoreIdentifierPattern is not null && ignoreIdentifierPattern.IsMatch(t.Text))
-            {
-                ignoredNames.Add(t.Text);
-                continue;
-            }
-
-            unmatchedNames.Add(t.Text);
-        }
-        return new VariableNamesCheckResult
-        {
-            MatchedNames = [.. matchedNames],
-            UnmatchedNames = [.. unmatchedNames],
-            IgnoredNames = [.. ignoredNames]
-        };
-    }
-
 
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
-        string[] ignoreCaptureGroups)
+        string[] ignoreCaptureGroups,
+        bool checkParentheses = false)
     {
+        if (checkParentheses && !PreValidateParentheses(expression, out _))
+            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
+
         var tokens = GetInfixTokens(expression);
-        return CheckVariableNames(tokens, identifierNames, ignoreCaptureGroups);
+        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreCaptureGroups);
     }
-
-
-    public VariableNamesCheckResult CheckVariableNames(
-        List<Token> infixTokens,
-        HashSet<string> identifierNames,
-        string[] ignoreCaptureGroups)
-    {
-        HashSet<string> matchedNames = [];
-        HashSet<string> unmatchedNames = [];
-        HashSet<string> ignoredNames = [];
-
-        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
-        {
-            if (
-                identifierNames.Contains(t.Text))
-            {
-                matchedNames.Add(t.Text);
-                continue;
-            }
-
-            //check if the identifier matches any of the capture groups
-            if (ignoreCaptureGroups.Any(g => t.Match!.Groups[g].Success))
-            {
-                ignoredNames.Add(t.Text);
-                continue;
-            }
-
-            unmatchedNames.Add(t.Text);
-        }
-
-        return new VariableNamesCheckResult
-        {
-            MatchedNames = [.. matchedNames],
-            UnmatchedNames = [.. unmatchedNames],
-            IgnoredNames = [.. ignoredNames]
-        };
-    }
-
 
     #endregion
 
