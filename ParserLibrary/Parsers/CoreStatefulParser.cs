@@ -1,6 +1,7 @@
 ﻿using FluentValidation.Results;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
@@ -17,8 +18,11 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
     public CoreStatefulParser(
         ILogger<CoreStatefulParser> logger,
-        IOptions<TokenizerOptions> options)
-        : base(logger, options) { }
+        IOptions<TokenizerOptions> options,
+        ITokenizerValidator tokenizerValidator)
+        : base(logger, options, tokenizerValidator)
+    {
+    }
 
     protected void Reset()
     {

@@ -90,6 +90,7 @@ public static class ParserApp
 
     #region Tokenizer
 
+    // Non-keyed (HostBuilderContext)
     public static IServiceCollection AddTokenizer(
         this IServiceCollection services,
         HostBuilderContext context,
@@ -97,7 +98,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSection)
-            // Validator (non-keyed)
             .AddSingleton<ITokenizerValidator>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
@@ -105,25 +105,37 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new TokenizerValidator(logger, patterns);
             })
-            // Tokenizer (non-keyed)
-            .AddSingleton<ITokenizer, Tokenizer>();
+            // EXPLICIT: inject validator into Tokenizer
+            .AddSingleton<ITokenizer>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<Tokenizer>>();
+                var options = sp.GetRequiredService<IOptions<TokenizerOptions>>();
+                var validator = sp.GetRequiredService<ITokenizerValidator>();
+                return new Tokenizer(logger, options, validator);
+            });
     }
 
+    // Non-keyed (TokenizerOptions instance)
     public static IServiceCollection AddTokenizer(
         this IServiceCollection services,
         TokenizerOptions options)
     {
         return services
             .AddTokenizerOptions(options)
-            // Validator (non-keyed)
             .AddSingleton<ITokenizerValidator>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
                 var patterns = options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new TokenizerValidator(logger, patterns);
             })
-            // Tokenizer (non-keyed)
-            .AddSingleton<ITokenizer, Tokenizer>();
+            // EXPLICIT: inject validator into Tokenizer
+            .AddSingleton<ITokenizer>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<Tokenizer>>();
+                var iopts = sp.GetRequiredService<IOptions<TokenizerOptions>>();
+                var validator = sp.GetRequiredService<ITokenizerValidator>();
+                return new Tokenizer(logger, iopts, validator);
+            });
     }
 
     public static ITokenizer GetTokenizer(this IServiceProvider services) => services.GetRequiredService<ITokenizer>();
@@ -153,16 +165,18 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new TokenizerValidator(logger, patterns);
             })
-            // Keyed tokenizer
+            // EXPLICIT: inject keyed validator into Tokenizer
             .AddKeyedSingleton<ITokenizer, Tokenizer>(key, (provider, _) =>
             {
                 var logger = provider.GetRequiredService<ILogger<Tokenizer>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
                 var opts = monitor.Get(key);
-                return new Tokenizer(logger, Options.Create(opts));
+                var validator = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
+                return new Tokenizer(logger, Options.Create(opts), validator);
             });
     }
 
+    // Keyed (options instance)
     public static IServiceCollection AddTokenizer(
         this IServiceCollection services,
         string key,
@@ -170,7 +184,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
-            // Keyed validator (same key)
             .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
             {
                 var logger = provider.GetRequiredService<ILogger<TokenizerValidator>>();
@@ -179,13 +192,14 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new TokenizerValidator(logger, patterns);
             })
-            // Keyed tokenizer
+            // EXPLICIT: inject keyed validator into Tokenizer
             .AddKeyedSingleton<ITokenizer, Tokenizer>(key, (provider, _) =>
             {
                 var logger = provider.GetRequiredService<ILogger<Tokenizer>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
                 var opts = monitor.Get(key);
-                return new Tokenizer(logger, Options.Create(opts));
+                var validator = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
+                return new Tokenizer(logger, Options.Create(opts), validator);
             });
     }
 
@@ -232,6 +246,14 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSectionPath)
+            // validator for this parser (non-keyed)
+            .AddSingleton<ITokenizerValidator>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
+                var opts = sp.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new ParserLibrary.Parsers.Validation.TokenizerValidator(logger, patterns);
+            })
             .AddSingleton<IParser, TParser>();
     }
 
@@ -241,6 +263,12 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(options)
+            .AddSingleton<ITokenizerValidator>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
+                var patterns = options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new ParserLibrary.Parsers.Validation.TokenizerValidator(logger, patterns);
+            })
             .AddSingleton<IParser, TParser>();
     }
 
@@ -255,11 +283,20 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
-            .AddKeyedSingleton<IParser, TParser>(key, (provider, key) =>
+            // keyed validator (same key)
+            .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
             {
-                var logger = provider.GetRequiredService<ILogger<CoreParser>>();
+                var logger = provider.GetRequiredService<ILogger<TokenizerValidator>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key as string);
+                var opts = monitor.Get(key);
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new ParserLibrary.Parsers.Validation.TokenizerValidator(logger, patterns);
+            })
+            .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
+                // ActivatorUtilities resolves ILogger<TParser> and ITokenizerValidator automatically
                 return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts));
             });
     }
@@ -271,11 +308,18 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
-            .AddKeyedSingleton<IParser, TParser>(key, (provider, key) =>
+            .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
             {
-                var logger = provider.GetRequiredService<ILogger<CoreParser>>();
+                var logger = provider.GetRequiredService<ILogger<TokenizerValidator>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key as string);
+                var opts = monitor.Get(key);
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new ParserLibrary.Parsers.Validation.TokenizerValidator(logger, patterns);
+            })
+            .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
                 return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts));
             });
     }
@@ -330,6 +374,13 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSection)
+            .AddSingleton<ITokenizerValidator>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
+                var opts = sp.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new TokenizerValidator(logger, patterns);
+            })
             .AddTransient<IStatefulParser, TStatefulParser>();
     }
 
@@ -339,6 +390,12 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(options)
+            .AddSingleton<ITokenizerValidator>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<TokenizerValidator>>();
+                var patterns = options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new TokenizerValidator(logger, patterns);
+            })
             .AddTransient<IStatefulParser, TStatefulParser>();
     }
 
@@ -347,6 +404,7 @@ public static class ParserApp
     public static IStatefulParser GetStatefulParser(this IServiceProvider services) => services.GetRequiredService<IStatefulParser>();
     public static IStatefulParser GetStatefulParser(this IHost host) => host.Services.GetRequiredService<IStatefulParser>();
 
+    // Keyed: register keyed validator and pass it explicitly to the stateful parser via ActivatorUtilities
     public static IServiceCollection AddStatefulParser<TStatefulParser>(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -355,12 +413,21 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, key) =>
+            .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
             {
-                var logger = provider.GetRequiredService<ILogger<CoreParser>>();
+                var logger = provider.GetRequiredService<ILogger<TokenizerValidator>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key as string);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts));
+                var opts = monitor.Get(key);
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new TokenizerValidator(logger, patterns);
+            })
+            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            {
+                var name = k as string;
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(name);
+                var validator = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), validator);
             });
     }
 
@@ -371,12 +438,21 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, key) =>
+            .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
             {
-                var logger = provider.GetRequiredService<ILogger<CoreParser>>();
+                var logger = provider.GetRequiredService<ILogger<TokenizerValidator>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key as string);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts));
+                var opts = monitor.Get(key);
+                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+                return new TokenizerValidator(logger, patterns);
+            })
+            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            {
+                var name = k as string;
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(name);
+                var validator = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), validator);
             });
     }
 

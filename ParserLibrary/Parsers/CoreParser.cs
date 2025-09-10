@@ -1,5 +1,6 @@
 ﻿using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
@@ -7,14 +8,20 @@ public partial class CoreParser : Tokenizer, IParser
 {
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
-    public CoreParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options)
-        : base(logger, options)
+    public CoreParser(
+        ILogger<CoreParser> logger,
+        IOptions<TokenizerOptions> options,
+        ITokenizerValidator tokenizerValidator)
+        : base(logger, options, tokenizerValidator)
     {
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
-    protected CoreParser(ILogger logger, IOptions<TokenizerOptions> options)
-        : base(logger, options)
+    protected CoreParser(
+        ILogger logger,
+        IOptions<TokenizerOptions> options,
+        ITokenizerValidator tokenizerValidator)
+        : base(logger, options, tokenizerValidator)
     {
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }

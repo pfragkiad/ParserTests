@@ -11,16 +11,26 @@ public class Tokenizer : ITokenizer
 
     protected readonly ITokenizerValidator _tokenizerValidator;
     
-    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options, ITokenizerValidator validator)
+    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
     {
         _logger = logger;
         _options = options.Value;
 
         if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
 
-        _tokenizerValidator = validator ?? throw new ArgumentNullException(nameof(validator));
-
+        _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
     }
+
+    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
+    {
+        _logger = logger;
+        _options = options.Value;
+
+        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
+
+        _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
+    }
+
 
     protected readonly TokenizerOptions _options;
     public TokenizerOptions TokenizerOptions => _options;
