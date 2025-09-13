@@ -1,4 +1,6 @@
-﻿using ParserLibrary.Parsers.Interfaces;
+﻿using Microsoft.Extensions.Options;
+using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
@@ -8,7 +10,6 @@ public partial class CoreParser : Tokenizer, IParser
 {
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
-    // NEW: keep a parser-level validator reference for derived usage
     protected readonly IParserValidator _parserValidator;
 
     public CoreParser(
@@ -19,6 +20,7 @@ public partial class CoreParser : Tokenizer, IParser
         : base(logger, options, tokenizerValidator)
     {
         _parserValidator = parserValidator ?? throw new ArgumentNullException(nameof(parserValidator));
+
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
@@ -69,50 +71,12 @@ public partial class CoreParser : Tokenizer, IParser
 
     #endregion
 
-    public FunctionNamesCheckResult CheckFunctionNames(string expression)
-    {
-        var tokens = GetInfixTokens(expression);
-        return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
-    }
-
-    public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
-    {
-        HashSet<string> matchedNames = [];
-        HashSet<string> unmatchedNames = [];
-        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
-        {
-            if (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text))
-            { matchedNames.Add(t.Text); continue; }
-            unmatchedNames.Add(t.Text);
-        }
-
-        return new FunctionNamesCheckResult
-        {
-            MatchedNames = [.. matchedNames],
-            UnmatchedNames = [.. unmatchedNames]
-        };
-    }
-
-    public List<string> GetMatchedFunctionNames(string expression)
-    {
-        var tokens = GetInfixTokens(expression);
-        return GetMatchedFunctionNames(tokens);
-    }
-
-    public List<string> GetMatchedFunctionNames(List<Token> tokens)
-    {
-        return [.. tokens
-            .Where(t => t.TokenType == TokenType.Function &&
-                        (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text)))
-            .Select(t => t.Text)
-            .Distinct()];
-    }
 
     #region Expression trees
 
     public TokenTree GetExpressionTree(string expression)
     {
-        var postfixTokens = GetPostfixTokens(expression);
+        var postfixTokens = base.GetPostfixTokens(expression);
         return GetExpressionTree(postfixTokens);
     }
 
@@ -439,7 +403,7 @@ public partial class CoreParser : Tokenizer, IParser
                 {
                     _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
-            }   
+            }
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
@@ -694,24 +658,63 @@ public partial class CoreParser : Tokenizer, IParser
 
     #endregion
 
-    #region Checks before evaluation (optional)
+    #region Utility validation methods
+
+    public FunctionNamesCheckResult CheckFunctionNames(string expression)
+    {
+        var tokens = GetInfixTokens(expression);
+        return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
+    }
+
+    public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
+    {
+        HashSet<string> matchedNames = [];
+        HashSet<string> unmatchedNames = [];
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
+        {
+            if (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text))
+            { matchedNames.Add(t.Text); continue; }
+            unmatchedNames.Add(t.Text);
+        }
+
+        return new FunctionNamesCheckResult
+        {
+            MatchedNames = [.. matchedNames],
+            UnmatchedNames = [.. unmatchedNames]
+        };
+    }
+
+    public List<string> GetMatchedFunctionNames(string expression)
+    {
+        var tokens = GetInfixTokens(expression);
+        return GetMatchedFunctionNames(tokens);
+    }
+
+    public List<string> GetMatchedFunctionNames(List<Token> tokens)
+    {
+        return [.. tokens
+            .Where(t => t.TokenType == TokenType.Function &&
+                        (CustomFunctions.ContainsKey(t.Text) || MainFunctionsArgumentsCount.ContainsKey(t.Text)))
+            .Select(t => t.Text)
+            .Distinct()];
+    }
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckEmptyFunctionArguments(tree.NodeDictionary, _options.TokenPatterns);
+        return _parserValidator.CheckEmptyFunctionArguments(tree.NodeDictionary);
     }
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IParserFunctionMetadata)this, _options.TokenPatterns);
+        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IParserFunctionMetadata)this);
     }
 
-    public InvalidOperatorsCheckResult CheckOperators(string expression)
+    public InvalidOperatorsCheckResult CheckOperatorOperands(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckOperators(tree.NodeDictionary);
+        return _parserValidator.CheckOperatorOperands(tree.NodeDictionary);
     }
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
@@ -720,118 +723,95 @@ public partial class CoreParser : Tokenizer, IParser
         return _parserValidator.CheckOrphanArgumentSeparators(tree.NodeDictionary);
     }
 
-    #endregion
-
-    /// <summary>
-    /// Infers (and caches) the Type of every node in an existing expression tree using the parser's
-    /// standard Evaluate* virtual methods. Returned dictionary maps each Node to its resolved Type (null if unknown).
-    /// </summary>
-    /// <param name="tree">Already built expression tree</param>
-    /// <param name="variables">Optional variable instances (or Types) for identifiers</param>
-    protected internal Dictionary<Node<Token>, Type?> InferNodeTypes(
-        TokenTree tree,
-        Dictionary<string, object?>? variables = null)
+    // Orchestrates two-step validation without doing any tokenization or tree building.
+    // - Always pre-validates parentheses via tokenizer validator (string-only).
+    // - If matched and inputs are provided, runs parser-level checks against infix and/or node dictionary.
+    public ParserValidationReport Validate(
+        string expression,
+        VariableNamesOptions variableNamesOptions,
+        bool earlyReturnOnErrors = false)
     {
-        // Merge constants (consistent with EvaluateType)
-        variables = MergeVariableConstants(variables);
+        if (string.IsNullOrWhiteSpace(expression))
+            return new ParserValidationReport { Expression = expression };
 
-        // We reuse the existing tree nodes; we only need a postfix walk to ensure children first.
-        var postfixTokens = tree.GetPostfixTokens();
-        // Token -> Node lookup is in tree.NodeDictionary already.
+        // Tokenizer stage: parentheses
+        var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
 
-        Dictionary<Node<Token>, Type?> nodeTypeMap = [];
-
-        // Local helper: get node for token
-        Node<Token> GetNode(Token t) => tree.NodeDictionary[t];
-
-        // For building "argument value dictionary" similar to EvaluateType (values here are Types)
-        Dictionary<Node<Token>, object?> boxedMap = new();
-
-        foreach (var token in postfixTokens)
+        //initialize report
+        var report = new ParserValidationReport
         {
-            var node = GetNode(token);
+            Expression = expression,
+            ParenthesesResult = parenthesesResult
+        };
+        if (!parenthesesResult.IsSuccess && earlyReturnOnErrors)
+            return report;
 
-            switch (token.TokenType)
-            {
-                case TokenType.Literal:
-                    {
-                        var t = EvaluateLiteralType(token.Text);
-                        nodeTypeMap[node] = t;
-                        boxedMap[node] = t;
-                        break;
-                    }
-                case TokenType.Identifier:
-                    {
-                        Type? t = null;
-                        if (variables is not null && variables.TryGetValue(token.Text, out var v))
-                        {
-                            if (v is Type vt) t = vt;
-                            else t = v?.GetType();
-                        }
-                        nodeTypeMap[node] = t;
-                        boxedMap[node] = t;
-                        break;
-                    }
-                case TokenType.Function:
-                    {
-                        // Arguments have already been processed (postfix)
-                        var args = node.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, boxedMap);
-                        var ft = EvaluateFunctionType(token.Text, args);
-                        nodeTypeMap[node] = ft;
-                        boxedMap[node] = ft;
-                        break;
-                    }
-                case TokenType.Operator:
-                    {
-                        var (lNode, rNode) = node.GetBinaryArgumentNodes();
-                        var lt = nodeTypeMap.GetValueOrDefault(lNode);
-                        var rt = nodeTypeMap.GetValueOrDefault(rNode);
-                        Type? result = null;
-                        try
-                        {
-                            result = EvaluateOperatorType(token.Text, lt, rt);
-                        }
-                        catch
-                        {
-                            // Unknown operator type -> leave null
-                        }
-                        nodeTypeMap[node] = result;
-                        boxedMap[node] = result;
-                        break;
-                    }
-                case TokenType.OperatorUnary:
-                    {
-                        bool isPrefix = _options.TokenPatterns.UnaryOperatorDictionary[token.Text].Prefix;
-                        var child = node.GetUnaryArgumentNode(isPrefix);
-                        var ct = nodeTypeMap.GetValueOrDefault(child);
-                        Type? result = null;
-                        try
-                        {
-                            result = EvaluateUnaryOperatorType(token.Text, ct);
-                        }
-                        catch
-                        {
-                            // Leave null
-                        }
-                        nodeTypeMap[node] = result;
-                        boxedMap[node] = result;
-                        break;
-                    }
-                case TokenType.ArgumentSeparator:
-                    {
-                        // Treat argument separator nodes as producing no type
-                        nodeTypeMap[node] = null;
-                        boxedMap[node] = null;
-                        break;
-                    }
-                default:
-                    nodeTypeMap[node] = null;
-                    boxedMap[node] = null;
-                    break;
-            }
+        // Build infix once (needed for variable names and function names)
+        var infixTokens = GetInfixTokens(expression);
+
+        // Tokenizer stage: variable names
+        var variableNamesResult = _tokenizerValidator.CheckVariableNames(infixTokens, variableNamesOptions);
+        report.VariableNamesResult = variableNamesResult;
+        if (!variableNamesResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched variable names in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
         }
 
-        return nodeTypeMap;
+        // Parser stage: function names (needs infix + metadata)
+        var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IParserFunctionMetadata)this);
+        report.FunctionNamesResult = functionNamesResult;
+        if (!functionNamesResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched function names in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+        // Build tree for node-dictionary-based checks
+        List<Token> postfixTokens = GetPostfixTokens(infixTokens);
+        TokenTree tree = GetExpressionTree(postfixTokens);
+        Dictionary<Token, Node<Token>> nodeDictionary = tree.NodeDictionary;
+
+        // Parser stage: empty function arguments
+        var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(nodeDictionary);
+        report.EmptyFunctionArgumentsResult = emptyFunctionArgumentsResult;
+        if (!emptyFunctionArgumentsResult.IsSuccess)
+        {
+            _logger.LogWarning("Empty function arguments in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+       // Parser stage: function arguments count (needs metadata)
+        var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(nodeDictionary, this);
+        report.FunctionArgumentsCountResult = functionArgumentsCountResult;
+        if (!functionArgumentsCountResult.IsSuccess)
+        {
+            _logger.LogWarning("Unmatched function arguments in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+        // Parser stage: invalid operators
+        var operatorOperandsResult = _parserValidator.CheckOperatorOperands(nodeDictionary);
+        report.OperatorOperandsResult = operatorOperandsResult;
+        if (!operatorOperandsResult.IsSuccess)
+        {
+            _logger.LogWarning("Invalid operators in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+        // Parser stage: orphan/invalid argument separators
+        var orphanArgumentSeparatorsResult = _parserValidator.CheckOrphanArgumentSeparators(nodeDictionary);
+        report.OrphanArgumentSeparatorsResult = orphanArgumentSeparatorsResult;
+        if (!orphanArgumentSeparatorsResult.IsSuccess)
+        {
+            _logger.LogWarning("Invalid argument separators in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+         return report;
     }
+
+    #endregion
+
 
 }

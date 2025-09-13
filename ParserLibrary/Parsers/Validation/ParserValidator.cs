@@ -1,7 +1,4 @@
-using Microsoft.Extensions.Logging;
-using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
@@ -10,76 +7,22 @@ namespace ParserLibrary.Parsers.Validation;
 public sealed class ParserValidator : IParserValidator
 {
     private readonly ILogger<ParserValidator> _logger;
-    private readonly ITokenizerValidator _tokValidator;
     private readonly TokenPatterns _patterns;
 
-    public ParserValidator(ILogger<ParserValidator> logger, ITokenizerValidator tokenizerValidator, TokenPatterns patterns)
+    public ParserValidator(
+        ILogger<ParserValidator> logger,
+        ITokenizerValidator tokenizerValidator,
+        TokenPatterns patterns)
     {
         _logger = logger;
-        _tokValidator = tokenizerValidator;
         _patterns = patterns;
-    }
-
-    // Orchestrates two-step validation without doing any tokenization or tree building.
-    // - Always pre-validates parentheses via tokenizer validator (string-only).
-    // - If matched and inputs are provided, runs parser-level checks against infix and/or node dictionary.
-    public ParserValidationReport Validate(
-        string expression,
-        List<Token>? infixTokens = null,
-        TokenTree? tree = null,
-        IParserFunctionMetadata? metadata = null,
-        bool stopAtTokenizerErrors = true)
-    {
-        var ok = _tokValidator.CheckParentheses(expression, out var parenDetail);
-
-        var report = new ParserValidationReport
-        {
-            Expression = expression,
-            ParenthesesMatched = ok,
-            ParenthesesDetail = ok ? null : parenDetail
-        };
-
-        if (!ok && stopAtTokenizerErrors)
-            return report;
-
-        // Function name checks (require infixTokens + metadata)
-        if (ok && infixTokens is not null && metadata is not null)
-        {
-            var fn = CheckFunctionNames(infixTokens, metadata);
-            report.FunctionNames = fn;
-            if (!fn.IsSuccess) _logger.LogWarning("Unmatched function names in formula: {expr}", expression);
-        }
-
-        // Node-dictionary-based checks (require a built tree)
-        var nodeDict = tree?.NodeDictionary;
-        if (nodeDict is not null)
-        {
-            var ops = CheckOperators(nodeDict);
-            report.Operators = ops;
-            if (!ops.IsSuccess) _logger.LogWarning("Invalid operators in formula: {expr}", expression);
-
-            var seps = CheckOrphanArgumentSeparators(nodeDict);
-            report.ArgumentSeparators = seps;
-            if (!seps.IsSuccess) _logger.LogWarning("Invalid argument separators in formula: {expr}", expression);
-
-            if (metadata is not null)
-            {
-                var argcnt = CheckFunctionArgumentsCount(nodeDict, metadata, _patterns);
-                report.FunctionArgumentsCount = argcnt;
-                if (!argcnt.IsSuccess) _logger.LogWarning("Unmatched function arguments in formula: {expr}", expression);
-            }
-
-            var empty = CheckEmptyFunctionArguments(nodeDict, _patterns);
-            report.EmptyFunctionArguments = empty;
-            if (!empty.IsSuccess) _logger.LogWarning("Empty function arguments in formula: {expr}", expression);
-        }
-
-        return report;
     }
 
     // ---- Granular checks (no tokenization / no tree building) ----
 
-    public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IParserFunctionMetadata metadata)
+    public FunctionNamesCheckResult CheckFunctionNames(
+        List<Token> infixTokens,
+        IParserFunctionMetadata metadata)
     {
         HashSet<string> matched = [];
         HashSet<string> unmatched = [];
@@ -103,8 +46,7 @@ public sealed class ParserValidator : IParserValidator
     }
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(
-        Dictionary<Token, Node<Token>> nodeDictionary,
-        TokenPatterns patterns)
+        Dictionary<Token, Node<Token>> nodeDictionary)
     {
         List<FunctionArgumentCheckResult> valid = [];
         List<FunctionArgumentCheckResult> invalid = [];
@@ -115,7 +57,7 @@ public sealed class ParserValidator : IParserValidator
             if (token.TokenType != TokenType.Function) continue;
 
             var node = entry.Value;
-            var args = node.GetFunctionArgumentNodes(patterns.ArgumentSeparator);
+            var args = node.GetFunctionArgumentNodes(_patterns.ArgumentSeparator);
             var res = new FunctionArgumentCheckResult { FunctionName = token.Text, Position = token.Index + 1 };
 
             if (args.Any(n => n.Value!.IsNull)) invalid.Add(res); else valid.Add(res);
@@ -126,8 +68,7 @@ public sealed class ParserValidator : IParserValidator
    
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
-        IParserFunctionMetadata metadata,
-        TokenPatterns patterns)
+        IParserFunctionMetadata metadata)
     {
         HashSet<FunctionArgumentCheckResult> valid = [];
         HashSet<FunctionArgumentCheckResult> invalid = [];
@@ -138,7 +79,7 @@ public sealed class ParserValidator : IParserValidator
             if (node.Value!.TokenType != TokenType.Function) continue;
 
             string name = node.Value.Text;
-            int actual = node.GetFunctionArgumentsCount(patterns.ArgumentSeparator.ToString());
+            int actual = node.GetFunctionArgumentsCount(_patterns.ArgumentSeparator.ToString());
 
             var fixedCount = metadata.GetCustomFunctionFixedArgCount(name) ??
                              metadata.GetMainFunctionFixedArgCount(name);
@@ -182,7 +123,8 @@ public sealed class ParserValidator : IParserValidator
         return new FunctionArgumentsCountCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
 
-    public InvalidOperatorsCheckResult CheckOperators(Dictionary<Token, Node<Token>> nodeDictionary)
+    public InvalidOperatorsCheckResult CheckOperatorOperands(
+        Dictionary<Token, Node<Token>> nodeDictionary)
     {
         List<OperatorArgumentCheckResult> valid = [];
         List<OperatorArgumentCheckResult> invalid = [];
@@ -201,7 +143,8 @@ public sealed class ParserValidator : IParserValidator
         return new InvalidOperatorsCheckResult { ValidOperators = [.. valid], InvalidOperators = [.. invalid] };
     }
 
-    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary)
+    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(
+        Dictionary<Token, Node<Token>> nodeDictionary)
     {
         List<int> valid = [];
         List<int> invalid = [];

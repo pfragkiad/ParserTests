@@ -233,7 +233,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
         _parserValidator.CheckFunctionNames(_infixTokens, (IParserFunctionMetadata)this);
 
     public InvalidOperatorsCheckResult CheckOperators() =>
-        _parserValidator.CheckOperators(_nodeDictionary);
+        _parserValidator.CheckOperatorOperands(_nodeDictionary);
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
         _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);

@@ -3,13 +3,13 @@ using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers.Validation;
 
-public sealed class TokenizerValidationReport : CheckResult
+public class TokenizerValidationReport : CheckResult
 {
     public string Expression { get; init; } = string.Empty;
 
-    public ParenthesisCheckResult? ParenthesesResult { get; init; }
+    public ParenthesisCheckResult? ParenthesesResult { get; set; }
     
-    public VariableNamesCheckResult? VariableNamesResult { get; init; }
+    public VariableNamesCheckResult? VariableNamesResult { get; set; }
 
     public override bool IsSuccess => (ParenthesesResult?.IsSuccess ?? true) && (VariableNamesResult?.IsSuccess ?? true);
 

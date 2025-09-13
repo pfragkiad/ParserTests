@@ -3,7 +3,7 @@ using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Validation;
 
-public sealed class TokenizerValidator : ITokenizerValidator
+public class TokenizerValidator : ITokenizerValidator
 {
     private readonly ILogger<TokenizerValidator> _logger;
     private readonly TokenPatterns _patterns;
@@ -183,10 +183,6 @@ public sealed class TokenizerValidator : ITokenizerValidator
         };
     }
 
-    #endregion
-
-    
-
     // Aggregator for the post stage (infix-only).
     public VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options)
     {
@@ -207,4 +203,9 @@ public sealed class TokenizerValidator : ITokenizerValidator
         // No ignore rules: strict matching (no ignores)
         return CheckVariableNames(infixTokens, options.KnownIdentifierNames, []);
     }
+
+    #endregion
+
+    
+
 }

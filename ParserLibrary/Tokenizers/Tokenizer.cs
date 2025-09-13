@@ -491,7 +491,7 @@ public class Tokenizer : ITokenizer
     // Full validation report (convenience method if no Parser validation is needed)
     public TokenizerValidationReport Validate(
         string expression,
-        VariableNamesOptions options)
+        VariableNamesOptions nameOptions)
     {
         if(string.IsNullOrWhiteSpace(expression)) return TokenizerValidationReport.Success;
         var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
@@ -505,7 +505,7 @@ public class Tokenizer : ITokenizer
         //calculate the infix tokens only if we need to check variable names
         List<Token> infixTokens = GetInfixTokens(expression);
 
-        var namesResult = _tokenizerValidator.CheckVariableNames(infixTokens, options);
+        var namesResult = _tokenizerValidator.CheckVariableNames(infixTokens, nameOptions);
 
         return new TokenizerValidationReport
         {
