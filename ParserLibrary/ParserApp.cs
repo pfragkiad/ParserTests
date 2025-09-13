@@ -589,13 +589,16 @@ public static class ParserApp
     public static IServiceCollection AddCommonParsers(this IServiceCollection services)
     {
         return services
-            .AddParser<CoreParser>("Core", TokenizerOptions.Default) // base parser with no customizations  
-
             .AddParser<DoubleParser>("Default", TokenizerOptions.Default)
             .AddParser<DoubleParser>("Double", TokenizerOptions.Default) //practically an alias
-
             .AddParser<Vector3Parser>("Vector3", TokenizerOptions.Default)
-            .AddParser<ComplexParser>("Complex", TokenizerOptions.Default);
+            .AddParser<ComplexParser>("Complex", TokenizerOptions.Default)
+
+            .AddStatefulParser<DoubleStatefulParser>("Default", TokenizerOptions.Default)
+            .AddStatefulParser<DoubleStatefulParser>("Double", TokenizerOptions.Default) //practically an alias
+            .AddStatefulParser<Vector3StatefulParser>("Vector3", TokenizerOptions.Default)
+            .AddStatefulParser<ComplexStatefulParser>("Complex", TokenizerOptions.Default)
+            ;
     }
 
 
@@ -620,14 +623,11 @@ public static class ParserApp
         return _commonParsersHost!;
     }
 
-    public static IParser GetCoreParser()
-    {
-        CreateCommonsHostIfNeeded();
-        return _commonParsersHost!.Services.GetParser("Core");
-    }
-
     public static IParser GetDefaultParser() =>
         GetDoubleParser();
+
+    public static IStatefulParser GetDefaulteStatefulParser() =>
+        GetDoubleStatefulParser();
 
     public static IParser GetDoubleParser()
     {
@@ -635,16 +635,35 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Double");
     }
 
+    public static IStatefulParser GetDoubleStatefulParser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetStatefulParser("Double");
+    }
+
+
     public static IParser GetVector3Parser()
     {
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParser("Vector3");
     }
 
+    public static IStatefulParser GetVector3StatefulParser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetStatefulParser("Vector3");
+    }
+
     public static IParser GetComplexParser()
     {
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParser("Complex");
+    }
+
+    public static IStatefulParser GetComplexStatefulParser()
+    {
+        CreateCommonsHostIfNeeded();
+        return _commonParsersHost!.Services.GetStatefulParser("Complex");
     }
 
     public static double? Evaluate(string expression, Dictionary<string, object?>? variables = null)

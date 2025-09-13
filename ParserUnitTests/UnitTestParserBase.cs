@@ -9,7 +9,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestFunctionWithExpression()
     {
-        IParser parser = ParserApp.GetCoreParser();
+        IParser parser = ParserApp.GetDoubleParser();
 
         string expression = "a+f10(8+5) + f2(321+asd*2^2)"; //returns 860
 
