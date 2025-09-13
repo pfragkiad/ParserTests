@@ -96,17 +96,11 @@ Console.WriteLine(ParserApp.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 
 
 ## `DefaultParser` examples #2 (custom functions)
 
-That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
+That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DoubleParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
 ```cs
-public class SimpleFunctionParser(
-    ILogger<DoubleParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : DoubleParser(logger, options, tokenizerValidator, parserValidator)
+public class SimpleFunctionParser(ILogger<DoubleParser> logger, ParserServices ps) : DoubleParser(logger, ps)
 {
-
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
         double[] d = GetDoubleFunctionArguments(args);
@@ -230,12 +224,7 @@ using System.Numerics;
 
 namespace ParserLibrary.Parsers;
 
-public class ComplexParser(
-    ILogger<ComplexParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class ComplexParser(ILogger<ComplexParser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
  public override Dictionary<string, object?> Constants => 
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
@@ -369,12 +358,7 @@ namespace ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser(
-    ILogger<Vector3Parser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
 
    public override Dictionary<string, object?> Constants =>
@@ -534,12 +518,7 @@ public class Item
 A custom parser that uses custom types derives from the `CoreParser` class. Because the `CoreParser` class does not assume any type in advance, we should override the `EvaluateLiteral` function which is used to parse the integer numbers in the string. In the following example we define the `+` operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so it is easier to write its implementation:
 
 ```cs
-public class ItemParser(
-    ILogger<ItemParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
 
     //we assume that literals are integer numbers only
@@ -629,7 +608,7 @@ Console.WriteLine(result); // foo bar 12
 When you need:
 * expression optimization
 * validation before evaluation,
-use a stateful parser variant. A stateful parser derives from `StatefulParserBase` (which itself supplies all core functionality plus mutable `Expression` / `Variables`).
+use a stateful parser variant. A stateful parser derives from `CoreStatefulParser` (which itself supplies all core functionality plus mutable `Expression` / `Variables`).
 
 StatefulParsers are Transient by default contrary to the common Parsers, which are Singletons and do not keep state.
 Because they are stateful, you can keep the expression (via the `Expression` property) and change the `Variables` before re-evaluation.
@@ -640,12 +619,7 @@ The method returns a collection of all the validation errors found.
 Minimal example (mirrors the logic of the stateless `ItemParser`):
 
 ```cs
-public class ItemStatefulParser(
-    ILogger<ItemStatefulParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreStatefulParser(logger, options, tokenizerValidator, parserValidator)
+public class ItemStatefulParser(ILogger<ItemStatefulParser> logger, ParserServices ps) : CoreStatefulParser(logger, ps)
 {
 
 
@@ -774,3 +748,4 @@ Console.WriteLine("Original:");
 tree.Print2();
 Console.WriteLine("Optimized:");
 optimized.Print2();
+```

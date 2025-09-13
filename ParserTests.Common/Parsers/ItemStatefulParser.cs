@@ -1,18 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using ParserLibrary.Parsers;
-using ParserLibrary.Tokenizers;
-using ParserLibrary.Tokenizers.Interfaces;
-using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserTests.Common.Parsers;
 
-public class ItemStatefulParser(
-    ILogger<ItemStatefulParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreStatefulParser(logger, options, tokenizerValidator, parserValidator)
+public class ItemStatefulParser(ILogger<ItemStatefulParser> logger, ParserServices ps) : CoreStatefulParser(logger, ps)
 {
 
     //we assume that LITERALS are integer numbers only
@@ -40,7 +31,7 @@ public class ItemStatefulParser(
             dynamic left = leftOperand!, right = rightOperand!;
             return left + right;
         }
-        if(operatorName == "*")
+        if (operatorName == "*")
         {
             _logger.LogDebug("Multiplying with * operator ${left} and ${right}", leftOperand, rightOperand);
             dynamic left = leftOperand!, right = rightOperand!;

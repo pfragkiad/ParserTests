@@ -1,18 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using ParserLibrary.Parsers;
-using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers;
-using ParserLibrary.Tokenizers.Interfaces;
+﻿namespace ParserLibrary.Parsers.Common;
 
-namespace ParserLibrary.Parsers.Common;
-
-public class DoubleParser(
-    ILogger<DoubleParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class DoubleParser(ILogger<DoubleParser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
 
     /// <summary>
@@ -59,7 +47,7 @@ public class DoubleParser(
 
     public static double[] GetDoubleFunctionArguments(object?[] args) =>
         [.. args.Select(GetDouble)];
-    
+
     #endregion
 
     protected override object? EvaluateUnaryOperator(string operatorName, object? operand)

@@ -241,7 +241,13 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            .AddSingleton<IParser, TParser>();
+            .AddSingleton<IParser, TParser>(sp =>
+            {
+                var servicesBundle = sp.GetRequiredService<ParserServices>();
+                return ActivatorUtilities.CreateInstance<TParser>(sp, servicesBundle);
+            })
+        //.AddSingleton<IParser, TParser>();
+        ;
     }
 
     // Non-keyed: AddParser overload with options
@@ -271,7 +277,13 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            .AddSingleton<IParser, TParser>();
+            .AddSingleton<IParser, TParser>(sp =>
+            {
+                var servicesBundle = sp.GetRequiredService<ParserServices>();
+                return ActivatorUtilities.CreateInstance<TParser>(sp, servicesBundle);
+            })
+            //.AddSingleton<IParser, TParser>()
+            ;
     }
 
     // Keyed: AddParser — register keyed IParserValidator and pass via factory
@@ -314,13 +326,19 @@ public static class ParserApp
             })
             .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
             {
-                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key);
-                var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
-                var parVal = provider.GetRequiredKeyedService<IParserValidator>(key);
-                // pass options + both validators explicitly
-                return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts), tokVal, parVal);
-            });
+                var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
+                return ActivatorUtilities.CreateInstance<TParser>(provider, servicesBundle);
+            })
+            //.AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
+            //{
+            //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            //    var opts = monitor.Get(key);
+            //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
+            //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(key);
+            //    // pass options + both validators explicitly
+            //    return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts), tokVal, parVal);
+            //})
+            ;
     }
 
     // Keyed: AddParser with in-memory options
@@ -362,14 +380,20 @@ public static class ParserApp
             })
             .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
             {
-                var logger = provider.GetRequiredService<ILogger<TParser>>();
-                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(key);
-                var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
-                var parVal = provider.GetRequiredKeyedService<IParserValidator>(key);
-                return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts), tokVal, parVal);
-                //return ActivatorUtilities.CreateInstance<TParser>(provider,logger,provider);
-            });
+                var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
+                return ActivatorUtilities.CreateInstance<TParser>(provider, servicesBundle);
+            })
+            //.AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
+            //{
+            //    var logger = provider.GetRequiredService<ILogger<TParser>>();
+            //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            //    var opts = monitor.Get(key);
+            //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
+            //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(key);
+            //    return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts), tokVal, parVal);
+            //    //return ActivatorUtilities.CreateInstance<TParser>(provider,logger,provider);
+            //})
+            ;
     }
 
     // Non-keyed: AddStatefulParser — add IParserValidator so DI can resolve constructor
@@ -402,7 +426,13 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            .AddTransient<IStatefulParser, TStatefulParser>();
+            .AddTransient<IStatefulParser, TStatefulParser>(sp =>
+            {
+                var servicesBundle = sp.GetRequiredService<ParserServices>();
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(sp, servicesBundle);
+            })
+            //.AddTransient<IStatefulParser, TStatefulParser>()
+            ;
     }
 
     // Non-keyed: AddStatefulParser with options
@@ -432,7 +462,13 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            .AddTransient<IStatefulParser, TStatefulParser>();
+            //.AddTransient<IStatefulParser, TStatefulParser>()
+            .AddTransient<IStatefulParser, TStatefulParser>(sp =>
+            {
+                var servicesBundle = sp.GetRequiredService<ParserServices>();
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(sp, servicesBundle);
+            })
+            ;
     }
 
     // Keyed: AddStatefulParser — register keyed parser validator and pass explicitly
@@ -473,15 +509,21 @@ public static class ParserApp
                     ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
                 };
             })
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //{
+            //    var name = k as string;
+            //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            //    var opts = monitor.Get(name);
+            //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
+            //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
+            //    return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
+            //})
+            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, _) =>
             {
-                var name = k as string;
-                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(name);
-                var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
-                var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
-            });
+                var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, servicesBundle);
+            })
+            ;
     }
 
     // Keyed: AddStatefulParser with options
@@ -521,15 +563,21 @@ public static class ParserApp
                     ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
                 };
             })
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //{
+            //    var name = k as string;
+            //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+            //    var opts = monitor.Get(name);
+            //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
+            //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
+            //    return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
+            //})
+            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, _) =>
             {
-                var name = k as string;
-                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
-                var opts = monitor.Get(name);
-                var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
-                var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
-            });
+                var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
+                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, servicesBundle);
+            })
+            ;
     }
 
 

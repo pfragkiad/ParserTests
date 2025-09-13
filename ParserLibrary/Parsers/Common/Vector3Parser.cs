@@ -1,15 +1,8 @@
 ﻿using System.Numerics;
-using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Common;
 
-public class Vector3Parser(
-    ILogger<Vector3Parser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
@@ -71,7 +64,7 @@ public class Vector3Parser(
 
     protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
-        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(leftOperand,rightOperand);
+        (Vector3 left, Vector3 right) = GetVector3BinaryOperands(leftOperand, rightOperand);
 
         return operatorName switch
         {
@@ -81,7 +74,7 @@ public class Vector3Parser(
             "/" => left / right,
             "^" => Vector3.Cross(left, right),
             "@" => Vector3.Dot(left, right),
-            _ => base.EvaluateOperator(operatorName, leftOperand,rightOperand)
+            _ => base.EvaluateOperator(operatorName, leftOperand, rightOperand)
         };
     }
 

@@ -1,19 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Common;
-using ParserLibrary.Tokenizers;
-using ParserLibrary.Tokenizers.Interfaces;
-using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserTests.Common.Parsers;
 
-public class FunctionsOperandsParser(
-    ILogger<DoubleParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : DoubleParser(logger, options, tokenizerValidator, parserValidator)
+public class FunctionsOperandsParser(ILogger<DoubleParser> logger, ParserServices ps) : DoubleParser(logger, ps)
 {
     protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
     {

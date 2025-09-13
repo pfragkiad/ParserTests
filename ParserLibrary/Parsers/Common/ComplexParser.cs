@@ -1,17 +1,9 @@
 ﻿using System.Numerics;
-using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Common;
 
-public class ComplexParser(
-    ILogger<ComplexParser> logger,
-    IOptions<TokenizerOptions> options,
-    ITokenizerValidator tokenizerValidator,
-    IParserValidator parserValidator)
-    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+public class ComplexParser(ILogger<ComplexParser> logger, ParserServices ps) : CoreParser(logger, ps)
 {
-
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
