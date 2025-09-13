@@ -13,7 +13,11 @@ public class Tokenizer : ITokenizer
 
     protected readonly ITokenizerValidator _tokenizerValidator;
     
-    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
+    public Tokenizer(ILogger<Tokenizer> logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator) :
+        this(logger as ILogger, options,tokenizerValidator)
+    {}
+
+    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
     {
         _logger = logger;
         _options = options.Value;
@@ -22,25 +26,6 @@ public class Tokenizer : ITokenizer
 
         _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
     }
-
-    //This constructor targets subclasses ONLY for simplification purposes
-    //protected Tokenizer(ILogger logger, IServiceProvider serviceProvider) 
-    //{
-    //    _logger = logger;
-    //    var options = serviceProvider.GetService<IOptions<TokenizerOptions>>();
-    //    _tokenizerValidator = serviceProvider.GetRequiredService<ITokenizerValidator>();
-    //    _options = options?.Value.TokenPatterns is null ? TokenizerOptions.Default : options.Value;
-    //}
-
-    //protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
-    //{
-    //    _logger = logger;
-    //    _options = options.Value;
-
-    //    if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
-
-    //    _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
-    //}
 
 
     protected readonly TokenizerOptions _options;
