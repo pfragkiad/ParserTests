@@ -22,6 +22,10 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
         : base(logger, options, tokenizerValidator, parserValidator)
     { }
 
+    protected CoreStatefulParser(ILogger<CoreStatefulParser> logger,
+        IServiceProvider serviceProvider) : base(logger, serviceProvider)
+    { }
+
     protected void Reset()
     {
         _infixTokens = [];
@@ -190,7 +194,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
     public ParenthesisCheckResult ValidateParentheses() => ValidateParentheses(_expression);
 
-    public List<string> GetVariableNames() =>  GetVariableNames(_infixTokens);
+    public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
 
     // MODIFIED: delegate variable-name checks directly to tokenizer validator (infix-based)
     public VariableNamesCheckResult CheckVariableNames(
@@ -255,7 +259,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
         // 2) Acquire/reuse infix tokens
         var infixTokens = _infixTokens.Count != 0 ? _infixTokens : GetInfixTokens(_expression);
-        if (_infixTokens.Count == 0) _infixTokens = infixTokens;
+        if (_infixTokens.Count == 0) _infixTokens = infixTokens; // keep state in sync   <--------------
 
         // 3) Tokenizer stage: variable names
         // Prefer the provided KnownIdentifierNames; if empty/null, fall back to Variables.Keys (already merged with Constants).
@@ -293,10 +297,10 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
         // 5) Build/reuse postfix and tree for node-dictionary-based checks
         var postfixTokens = _postfixTokens.Count != 0 ? _postfixTokens : GetPostfixTokens(infixTokens);
-        if (_postfixTokens.Count == 0) _postfixTokens = postfixTokens;
+        if (_postfixTokens.Count == 0) _postfixTokens = postfixTokens; // keep state in sync   <--------------
 
         var tree = GetExpressionTree(postfixTokens);
-        _nodeDictionary = tree.NodeDictionary; // keep state in sync
+        _nodeDictionary = tree.NodeDictionary; // keep state in sync   <--------------
 
         // 6) Parser stage: empty function arguments
         var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);

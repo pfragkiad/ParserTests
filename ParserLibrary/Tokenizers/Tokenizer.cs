@@ -1,4 +1,5 @@
-﻿using ParserLibrary.Parsers.Validation;
+﻿using Microsoft.Extensions.DependencyInjection;
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
@@ -22,14 +23,13 @@ public class Tokenizer : ITokenizer
         _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
     }
 
-    protected Tokenizer(ILogger logger, IOptions<TokenizerOptions> options, ITokenizerValidator tokenizerValidator)
+    //This constructor targets subclasses ONLY for simplification purposes
+    protected Tokenizer(ILogger logger, IServiceProvider serviceProvider) 
     {
         _logger = logger;
-        _options = options.Value;
-
-        if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
-
-        _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
+        var options = serviceProvider.GetService<IOptions<TokenizerOptions>>();
+        _tokenizerValidator = serviceProvider.GetRequiredService<ITokenizerValidator>();
+        _options = options?.Value.TokenPatterns is null ? TokenizerOptions.Default : options.Value;
     }
 
 
