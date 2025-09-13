@@ -8,7 +8,6 @@ namespace ParserLibrary.Parsers;
 
 public partial class CoreParser : Tokenizer, IParser
 {
-    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     protected readonly IParserValidator _parserValidator;
 
@@ -34,6 +33,8 @@ public partial class CoreParser : Tokenizer, IParser
         _parserValidator = parserValidator ?? throw new ArgumentNullException(nameof(parserValidator));
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
+
+    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     /// <summary>
     /// The dictionary stores the main functions with their names and the exact number of arguments.

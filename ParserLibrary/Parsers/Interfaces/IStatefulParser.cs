@@ -1,6 +1,5 @@
 ﻿using FluentValidation.Results;
-using ParserLibrary.ExpressionTree;
-using ParserLibrary.Tokenizers;
+using ParserLibrary.Parsers.Validation;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -16,19 +15,47 @@ public enum ExpressionOptimizationMode
 
 public interface IStatefulParser : IParser
 {
-    string? Expression { get; set; }
+    // ---------------- State & configuration ----------------
+
+    /// <summary>
+    /// Current expression held by the stateful parser.
+    /// </summary>
+    string Expression { get; set; }
+
+    /// <summary>
+    /// Current variables map (merged with parser Constants on set).
+    /// </summary>
     Dictionary<string, object?> Variables { get; set; }
 
-    // Basic (no optimization) evaluation APIs
+    // ---------------- Basic evaluation (no optimization) ----------------
+
+    /// <summary>
+    /// Evaluates the current expression using the current state (Expression, Variables).
+    /// </summary>
     object? Evaluate();
+
+    /// <summary>
+    /// Evaluates the current expression using the provided variables (overrides current Variables for this call).
+    /// </summary>
     object? Evaluate(Dictionary<string, object?>? variables = null);
+
+    /// <summary>
+    /// Infers the result Type of the current expression using the current state.
+    /// </summary>
     Type EvaluateType();
+
+    /// <summary>
+    /// Infers the result Type of the current expression using the provided variables.
+    /// </summary>
     Type EvaluateType(Dictionary<string, object?>? variables = null);
 
-    //// Existing simple optimized evaluation (kept for backward compatibility – defaults to StaticTypeMaps)
-    //object? EvaluateWithTreeOptimizer(Dictionary<string, object?>? variables = null);
+    // ---------------- Optimized evaluation ----------------
 
-    // New: extended optimized evaluation with explicit maps and selectable mode
+    /// <summary>
+    /// Evaluates after preparing tokens/tree with the requested optimization mode.
+    /// For StaticTypeMaps, you may provide variableTypes/functionReturnTypes/ambiguousFunctionReturnTypes.
+    /// For ParserInference, types are inferred from provided variables.
+    /// </summary>
     object? EvaluateWithTreeOptimizer(
         Dictionary<string, object?>? variables = null,
         Dictionary<string, Type>? variableTypes = null,
@@ -36,12 +63,20 @@ public interface IStatefulParser : IParser
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null,
         ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.StaticTypeMaps);
 
-    // New: parser-inference convenience API (equivalent to optimizationMode = ParserInference)
+    /// <summary>
+    /// Convenience API to evaluate with parser-inference optimizer (equivalent to optimizationMode = ParserInference).
+    /// </summary>
     object? EvaluateWithParserInferenceOptimizer(
         string expression,
         Dictionary<string, object?>? variables = null);
 
-    // Optional: expose raw optimization result (before/after counts) if needed
+    // ---------------- Validation ----------------
 
-    List<ValidationFailure> Validate(string[]? ignoreIdentifierCaptureGroups = null);
+    /// <summary>
+    /// Runs tokenizer and parser validations against the current expression.
+    /// If variableNamesOptions.KnownIdentifierNames is null/empty, Variables.Keys are used.
+    /// </summary>
+    List<ValidationFailure> Validate(
+        VariableNamesOptions variableNamesOptions,
+        bool earlyReturnOnErrors = false);
 }

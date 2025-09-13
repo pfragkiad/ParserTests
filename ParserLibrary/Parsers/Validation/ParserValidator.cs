@@ -44,28 +44,6 @@ public sealed class ParserValidator : IParserValidator
             UnmatchedNames = [.. unmatched]
         };
     }
-
-    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(
-        Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        List<FunctionArgumentCheckResult> valid = [];
-        List<FunctionArgumentCheckResult> invalid = [];
-
-        foreach (var entry in nodeDictionary)
-        {
-            var token = entry.Key;
-            if (token.TokenType != TokenType.Function) continue;
-
-            var node = entry.Value;
-            var args = node.GetFunctionArgumentNodes(_patterns.ArgumentSeparator);
-            var res = new FunctionArgumentCheckResult { FunctionName = token.Text, Position = token.Index + 1 };
-
-            if (args.Any(n => n.Value!.IsNull)) invalid.Add(res); else valid.Add(res);
-        }
-
-        return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
-    }
-   
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
         IParserFunctionMetadata metadata)
@@ -122,6 +100,28 @@ public sealed class ParserValidator : IParserValidator
 
         return new FunctionArgumentsCountCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
+
+    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(
+        Dictionary<Token, Node<Token>> nodeDictionary)
+    {
+        List<FunctionArgumentCheckResult> valid = [];
+        List<FunctionArgumentCheckResult> invalid = [];
+
+        foreach (var entry in nodeDictionary)
+        {
+            var token = entry.Key;
+            if (token.TokenType != TokenType.Function) continue;
+
+            var node = entry.Value;
+            var args = node.GetFunctionArgumentNodes(_patterns.ArgumentSeparator);
+            var res = new FunctionArgumentCheckResult { FunctionName = token.Text, Position = token.Index + 1 };
+
+            if (args.Any(n => n.Value!.IsNull)) invalid.Add(res); else valid.Add(res);
+        }
+
+        return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
+    }
+   
 
     public InvalidOperatorsCheckResult CheckOperatorOperands(
         Dictionary<Token, Node<Token>> nodeDictionary)

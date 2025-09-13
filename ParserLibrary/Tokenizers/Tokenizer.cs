@@ -456,36 +456,36 @@ public class Tokenizer : ITokenizer
     // Public string-based overloads: added optional checkParentheses guard (default false)
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         string[] ignorePrefixes,
         string[] ignorePostfixes)
     {
         var tokens = GetInfixTokens(expression);
-        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
+        return _tokenizerValidator.CheckVariableNames(tokens, knownIdentifierNames, ignorePrefixes, ignorePostfixes);
     }
 
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         Regex? ignoreIdentifierPattern = null)
     {
         var tokens = GetInfixTokens(expression);
-        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreIdentifierPattern);
+        return _tokenizerValidator.CheckVariableNames(tokens, knownIdentifierNames, ignoreIdentifierPattern);
     }
 
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         string[] ignoreCaptureGroups)
     {
         var tokens = GetInfixTokens(expression);
-        return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreCaptureGroups);
+        return _tokenizerValidator.CheckVariableNames(tokens, knownIdentifierNames, ignoreCaptureGroups);
     }
 
-    public VariableNamesCheckResult CheckVariableNames (string expression, VariableNamesOptions options)
+    public VariableNamesCheckResult CheckVariableNames (string expression, VariableNamesOptions variableNameOptions)
     {
         var tokens = GetInfixTokens(expression);
-        return _tokenizerValidator.CheckVariableNames(tokens, options);
+        return _tokenizerValidator.CheckVariableNames(tokens, variableNameOptions);
     }
 
     // Full validation report (convenience method if no Parser validation is needed)
