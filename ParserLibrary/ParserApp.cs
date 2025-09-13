@@ -628,8 +628,8 @@ public static class ParserApp
     public static IParser GetDefaultParser() =>
         GetDoubleParser();
 
-    public static IParserSession GetDefaulteStatefulParser() =>
-        GetDoubleStatefulParser();
+    public static IParserSession GetDefaultParserSession() =>
+        GetDoubleParserSession();
 
     public static IParser GetDoubleParser()
     {
@@ -637,7 +637,7 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Double");
     }
 
-    public static IParserSession GetDoubleStatefulParser()
+    public static IParserSession GetDoubleParserSession()
     {
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParserSession("Double");
@@ -650,7 +650,7 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Vector3");
     }
 
-    public static IParserSession GetVector3StatefulParser()
+    public static IParserSession GetVector3ParserSession()
     {
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParserSession("Vector3");
@@ -662,7 +662,7 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Complex");
     }
 
-    public static IParserSession GetComplexStatefulParser()
+    public static IParserSession GetComplexParserSession()
     {
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParserSession("Complex");

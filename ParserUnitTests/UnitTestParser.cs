@@ -25,7 +25,7 @@ public class UnitTestParser
     }
 
     [Fact]
-    public void TestCustomIntStatefulParser()
+    public void TestCustomIntParserSession()
     {
         var app = ParserApp.GetParserSessionApp<IntParserSession>();
         var parser = app.GetParserSession();
@@ -177,7 +177,7 @@ public class UnitTestParser
     }
 
     [Fact]
-    public void TestCustomTypeStatefulParser()
+    public void TestCustomTypeParserSession()
     {
         //fast build a host and get the parser immediately
         //var parser = ParserApp.GetParserSessionApp<ItemParserSession>().GetParserSession();

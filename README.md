@@ -603,7 +603,7 @@ Item result = (Item)parser.Evaluate("a + add(b,4) + 5",
 Console.WriteLine(result); // foo bar 12
 ```
 
-### `Parser session (stateful)`
+### `Parser session (stateful parser)`
 
 When you need:
 * expression optimization
