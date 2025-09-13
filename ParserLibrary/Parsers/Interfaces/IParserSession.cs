@@ -13,7 +13,7 @@ public enum ExpressionOptimizationMode
     ParserInference    // Uses parser’s own inference (Evaluate*Type) to classify numeric vs non-numeric
 }
 
-public interface IStatefulParser : IParser
+public interface IParserSession : IParser
 {
     // ---------------- State & configuration ----------------
 

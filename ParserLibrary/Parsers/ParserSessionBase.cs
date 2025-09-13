@@ -6,7 +6,7 @@ using ParserLibrary.Parsers.Validation;
 
 namespace ParserLibrary.Parsers;
 
-public class CoreStatefulParser : CoreParser, IStatefulParser
+public class ParserSessionBase : ParserBase, IParserSession
 {
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
@@ -14,15 +14,15 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
     protected Stack<Token> _stack = [];
 
-    public CoreStatefulParser(
-        ILogger<CoreStatefulParser> logger,
+    public ParserSessionBase(
+        ILogger<ParserSessionBase> logger,
         IOptions<TokenizerOptions> options,
         ITokenizerValidator tokenizerValidator,
         IParserValidator parserValidator)
         : base(logger, options, tokenizerValidator, parserValidator)
     { }
 
-    protected internal CoreStatefulParser(ILogger logger, ParserServices services)
+    protected internal ParserSessionBase(ILogger logger, ParserServices services)
         : base(logger, services) { }
 
 

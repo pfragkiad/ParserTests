@@ -1,6 +1,6 @@
 ﻿namespace ParserLibrary.Parsers.Common;
 
-public class DoubleParser(ILogger<DoubleParser> logger, ParserServices ps) : ParserBase(logger, ps)
+public class DoubleParserSession(ILogger<DoubleParser> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
 
     /// <summary>

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserUnitTests;
@@ -38,7 +39,8 @@ public class UnitTestParserBase
         //IHost app = ParserApp.GetParserApp<ParserBase>();
         //IParser parser = app.GetParser();
         IHost app = ParserApp.GetCommonsApp();
-        IParser parser = app.GetParser("Core");
+        //IParser parser = app.GetParser("Default");
+        IParser parser = app.GetParser("Double");
 
         string epxression = "a+tan(8+5) * sin(321,asd)"; //returns 43038
 
@@ -64,7 +66,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestSimpleIdentifierCase()
     {
-        var parserApp = ParserApp.GetParserApp<CoreParser>();
+        var parserApp = ParserApp.GetParserApp<DoubleParser>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "a";
@@ -80,7 +82,7 @@ public class UnitTestParserBase
     [Fact]
     public void TestCompactFunctionCall()
     {
-        var parserApp = ParserApp.GetParserApp<CoreParser>();
+        var parserApp = ParserApp.GetParserApp<DoubleParser>();
         IParser parser = parserApp.Services.GetParser();
 
         string expr = "tan(8)";

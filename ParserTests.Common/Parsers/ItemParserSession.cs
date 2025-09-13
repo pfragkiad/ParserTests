@@ -3,7 +3,7 @@ using ParserLibrary.Parsers;
 
 namespace ParserTests.Common.Parsers;
 
-public class ItemStatefulParser(ILogger<ItemStatefulParser> logger, ParserServices ps) : CoreStatefulParser(logger, ps)
+public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
 
     //we assume that LITERALS are integer numbers only

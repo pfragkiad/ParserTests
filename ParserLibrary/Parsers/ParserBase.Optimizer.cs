@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using ParserLibrary.ExpressionTree;
-using ParserLibrary.Tokenizers;
-
 namespace ParserLibrary.Parsers;
 
-public partial class CoreParser
+public partial class ParserBase
 {
 
     /// <summary>

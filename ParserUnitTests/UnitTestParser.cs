@@ -27,8 +27,8 @@ public class UnitTestParser
     [Fact]
     public void TestCustomIntStatefulParser()
     {
-        var app = ParserApp.GetStatefulParserApp<IntStatefulParser>();
-        var parser = app.GetStatefulParser();
+        var app = ParserApp.GetParserSessionApp<IntParserSession>();
+        var parser = app.GetParserSession();
 
         int result =
             (int)parser.Evaluate(
@@ -180,15 +180,15 @@ public class UnitTestParser
     public void TestCustomTypeStatefulParser()
     {
         //fast build a host and get the parser immediately
-        //var parser = ParserApp.GetStatefulParserApp<ItemStatefulParser>().GetStatefulParser();
-        var parser = ParserApp.GetStatefulParser<ItemStatefulParser>();
+        //var parser = ParserApp.GetParserSessionApp<ItemParserSession>().GetParserSession();
+        var parser = ParserApp.GetParserSession<ItemParserSession>();
 
         //var host = Host.CreateDefaultBuilder()
         //    .ConfigureServices((context, services) =>
         //     {
-        //         services.AddStatefulParser<ItemStatefulParser>(context);
+        //         services.AddParserSession<ItemParserSession>(context);
         //     }).Build();
-        //var parser = host.GetStatefulParser();
+        //var parser = host.GetParserSession();
 
 
         string expression = "a + add(b,4) + 5";
@@ -213,7 +213,7 @@ public class UnitTestParser
     //public void TestStatefulParserFactory()
     //{
     //    // Test the new factory approach
-    //    var parser = App.CreateStatefulParser<ItemStatefulParser>("a + add(b,4) + 5");
+    //    var parser = App.CreateStatefulParser<ItemParserSession>("a + add(b,4) + 5");
 
     //    Item result = (Item)parser.Evaluate(
     //        new() {
@@ -233,10 +233,10 @@ public class UnitTestParser
             {"b", new Item { Name="test2", Value = 3 }}
         };
 
-        var app = ParserApp.GetStatefulParserApp<ItemStatefulParser>();
+        var app = ParserApp.GetParserSessionApp<ItemParserSession>();
 
-        var parser1 = app.GetStatefulParser();
-        var parser2 = app.GetStatefulParser();
+        var parser1 = app.GetParserSession();
+        var parser2 = app.GetParserSession();
 
         var result1 = (Item)parser1.Evaluate("a + 10", variables)!;
         var result2 = (Item)parser2.Evaluate("b * 5", variables)!;

@@ -215,7 +215,7 @@ public static class ParserApp
     public static IServiceCollection AddParser<TParser>(
         this IServiceCollection services,
         HostBuilderContext context,
-        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser
+        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase
     {
         return services
             .AddTokenizerOptions(context, tokenizerSectionPath)
@@ -253,7 +253,7 @@ public static class ParserApp
     // Non-keyed: AddParser overload with options
     public static IServiceCollection AddParser<TParser>(
         this IServiceCollection services,
-        TokenizerOptions options) where TParser : CoreParser
+        TokenizerOptions options) where TParser : ParserBase
     {
         return services
             .AddTokenizerOptions(options)
@@ -291,7 +291,7 @@ public static class ParserApp
        this IServiceCollection services,
        IConfiguration configuration,
        string key,
-       string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser
+       string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
@@ -345,7 +345,7 @@ public static class ParserApp
     public static IServiceCollection AddParser<TParser>(
         this IServiceCollection services,
         string key,
-        TokenizerOptions options) where TParser : CoreParser
+        TokenizerOptions options) where TParser : ParserBase
     {
         return services
             .AddTokenizerOptions(key, options)
@@ -396,11 +396,11 @@ public static class ParserApp
             ;
     }
 
-    // Non-keyed: AddStatefulParser — add IParserValidator so DI can resolve constructor
-    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+    // Non-keyed: AddParserSession — add IParserValidator so DI can resolve constructor
+    public static IServiceCollection AddParserSession<TParserSession>(
         this IServiceCollection services,
         HostBuilderContext context,
-        string tokenizerSection = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser
+        string tokenizerSection = TokenizerOptions.TokenizerSection) where TParserSession : ParserSessionBase
     {
         return services
             .AddTokenizerOptions(context, tokenizerSection)
@@ -426,19 +426,19 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            .AddTransient<IStatefulParser, TStatefulParser>(sp =>
+            .AddTransient<IParserSession, TParserSession>(sp =>
             {
                 var servicesBundle = sp.GetRequiredService<ParserServices>();
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(sp, servicesBundle);
+                return ActivatorUtilities.CreateInstance<TParserSession>(sp, servicesBundle);
             })
-            //.AddTransient<IStatefulParser, TStatefulParser>()
+            //.AddTransient<IStatefulParser, TParserSession>()
             ;
     }
 
-    // Non-keyed: AddStatefulParser with options
-    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+    // Non-keyed: AddParserSession with options
+    public static IServiceCollection AddParserSession<TParserSession>(
         this IServiceCollection services,
-        TokenizerOptions options) where TStatefulParser : CoreStatefulParser
+        TokenizerOptions options) where TParserSession : ParserSessionBase
     {
         return services
             .AddTokenizerOptions(options)
@@ -462,21 +462,21 @@ public static class ParserApp
                 TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                 ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
-            //.AddTransient<IStatefulParser, TStatefulParser>()
-            .AddTransient<IStatefulParser, TStatefulParser>(sp =>
+            //.AddTransient<IStatefulParser, TParserSession>()
+            .AddTransient<IParserSession, TParserSession>(sp =>
             {
                 var servicesBundle = sp.GetRequiredService<ParserServices>();
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(sp, servicesBundle);
+                return ActivatorUtilities.CreateInstance<TParserSession>(sp, servicesBundle);
             })
             ;
     }
 
-    // Keyed: AddStatefulParser — register keyed parser validator and pass explicitly
-    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+    // Keyed: AddParserSession — register keyed parser validator and pass explicitly
+    public static IServiceCollection AddParserSession<TParserSession>(
         this IServiceCollection services,
         IConfiguration configuration,
         string key,
-        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser
+        string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParserSession : ParserSessionBase
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
@@ -509,28 +509,28 @@ public static class ParserApp
                     ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
                 };
             })
-            //.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //.AddKeyedTransient<IStatefulParser, TParserSession>(key, (provider, k) =>
             //{
             //    var name = k as string;
             //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
             //    var opts = monitor.Get(name);
             //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
             //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
-            //    return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
+            //    return ActivatorUtilities.CreateInstance<TParserSession>(provider, Options.Create(opts), tokVal, parVal);
             //})
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, _) =>
+            .AddKeyedTransient<IParserSession, TParserSession>(key, (provider, _) =>
             {
                 var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, servicesBundle);
+                return ActivatorUtilities.CreateInstance<TParserSession>(provider, servicesBundle);
             })
             ;
     }
 
-    // Keyed: AddStatefulParser with options
-    public static IServiceCollection AddStatefulParser<TStatefulParser>(
+    // Keyed: AddParserSession with options
+    public static IServiceCollection AddParserSession<TParserSession>(
         this IServiceCollection services,
         string key,
-        TokenizerOptions options) where TStatefulParser : CoreStatefulParser
+        TokenizerOptions options) where TParserSession : ParserSessionBase
     {
         return services
             .AddTokenizerOptions(key, options)
@@ -563,19 +563,19 @@ public static class ParserApp
                     ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
                 };
             })
-            //.AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
+            //.AddKeyedTransient<IStatefulParser, TParserSession>(key, (provider, k) =>
             //{
             //    var name = k as string;
             //    var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
             //    var opts = monitor.Get(name);
             //    var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(name);
             //    var parVal = provider.GetRequiredKeyedService<IParserValidator>(name);
-            //    return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, Options.Create(opts), tokVal, parVal);
+            //    return ActivatorUtilities.CreateInstance<TParserSession>(provider, Options.Create(opts), tokVal, parVal);
             //})
-            .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, _) =>
+            .AddKeyedTransient<IParserSession, TParserSession>(key, (provider, _) =>
             {
                 var servicesBundle = provider.GetRequiredKeyedService<ParserServices>(key);
-                return ActivatorUtilities.CreateInstance<TStatefulParser>(provider, servicesBundle);
+                return ActivatorUtilities.CreateInstance<TParserSession>(provider, servicesBundle);
             })
             ;
     }
@@ -589,15 +589,17 @@ public static class ParserApp
     public static IServiceCollection AddCommonParsers(this IServiceCollection services)
     {
         return services
+            //.AddParser<Parser>("Core", TokenizerOptions.Default) // default parser for single Evaluate functions
+
             .AddParser<DoubleParser>("Default", TokenizerOptions.Default)
             .AddParser<DoubleParser>("Double", TokenizerOptions.Default) //practically an alias
             .AddParser<Vector3Parser>("Vector3", TokenizerOptions.Default)
             .AddParser<ComplexParser>("Complex", TokenizerOptions.Default)
 
-            .AddStatefulParser<DoubleStatefulParser>("Default", TokenizerOptions.Default)
-            .AddStatefulParser<DoubleStatefulParser>("Double", TokenizerOptions.Default) //practically an alias
-            .AddStatefulParser<Vector3StatefulParser>("Vector3", TokenizerOptions.Default)
-            .AddStatefulParser<ComplexStatefulParser>("Complex", TokenizerOptions.Default)
+            .AddParserSession<DoubleParserSession>("Default", TokenizerOptions.Default)
+            .AddParserSession<DoubleParserSession>("Double", TokenizerOptions.Default) //practically an alias
+            .AddParserSession<Vector3ParserSession>("Vector3", TokenizerOptions.Default)
+            .AddParserSession<ComplexParserSession>("Complex", TokenizerOptions.Default)
             ;
     }
 
@@ -626,7 +628,7 @@ public static class ParserApp
     public static IParser GetDefaultParser() =>
         GetDoubleParser();
 
-    public static IStatefulParser GetDefaulteStatefulParser() =>
+    public static IParserSession GetDefaulteStatefulParser() =>
         GetDoubleStatefulParser();
 
     public static IParser GetDoubleParser()
@@ -635,10 +637,10 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Double");
     }
 
-    public static IStatefulParser GetDoubleStatefulParser()
+    public static IParserSession GetDoubleStatefulParser()
     {
         CreateCommonsHostIfNeeded();
-        return _commonParsersHost!.Services.GetStatefulParser("Double");
+        return _commonParsersHost!.Services.GetParserSession("Double");
     }
 
 
@@ -648,10 +650,10 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Vector3");
     }
 
-    public static IStatefulParser GetVector3StatefulParser()
+    public static IParserSession GetVector3StatefulParser()
     {
         CreateCommonsHostIfNeeded();
-        return _commonParsersHost!.Services.GetStatefulParser("Vector3");
+        return _commonParsersHost!.Services.GetParserSession("Vector3");
     }
 
     public static IParser GetComplexParser()
@@ -660,10 +662,10 @@ public static class ParserApp
         return _commonParsersHost!.Services.GetParser("Complex");
     }
 
-    public static IStatefulParser GetComplexStatefulParser()
+    public static IParserSession GetComplexStatefulParser()
     {
         CreateCommonsHostIfNeeded();
-        return _commonParsersHost!.Services.GetStatefulParser("Complex");
+        return _commonParsersHost!.Services.GetParserSession("Complex");
     }
 
     public static double? Evaluate(string expression, Dictionary<string, object?>? variables = null)
@@ -691,7 +693,7 @@ public static class ParserApp
     #endregion
 
 
-    #region GetParser/GetStatefulParser from service/hosts
+    #region GetParser/GetParserSession from service/hosts
 
     public static ITokenizer GetTokenizer(this IServiceProvider services) => services.GetRequiredService<ITokenizer>();
 
@@ -719,18 +721,18 @@ public static class ParserApp
         services.GetRequiredKeyedService<IParser>(key);
 
     // Resolve non-keyed stateful parser
-    public static IStatefulParser GetStatefulParser(this IServiceProvider services) =>
-        services.GetRequiredService<IStatefulParser>();
+    public static IParserSession GetParserSession(this IServiceProvider services) =>
+        services.GetRequiredService<IParserSession>();
 
-    public static IStatefulParser GetStatefulParser(this IHost host) =>
-        host.Services.GetRequiredService<IStatefulParser>();
+    public static IParserSession GetParserSession(this IHost host) =>
+        host.Services.GetRequiredService<IParserSession>();
 
     // Resolve keyed stateful parser
-    public static IStatefulParser GetStatefulParser(this IHost host, string key) =>
-        host.Services.GetRequiredKeyedService<IStatefulParser>(key);
+    public static IParserSession GetParserSession(this IHost host, string key) =>
+        host.Services.GetRequiredKeyedService<IParserSession>(key);
 
-    public static IStatefulParser GetStatefulParser(this IServiceProvider services, string key) =>
-        services.GetRequiredKeyedService<IStatefulParser>(key);
+    public static IParserSession GetParserSession(this IServiceProvider services, string key) =>
+        services.GetRequiredKeyedService<IParserSession>(key);
 
     #endregion
 
@@ -766,27 +768,27 @@ public static class ParserApp
             .Build();
     }
 
-    public static IHost GetStatefulParserApp<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser
+    public static IHost GetParserSessionApp<TParserSession>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParserSession : ParserSessionBase
     {
         return GetHostBuilder(settingsFile)
             .ConfigureServices((context, services) =>
             {
-                services.AddStatefulParser<TStatefulParser>(context, tokenizerSectionPath);
+                services.AddParserSession<TParserSession>(context, tokenizerSectionPath);
             })
             .Build();
     }
 
-    public static IHost GetStatefulParserApp<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser
+    public static IHost GetParserSessionApp<TParserSession>(TokenizerOptions options) where TParserSession : ParserSessionBase
     {
         return GetHostBuilder()
             .ConfigureServices((context, services) =>
             {
-                services.AddStatefulParser<TStatefulParser>(options);
+                services.AddParserSession<TParserSession>(options);
             })
             .Build();
     }
 
-    public static IHost GetParserApp<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser
+    public static IHost GetParserApp<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase
     {
         return GetHostBuilder(settingsFile)
             .ConfigureServices((context, services) =>
@@ -796,7 +798,7 @@ public static class ParserApp
             .Build();
     }
 
-    public static IHost GetParserApp<TParser>(TokenizerOptions options) where TParser : CoreParser
+    public static IHost GetParserApp<TParser>(TokenizerOptions options) where TParser : ParserBase
     {
         return GetHostBuilder()
             .ConfigureServices((context, services) =>
@@ -806,22 +808,22 @@ public static class ParserApp
             .Build();
     }
 
-    public static IStatefulParser GetStatefulParser<TStatefulParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(settingsFile, tokenizerSectionPath).GetStatefulParser();
+    public static IParserSession GetParserSession<TParserSession>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParserSession : ParserSessionBase =>
+        GetParserSessionApp<TParserSession>(settingsFile, tokenizerSectionPath).GetParserSession();
 
-    public static IStatefulParser GetStatefulParser<TStatefulParser>(TokenizerOptions options) where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(options).GetStatefulParser();
+    public static IParserSession GetParserSession<TParserSession>(TokenizerOptions options) where TParserSession : ParserSessionBase =>
+        GetParserSessionApp<TParserSession>(options).GetParserSession();
 
-    public static IStatefulParser GetStatefulParser<TStatefulParser>() where TStatefulParser : CoreStatefulParser =>
-        GetStatefulParserApp<TStatefulParser>(TokenizerOptions.Default).GetStatefulParser();
+    public static IParserSession GetParserSession<TParserSession>() where TParserSession : ParserSessionBase =>
+        GetParserSessionApp<TParserSession>(TokenizerOptions.Default).GetParserSession();
 
-    public static IParser GetParser<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : CoreParser =>
+    public static IParser GetParser<TParser>(string? settingsFile = null, string tokenizerSectionPath = TokenizerOptions.TokenizerSection) where TParser : ParserBase =>
         GetParserApp<TParser>(settingsFile, tokenizerSectionPath).GetParser();
 
-    public static IParser GetParser<TParser>(TokenizerOptions options) where TParser : CoreParser =>
+    public static IParser GetParser<TParser>(TokenizerOptions options) where TParser : ParserBase =>
         GetParserApp<TParser>(options).GetParser();
 
-    public static IParser GetParser<TParser>() where TParser : CoreParser =>
+    public static IParser GetParser<TParser>() where TParser : ParserBase =>
         GetParserApp<TParser>(TokenizerOptions.Default).GetParser();
 
     #endregion

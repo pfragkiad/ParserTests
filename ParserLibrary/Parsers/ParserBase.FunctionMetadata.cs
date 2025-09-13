@@ -2,7 +2,7 @@ using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
-public partial class CoreParser : IParserFunctionMetadata
+public partial class ParserBase : IParserFunctionMetadata
 {
     int? IParserFunctionMetadata.GetCustomFunctionFixedArgCount(string functionName)
     {

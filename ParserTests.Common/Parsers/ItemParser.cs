@@ -3,7 +3,7 @@ using ParserLibrary.Parsers;
 
 namespace ParserTests.Common.Parsers;
 
-public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : CoreParser(logger, ps)
+public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : ParserBase(logger, ps)
 {
     protected override object EvaluateLiteral(string s)
     {

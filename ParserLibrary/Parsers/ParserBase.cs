@@ -1,20 +1,17 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using ParserLibrary.Parsers.Interfaces;
+﻿using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
-using System;
 
 namespace ParserLibrary.Parsers;
 
-public partial class CoreParser : Tokenizer, IParser
+public partial class ParserBase : Tokenizer, IParser
 {
 
     protected readonly IParserValidator _parserValidator;
 
-    public CoreParser(
-        ILogger<CoreParser> logger,
+    public ParserBase(
+        ILogger<ParserBase> logger,
         IOptions<TokenizerOptions> options,
         ITokenizerValidator tokenizerValidator,
         IParserValidator parserValidator)
@@ -24,7 +21,7 @@ public partial class CoreParser : Tokenizer, IParser
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
-    protected internal CoreParser(ILogger logger, ParserServices services)
+    protected internal ParserBase(ILogger logger, ParserServices services)
       : base(logger, services.Options, services.TokenizerValidator)
     {
         _parserValidator = services.ParserValidator;
