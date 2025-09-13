@@ -8,7 +8,7 @@ public sealed class ParserValidationReport
 
     // Tokenizer pre-check
     public bool ParenthesesMatched { get; set; }
-    public ParenthesisErrorCheckResult? ParenthesesDetail { get; set; }
+    public ParenthesisCheckResult? ParenthesesDetail { get; set; }
 
     // Parser-level checks (optional)
     public FunctionNamesCheckResult? FunctionNames { get; set; }

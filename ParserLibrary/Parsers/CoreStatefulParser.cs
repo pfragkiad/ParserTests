@@ -193,15 +193,15 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
 
     #region Tokenizer 
     public bool AreParenthesesMatched() =>
-        string.IsNullOrWhiteSpace(Expression) || PreValidateParentheses(Expression!, out _);
+        string.IsNullOrWhiteSpace(Expression) || ValidateParentheses(Expression!, out _);
 
-    public ParenthesisErrorCheckResult CheckParentheses()
+    public ParenthesisCheckResult CheckParentheses()
     {
         if (string.IsNullOrWhiteSpace(Expression))
-            return ParenthesisErrorCheckResult.Success;
+            return ParenthesisCheckResult.Success;
 
-        _ = PreValidateParentheses(Expression!, out var detail);
-        return detail ?? new ParenthesisErrorCheckResult { UnmatchedClosed = [], UnmatchedOpen = [] };
+        _ = ValidateParentheses(Expression!, out var detail);
+        return detail ?? new ParenthesisCheckResult { UnmatchedClosed = [], UnmatchedOpen = [] };
     }
 
     public List<string> GetVariableNames() =>
@@ -254,7 +254,7 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
         var failures = new List<ValidationFailure>();
 
         // 1) Parentheses pre-check (early exit)
-        if (!PreValidateParentheses(_expression!, out var parenDetail))
+        if (!ValidateParentheses(_expression!, out var parenDetail))
         {
             _logger.LogWarning("Unmatched parentheses in formula: {formula}", _expression);
             if (parenDetail is not null)
@@ -268,10 +268,10 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
         // 2) Variable-name checks (tokenizer-level; infix-only)
         var varOpts = new VariableNamesOptions
         {
-            IdentifierNames = new HashSet<string>(_variables.Keys),
+            KnownIdentifierNames = new HashSet<string>(_variables.Keys),
             IgnoreCaptureGroups = ignoreIdentifierCaptureGroups
         };
-        var nameResult = _tokenizerValidator.PostValidateVariableNames(infix, varOpts);
+        var nameResult = _tokenizerValidator.CheckVariableNames(infix, varOpts);
         if (!nameResult.IsSuccess)
         {
             _logger.LogWarning("Unmatched/ignored identifiers in formula: {formula}", _expression);

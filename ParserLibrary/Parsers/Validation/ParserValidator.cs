@@ -30,7 +30,7 @@ public sealed class ParserValidator : IParserValidator
         IParserFunctionMetadata? metadata = null,
         bool stopAtTokenizerErrors = true)
     {
-        var ok = _tokValidator.PreValidateParentheses(expression, out var parenDetail);
+        var ok = _tokValidator.CheckParentheses(expression, out var parenDetail);
 
         var report = new ParserValidationReport
         {

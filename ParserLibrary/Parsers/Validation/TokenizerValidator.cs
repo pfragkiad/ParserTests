@@ -16,17 +16,12 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
     #region Parentheses
 
-    public bool PreValidateParentheses(string expression, out ParenthesisErrorCheckResult? detail)
+    public ParenthesisCheckResult CheckParentheses(string expression)
     {
-        if (AreParenthesesMatchedFast(expression))
-        {
-            detail = null;
-            return true;
-        }
+        if (AreParenthesesMatchedFast(expression)) return ParenthesisCheckResult.Success;
 
-        detail = BuildParenthesisCheckDetail(expression);
         _logger.LogWarning("Unmatched parentheses detected.");
-        return false;
+        return BuildParenthesisCheckDetail(expression);
     }
 
     // string-only, fast scan
@@ -46,7 +41,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
     }
 
     // detailed positions (only when invalid)
-    private ParenthesisErrorCheckResult BuildParenthesisCheckDetail(string expression)
+    private ParenthesisCheckResult BuildParenthesisCheckDetail(string expression)
     {
         char open = _patterns.OpenParenthesis;
         char close = _patterns.CloseParenthesis;
@@ -72,7 +67,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
                 openPositions.RemoveAt(openPositions.Count - 1);
         }
 
-        return new ParenthesisErrorCheckResult
+        return new ParenthesisCheckResult
         {
             UnmatchedClosed = unmatchedClosed,
             UnmatchedOpen = openPositions
@@ -85,7 +80,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
     public VariableNamesCheckResult CheckVariableNames(
         List<Token> infixTokens,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         string[] ignoreCaptureGroups)
     {
         HashSet<string> matched = [];
@@ -94,7 +89,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
         foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
         {
-            if (identifierNames.Contains(t.Text))
+            if (knownIdentifierNames.Contains(t.Text))
             {
                 matched.Add(t.Text);
                 continue;
@@ -119,7 +114,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
     public VariableNamesCheckResult CheckVariableNames(
         List<Token> infixTokens,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         Regex? ignoreIdentifierPattern)
     {
         HashSet<string> matched = [];
@@ -128,7 +123,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
         foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
         {
-            if (identifierNames.Contains(t.Text))
+            if (knownIdentifierNames.Contains(t.Text))
             {
                 matched.Add(t.Text);
                 continue;
@@ -153,7 +148,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
     public VariableNamesCheckResult CheckVariableNames(
         List<Token> infixTokens,
-        HashSet<string> identifierNames,
+        HashSet<string> knownIdentifierNames,
         string[] ignorePrefixes,
         string[] ignorePostfixes)
     {
@@ -163,7 +158,7 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
         foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Identifier))
         {
-            if (identifierNames.Contains(t.Text))
+            if (knownIdentifierNames.Contains(t.Text))
             {
                 matched.Add(t.Text);
                 continue;
@@ -190,70 +185,26 @@ public sealed class TokenizerValidator : ITokenizerValidator
 
     #endregion
 
-    // Universal, two-step validation. No tokenization here.
-    // - Always checks parentheses via string.
-    // - If matched AND both infixTokens and varNameOptions provided, runs variable name checks.
-    public TokenizerValidationReport Validate(
-        string expression,
-        List<Token>? infixTokens = null,
-        VariableNamesOptions? varNameOptions = null)
-    {
-        var matched = PreValidateParentheses(expression, out var parenDetail);
-
-        VariableNamesCheckResult? namesResult = null;
-        if (matched && infixTokens is not null && varNameOptions is not null)
-        {
-            if (varNameOptions.IgnoreCaptureGroups is { Length: > 0 })
-            {
-                namesResult = CheckVariableNames(infixTokens, varNameOptions.IdentifierNames, varNameOptions.IgnoreCaptureGroups);
-            }
-            else if (varNameOptions.IgnoreIdentifierPattern is not null)
-            {
-                namesResult = CheckVariableNames(infixTokens, varNameOptions.IdentifierNames, varNameOptions.IgnoreIdentifierPattern);
-            }
-            else if ((varNameOptions.IgnorePrefixes is not null && varNameOptions.IgnorePrefixes.Length > 0) ||
-                     (varNameOptions.IgnorePostfixes is not null && varNameOptions.IgnorePostfixes.Length > 0))
-            {
-                namesResult = CheckVariableNames(
-                    infixTokens,
-                    varNameOptions.IdentifierNames,
-                    varNameOptions.IgnorePrefixes ?? Array.Empty<string>(),
-                    varNameOptions.IgnorePostfixes ?? Array.Empty<string>());
-            }
-            else
-            {
-                // No ignore rules: treat as strict (no ignores)
-                namesResult = CheckVariableNames(infixTokens, varNameOptions.IdentifierNames, Array.Empty<string>());
-            }
-        }
-
-        return new TokenizerValidationReport
-        {
-            Expression = expression,
-            ParenthesesMatched = matched,
-            ParenthesesDetail = matched ? null : parenDetail,
-            VariableNames = namesResult
-        };
-    }
+    
 
     // Aggregator for the post stage (infix-only).
-    public VariableNamesCheckResult PostValidateVariableNames(List<Token> infixTokens, VariableNamesOptions options)
+    public VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options)
     {
         if (options.IgnoreCaptureGroups is { Length: > 0 })
-            return CheckVariableNames(infixTokens, options.IdentifierNames, options.IgnoreCaptureGroups);
+            return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreCaptureGroups);
 
         if (options.IgnoreIdentifierPattern is not null)
-            return CheckVariableNames(infixTokens, options.IdentifierNames, options.IgnoreIdentifierPattern);
+            return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreIdentifierPattern);
 
         if ((options.IgnorePrefixes is not null && options.IgnorePrefixes.Length > 0) ||
             (options.IgnorePostfixes is not null && options.IgnorePostfixes.Length > 0))
             return CheckVariableNames(
                 infixTokens,
-                options.IdentifierNames,
-                options.IgnorePrefixes ?? Array.Empty<string>(),
-                options.IgnorePostfixes ?? Array.Empty<string>());
+                options.KnownIdentifierNames,
+                options.IgnorePrefixes ?? [],
+                options.IgnorePostfixes ?? []);
 
         // No ignore rules: strict matching (no ignores)
-        return CheckVariableNames(infixTokens, options.IdentifierNames, Array.Empty<string>());
+        return CheckVariableNames(infixTokens, options.KnownIdentifierNames, []);
     }
 }

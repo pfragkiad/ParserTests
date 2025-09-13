@@ -1,4 +1,5 @@
-﻿using ParserLibrary.Tokenizers.CheckResults;
+﻿using ParserLibrary.Parsers.Validation;
+using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Tokenizers;
@@ -445,11 +446,11 @@ public class Tokenizer : ITokenizer
     }
 
 
-    #region Utility methods
+    #region Utility validation methods
 
-    public bool PreValidateParentheses(string expression, out ParenthesisErrorCheckResult? result)
+    public ParenthesisCheckResult ValidateParentheses(string expression)
     {
-        return _tokenizerValidator.PreValidateParentheses(expression, out result);
+        return _tokenizerValidator.CheckParentheses(expression);
     }
 
     // Public string-based overloads: added optional checkParentheses guard (default false)
@@ -457,12 +458,8 @@ public class Tokenizer : ITokenizer
         string expression,
         HashSet<string> identifierNames,
         string[] ignorePrefixes,
-        string[] ignorePostfixes,
-        bool checkParentheses = false)
+        string[] ignorePostfixes)
     {
-        if (checkParentheses && !PreValidateParentheses(expression, out _))
-            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
-
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignorePrefixes, ignorePostfixes);
     }
@@ -470,12 +467,8 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
-        Regex? ignoreIdentifierPattern = null,
-        bool checkParentheses = false)
+        Regex? ignoreIdentifierPattern = null)
     {
-        if (checkParentheses && !PreValidateParentheses(expression, out _))
-            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
-
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreIdentifierPattern);
     }
@@ -483,14 +476,43 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
-        string[] ignoreCaptureGroups,
-        bool checkParentheses = false)
+        string[] ignoreCaptureGroups)
     {
-        if (checkParentheses && !PreValidateParentheses(expression, out _))
-            return new VariableNamesCheckResult { MatchedNames = [], UnmatchedNames = [], IgnoredNames = [] };
-
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, identifierNames, ignoreCaptureGroups);
+    }
+
+    public VariableNamesCheckResult CheckVariableNames (string expression, VariableNamesOptions options)
+    {
+        var tokens = GetInfixTokens(expression);
+        return _tokenizerValidator.CheckVariableNames(tokens, options);
+    }
+
+    // Full validation report (convenience method if no Parser validation is needed)
+    public TokenizerValidationReport Validate(
+        string expression,
+        VariableNamesOptions options)
+    {
+        if(string.IsNullOrWhiteSpace(expression)) return TokenizerValidationReport.Success;
+        var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
+        if (!parenthesesResult.IsSuccess)
+            return new TokenizerValidationReport
+            {
+                Expression = expression,
+                ParenthesesResult = parenthesesResult
+            };
+
+        //calculate the infix tokens only if we need to check variable names
+        List<Token> infixTokens = GetInfixTokens(expression);
+
+        var namesResult = _tokenizerValidator.CheckVariableNames(infixTokens, options);
+
+        return new TokenizerValidationReport
+        {
+            Expression = expression,
+            ParenthesesResult = parenthesesResult,
+            VariableNamesResult = namesResult
+        };
     }
 
     #endregion

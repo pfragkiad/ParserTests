@@ -9,7 +9,7 @@ using ParserLibrary.Parsers.Interfaces;
 namespace ParserTests.Common.Parsers;
 
 public class ItemParser(
-    ILogger<CoreParser> logger,
+    ILogger<ItemParser> logger,
     IOptions<TokenizerOptions> options,
     ITokenizerValidator tokenizerValidator,
     IParserValidator parserValidator)

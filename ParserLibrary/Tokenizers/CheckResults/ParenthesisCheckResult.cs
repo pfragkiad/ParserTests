@@ -2,7 +2,7 @@
 
 namespace ParserLibrary.Tokenizers.CheckResults;
 
-public class ParenthesisErrorCheckResult : CheckResult
+public class ParenthesisCheckResult : CheckResult
 {
     public List<int> UnmatchedClosed { get; init; } = [];
 
@@ -10,7 +10,7 @@ public class ParenthesisErrorCheckResult : CheckResult
 
     public override bool IsSuccess => UnmatchedClosed.Count == 0 && UnmatchedOpen.Count == 0;
 
-    public static ParenthesisErrorCheckResult Success { get => new(); }
+    public static ParenthesisCheckResult Success { get => new(); }
 
     public override IList<ValidationFailure> GetValidationFailures()
     {

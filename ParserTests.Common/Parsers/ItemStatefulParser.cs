@@ -8,7 +8,7 @@ using ParserLibrary.Parsers.Interfaces;
 namespace ParserTests.Common.Parsers;
 
 public class ItemStatefulParser(
-    ILogger<CoreStatefulParser> logger,
+    ILogger<ItemStatefulParser> logger,
     IOptions<TokenizerOptions> options,
     ITokenizerValidator tokenizerValidator,
     IParserValidator parserValidator)

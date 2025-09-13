@@ -9,7 +9,7 @@ public sealed class ExpressionValidationReport
 
     // Tokenizer-level
     public bool ParenthesesMatched { get; set; }
-    public ParenthesisErrorCheckResult? ParenthesisCheck { get; set; }
+    public ParenthesisCheckResult? ParenthesisCheck { get; set; }
     public VariableNamesCheckResult? VariableNames { get; set; }
 
     // Parser-level

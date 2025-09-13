@@ -1,36 +1,43 @@
-﻿using ParserLibrary.Tokenizers.CheckResults;
+﻿using ParserLibrary.Parsers.Validation;
+using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Tokenizers.Interfaces;
 
 public interface ITokenizer
 {
     TokenizerOptions TokenizerOptions { get; }
+
     List<Token> GetInfixTokens(string expression);
     List<Token> GetPostfixTokens(List<Token> infixTokens);
     List<Token> GetPostfixTokens(string expression);
 
-    // Step 1: string-only pre-validation
-    bool PreValidateParentheses(string expression, out ParenthesisErrorCheckResult? result);
+    // Parentheses validation (string-only)
+    ParenthesisCheckResult ValidateParentheses(string expression);
 
+    // Variable names helpers
     List<string> GetVariableNames(string expression);
+    List<string> GetVariableNames(List<Token> infixTokens);
 
-    // Step 2 (string-based convenience): optionally pre-check parentheses before tokenizing
-    VariableNamesCheckResult CheckVariableNames(
-        string expression,
-        HashSet<string> identifierNames,
-        string[] ignoreCaptureGroups,
-        bool checkParentheses = false);
-
-    VariableNamesCheckResult CheckVariableNames(
-        string expression,
-        HashSet<string> identifierNames,
-        Regex? ignoreIdentifierPattern = null,
-        bool checkParentheses = false);
-
+    // String-based convenience overloads (no implicit parentheses check)
     VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> identifierNames,
         string[] ignorePrefixes,
-        string[] ignorePostfixes,
-        bool checkParentheses = false);
+        string[] ignorePostfixes);
+
+    VariableNamesCheckResult CheckVariableNames(
+        string expression,
+        HashSet<string> identifierNames,
+        Regex? ignoreIdentifierPattern = null);
+
+    VariableNamesCheckResult CheckVariableNames(
+        string expression,
+        HashSet<string> identifierNames,
+        string[] ignoreCaptureGroups);
+
+    // Options-based convenience overload
+    VariableNamesCheckResult CheckVariableNames(string expression, VariableNamesOptions options);
+
+    // Full validation report
+    TokenizerValidationReport Validate(string expression, VariableNamesOptions options);
 }

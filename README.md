@@ -37,15 +37,16 @@ dotnet add package ParserLibrary
 
 ### Namespaces
 
-At least the first 2 namespaces below, should be used in order to compile most of the following examples. 
+Use the first group of namespaces below, in order to compile most of the following examples. 
 
 ```cs
-//use at least these 2 namespaces
-using ParserLibrary;
 using ParserLibrary.Parsers;
-
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
+using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Interfaces;
+
+//if expression tree functionality is needed
 using ParserLibrary.ExpressionTree;
 ```
 
@@ -98,7 +99,12 @@ Console.WriteLine(ParserApp.Evaluate("5+2*cos(pi)+3*ln(e)")); //will return 5 - 
 That was the boring stuff, let's start adding some custom functionality. Let's add a custom function ```add3``` that takes 3 arguments. For this purpose, we create a new subclass of ```DefaultParser```. Note that we can add custom logging via dependency injection (some more examples will follow on this). For the moment, ignore the constructor. We assume that the ```add3``` functions sums its 3 arguments with a specific weight.
 
 ```cs
-public class SimpleFunctionParser(ILogger<ParserBase> logger, IOptions<TokenizerOptions> options) : DefaultParser(logger, options)
+public class SimpleFunctionParser(
+    ILogger<DoubleParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : DoubleParser(logger, options, tokenizerValidator, parserValidator)
 {
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
@@ -224,7 +230,12 @@ using System.Numerics;
 
 namespace ParserLibrary.Parsers;
 
-public class ComplexParser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class ComplexParser(
+    ILogger<ComplexParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
  public override Dictionary<string, object?> Constants => 
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
@@ -358,8 +369,14 @@ namespace ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 using System.Numerics;
 
-public class Vector3Parser(ILogger<Parser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class Vector3Parser(
+    ILogger<Vector3Parser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
+
    public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
@@ -517,7 +534,13 @@ public class Item
 A custom parser that uses custom types derives from the `CoreParser` class. Because the `CoreParser` class does not assume any type in advance, we should override the `EvaluateLiteral` function which is used to parse the integer numbers in the string. In the following example we define the `+` operator, which can take an `Item` object or an `int` for its operands. We also define the `add` function, which assumes that the first argument is an `Item` and the second argument is an `int`. In practice, the Function syntax is usually stricter regarding the type of the arguments, so it is easier to write its implementation:
 
 ```cs
-public class ItemParser(ILogger<CoreParser> logger, IOptions<TokenizerOptions> options) : CoreParser(logger, options)
+public class ItemParser(
+    ILogger<ItemParser> logger,
+    IOptions<TokenizerOptions> options,
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreParser(logger, options, tokenizerValidator, parserValidator)
+{
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
@@ -620,9 +643,11 @@ Minimal example (mirrors the logic of the stateless `ItemParser`):
 public class ItemStatefulParser(
     ILogger<ItemStatefulParser> logger,
     IOptions<TokenizerOptions> options,
-    string expression,
-    Dictionary<string, object?>? variables = null) : StatefulParser(logger, options, expression, variables)
+    ITokenizerValidator tokenizerValidator,
+    IParserValidator parserValidator)
+    : CoreStatefulParser(logger, options, tokenizerValidator, parserValidator)
 {
+
 
     //we assume that literals are integer numbers only
     protected override object EvaluateLiteral(string s) => int.Parse(s);
