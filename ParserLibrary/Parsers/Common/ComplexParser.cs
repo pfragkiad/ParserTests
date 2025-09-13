@@ -11,18 +11,6 @@ public class ComplexParser(
     IParserValidator parserValidator)
     : CoreParser(logger, options, tokenizerValidator, parserValidator)
 {
-    //protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    //{
-    //    variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-    //    //we define "constants" if they are not already defined
-    //    if (!variables.ContainsKey("i")) variables.Add("i", Complex.ImaginaryOne);
-    //    if (!variables.ContainsKey("j")) variables.Add("j", Complex.ImaginaryOne);
-    //    if (!variables.ContainsKey("pi")) variables.Add("pi", new Complex(Math.PI, 0));
-    //    if (!variables.ContainsKey("e")) variables.Add("e", new Complex(Math.E, 0));
-
-    //    return base.Evaluate(postfixTokens, variables);
-    //}
 
     public override Dictionary<string, object?> Constants =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)

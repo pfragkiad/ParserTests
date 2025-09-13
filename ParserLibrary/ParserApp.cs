@@ -6,6 +6,7 @@ using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.Interfaces;
 using System.Numerics;
 using ParserLibrary.Parsers.Validation;
+using ParserLibrary.Parsers; // ADDED: for ParserServices
 
 namespace ParserLibrary;
 
@@ -203,7 +204,7 @@ public static class ParserApp
     public static ITokenizerValidator GetTokenizerValidator(this IServiceProvider services, string key) =>
         services.GetRequiredKeyedService<ITokenizerValidator>(key);
 
-  
+
 
     #endregion
 
@@ -233,6 +234,14 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
             })
+            // ADDED: ParserServices bundle (singleton)
+            .AddSingleton<ParserServices>(sp => new ParserServices
+            {
+                LoggerFactory = sp.GetRequiredService<ILoggerFactory>(),
+                Options = sp.GetRequiredService<IOptions<TokenizerOptions>>(),
+                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
+                ParserValidator = sp.GetRequiredService<IParserValidator>()
+            })
             .AddSingleton<IParser, TParser>();
     }
 
@@ -255,6 +264,14 @@ public static class ParserApp
                 var tokVal = sp.GetRequiredService<ITokenizerValidator>();
                 var patterns = options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
+            })
+            // ADDED: ParserServices bundle (singleton)
+            .AddSingleton<ParserServices>(sp => new ParserServices
+            {
+                LoggerFactory = sp.GetRequiredService<ILoggerFactory>(),
+                Options = sp.GetRequiredService<IOptions<TokenizerOptions>>(),
+                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
+                ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
             .AddSingleton<IParser, TParser>();
     }
@@ -284,6 +301,19 @@ public static class ParserApp
                 var opts = monitor.Get(key);
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
+            })
+            // ADDED: ParserServices bundle (keyed singleton)
+            .AddKeyedSingleton<ParserServices>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
+                return new ParserServices
+                {
+                    LoggerFactory = provider.GetRequiredService<ILoggerFactory>(),
+                    Options = Options.Create(opts),
+                    TokenizerValidator = provider.GetRequiredKeyedService<ITokenizerValidator>(key),
+                    ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
+                };
             })
             .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
             {
@@ -321,13 +351,28 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
             })
+            // ADDED: ParserServices bundle (keyed singleton)
+            .AddKeyedSingleton<ParserServices>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
+                return new ParserServices
+                {
+                    LoggerFactory = provider.GetRequiredService<ILoggerFactory>(),
+                    Options = Options.Create(opts),
+                    TokenizerValidator = provider.GetRequiredKeyedService<ITokenizerValidator>(key),
+                    ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
+                };
+            })
             .AddKeyedSingleton<IParser, TParser>(key, (provider, _) =>
             {
+                var logger = provider.GetRequiredService<ILogger<TParser>>();
                 var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
                 var opts = monitor.Get(key);
                 var tokVal = provider.GetRequiredKeyedService<ITokenizerValidator>(key);
                 var parVal = provider.GetRequiredKeyedService<IParserValidator>(key);
                 return ActivatorUtilities.CreateInstance<TParser>(provider, Options.Create(opts), tokVal, parVal);
+                //return ActivatorUtilities.CreateInstance<TParser>(provider,logger,provider);
             });
     }
 
@@ -354,6 +399,14 @@ public static class ParserApp
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
             })
+            // ADDED: ParserServices bundle (singleton)
+            .AddSingleton<ParserServices>(sp => new ParserServices
+            {
+                LoggerFactory = sp.GetRequiredService<ILoggerFactory>(),
+                Options = sp.GetRequiredService<IOptions<TokenizerOptions>>(),
+                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
+                ParserValidator = sp.GetRequiredService<IParserValidator>()
+            })
             .AddTransient<IStatefulParser, TStatefulParser>();
     }
 
@@ -376,6 +429,14 @@ public static class ParserApp
                 var tokVal = sp.GetRequiredService<ITokenizerValidator>();
                 var patterns = options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
+            })
+            // ADDED: ParserServices bundle (singleton)
+            .AddSingleton<ParserServices>(sp => new ParserServices
+            {
+                LoggerFactory = sp.GetRequiredService<ILoggerFactory>(),
+                Options = sp.GetRequiredService<IOptions<TokenizerOptions>>(),
+                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
+                ParserValidator = sp.GetRequiredService<IParserValidator>()
             })
             .AddTransient<IStatefulParser, TStatefulParser>();
     }
@@ -405,6 +466,19 @@ public static class ParserApp
                 var opts = monitor.Get(key);
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
+            })
+            // ADDED: ParserServices bundle (keyed singleton)
+            .AddKeyedSingleton<ParserServices>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
+                return new ParserServices
+                {
+                    LoggerFactory = provider.GetRequiredService<ILoggerFactory>(),
+                    Options = Options.Create(opts),
+                    TokenizerValidator = provider.GetRequiredKeyedService<ITokenizerValidator>(key),
+                    ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
+                };
             })
             .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
             {
@@ -441,6 +515,19 @@ public static class ParserApp
                 var opts = monitor.Get(key);
                 var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                 return new ParserLibrary.Parsers.Validation.ParserValidator(logger, tokVal, patterns);
+            })
+            // ADDED: ParserServices bundle (keyed singleton)
+            .AddKeyedSingleton<ParserServices>(key, (provider, _) =>
+            {
+                var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+                var opts = monitor.Get(key);
+                return new ParserServices
+                {
+                    LoggerFactory = provider.GetRequiredService<ILoggerFactory>(),
+                    Options = Options.Create(opts),
+                    TokenizerValidator = provider.GetRequiredKeyedService<ITokenizerValidator>(key),
+                    ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
+                };
             })
             .AddKeyedTransient<IStatefulParser, TStatefulParser>(key, (provider, k) =>
             {

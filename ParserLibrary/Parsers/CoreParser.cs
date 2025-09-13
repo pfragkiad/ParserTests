@@ -25,14 +25,25 @@ public partial class CoreParser : Tokenizer, IParser
     }
 
     //This constructor targets subclasses ONLY for simplification purposes
-    protected CoreParser( 
-        ILogger logger,
-        IServiceProvider serviceProvider )
-        : base(logger, serviceProvider)
-    {
-        _parserValidator = serviceProvider.GetRequiredService<IParserValidator>();
-        CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-    }
+    //protected CoreParser( 
+    //    ILogger logger,
+    //    IServiceProvider serviceProvider )
+    //    : base(logger, serviceProvider)
+    //{
+    //    _parserValidator = serviceProvider.GetRequiredService<IParserValidator>();
+    //    CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+    //}
+
+    //protected CoreParser(
+    //        ILogger logger,
+    //        IOptions<TokenizerOptions> options,
+    //        ITokenizerValidator tokenizerValidator,
+    //        IParserValidator parserValidator)
+    //: base(logger, options, tokenizerValidator)
+    //{
+    //    _parserValidator = parserValidator;
+    //    CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+    //}
 
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 

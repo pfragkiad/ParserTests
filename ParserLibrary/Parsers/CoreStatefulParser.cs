@@ -22,9 +22,9 @@ public class CoreStatefulParser : CoreParser, IStatefulParser
         : base(logger, options, tokenizerValidator, parserValidator)
     { }
 
-    protected CoreStatefulParser(ILogger<CoreStatefulParser> logger,
-        IServiceProvider serviceProvider) : base(logger, serviceProvider)
-    { }
+    //protected CoreStatefulParser(ILogger<CoreStatefulParser> logger,
+    //    IServiceProvider serviceProvider) : base(logger, serviceProvider)
+    //{ }
 
     protected void Reset()
     {
