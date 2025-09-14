@@ -5,7 +5,7 @@ using ParserLibrary.Tokenizers;
 using ParserTests.Common.Parsers;
 using ParserLibrary.Parsers.Validation;
 using Xunit;
-using System.Text.RegularExpressions; // added
+using System.Text.RegularExpressions;
 
 namespace ParserUnitTests;
 
@@ -15,7 +15,6 @@ public sealed class ItemSessionFixture : IDisposable
 
     public ItemSessionFixture()
     {
-        // Single host for all tests in this class; dispose once when the fixture is torn down.
         Host = ParserApp.GetParserSessionApp<ItemParserSession>(TokenizerOptions.Default);
     }
 
@@ -38,10 +37,10 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "(a + (b * 2)";
 
-        var result = session.ValidateParentheses();
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = [] }, earlyReturnOnErrors: true);
 
-        Assert.False(result.IsSuccess);
-        Assert.NotEmpty(result.GetValidationFailures());
+        Assert.False(report.ParenthesesResult!.IsSuccess);
+        Assert.NotEmpty(report.ParenthesesResult.GetValidationFailures());
     }
 
     [Fact]
@@ -50,16 +49,11 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "a + b + c";
 
-        var opts = new VariableNamesOptions
-        {
-            KnownIdentifierNames = [ "a", "b" ]
-        };
-        var failures = session.Validate(opts);
-        Assert.NotEmpty(failures);
+        var opts = new VariableNamesOptions { KnownIdentifierNames = [ "a", "b" ] };
+        var report = session.Validate(opts);
 
-        var vn = session.CheckVariableNames(opts);
-        Assert.False(vn.IsSuccess);
-        Assert.Contains("c", vn.UnmatchedNames);
+        Assert.False(report.VariableNamesResult!.IsSuccess);
+        Assert.Contains("c", report.VariableNamesResult.UnmatchedNames);
     }
 
     [Fact]
@@ -68,33 +62,25 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "foo(1) + add(b,4)";
 
-        var opts = new VariableNamesOptions
-        {
-            KnownIdentifierNames = ["b"]
-        };
-        _ = session.Validate(opts);
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["b"] });
 
-        var fn = session.CheckFunctionNames();
-        Assert.False(fn.IsSuccess);
-        Assert.Contains("foo", fn.UnmatchedNames);
-        Assert.Contains("add", fn.MatchedNames);
+        Assert.False(report.FunctionNamesResult!.IsSuccess);
+        Assert.Contains("foo", report.FunctionNamesResult.UnmatchedNames);
+        Assert.Contains("add", report.FunctionNamesResult.MatchedNames);
     }
-
+        
     [Fact]
     public void CheckEmptyFunctionArguments_Detected_ForTrailingOrLeadingEmpty()
     {
         var session = GetItemSession();
 
         session.Expression = "add(,4)";
-        var opts = new VariableNamesOptions { KnownIdentifierNames = new HashSet<string>() };
-        _ = session.Validate(opts);
-        var empty1 = session.CheckEmptyFunctionArguments();
-        Assert.False(empty1.IsSuccess);
+        var report1 = session.Validate(new VariableNamesOptions { KnownIdentifierNames = [] });
+        Assert.False(report1.EmptyFunctionArgumentsResult!.IsSuccess);
 
         session.Expression = "add(4,)";
-        _ = session.Validate(opts);
-        var empty2 = session.CheckEmptyFunctionArguments();
-        Assert.False(empty2.IsSuccess);
+        var report2 = session.Validate(new VariableNamesOptions { KnownIdentifierNames = [] });
+        Assert.False(report2.EmptyFunctionArgumentsResult!.IsSuccess);
     }
 
     [Fact]
@@ -103,12 +89,10 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "add(1)";
 
-        var opts = new VariableNamesOptions { KnownIdentifierNames = new HashSet<string>() };
-        _ = session.Validate(opts);
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = [] });
 
-        var argCount = session.CheckFunctionArgumentsCount();
-        Assert.False(argCount.IsSuccess);
-        Assert.NotEmpty(argCount.InvalidFunctions);
+        Assert.False(report.FunctionArgumentsCountResult!.IsSuccess);
+        Assert.NotEmpty(report.FunctionArgumentsCountResult.InvalidFunctions);
     }
 
     [Fact]
@@ -117,15 +101,10 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "a + 1";
 
-        var opts = new VariableNamesOptions
-        {
-            KnownIdentifierNames = [ "a" ]
-        };
-        _ = session.Validate(opts);
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
-        var op = session.CheckOperators();
-        Assert.True(op.IsSuccess);
-        Assert.Empty(op.InvalidOperators);
+        Assert.True(report.OperatorOperandsResult!.IsSuccess);
+        Assert.Empty(report.OperatorOperandsResult.InvalidOperators);
     }
 
     [Fact]
@@ -133,15 +112,11 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
     {
         var session = GetItemSession();
         session.Expression = "a, b";
-        var opts = new VariableNamesOptions
-        {
-            KnownIdentifierNames = ["a", "b" ]
-        };
 
-        _ = session.Validate(opts);
-        var sep = session.CheckOrphanArgumentSeparators();
-        Assert.False(sep.IsSuccess);
-        Assert.NotEmpty(sep.InvalidPositions);
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+
+        Assert.False(report.OrphanArgumentSeparatorsResult!.IsSuccess);
+        Assert.NotEmpty(report.OrphanArgumentSeparatorsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -150,25 +125,18 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
 
         session.Expression = "(a + b";
-        var opts1 = new VariableNamesOptions
-        {
-            KnownIdentifierNames = [ "a", "b" ]
-        };
-        var failuresParen = session.Validate(opts1, earlyReturnOnErrors: true);
-        Assert.NotEmpty(failuresParen);
+        var reportParen = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] }, earlyReturnOnErrors: true);
+        Assert.False(reportParen.ParenthesesResult!.IsSuccess);
 
         session.Expression = "a + b";
         session.Variables = new() { { "a", 1 }, { "b", 2 } };
 
-        var opts2 = new VariableNamesOptions
-        {
-            KnownIdentifierNames =[ "a" ]
-        };
-        var failuresVars = session.Validate(opts2, earlyReturnOnErrors: false);
-        Assert.NotEmpty(failuresVars);
+        var reportVars = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        Assert.False(reportVars.VariableNamesResult!.IsSuccess);
+        Assert.Contains("b", reportVars.VariableNamesResult.UnmatchedNames);
     }
 
-    // ----------------------- VariableNamesOptions exhaustive tests -----------------------
+    // Exhaustive VariableNamesOptions cases
 
     [Fact]
     public void VariableNames_StrictMatching_NoIgnores()
@@ -176,18 +144,16 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "a + b + c";
 
-        var opts = new VariableNamesOptions
+        var report = session.Validate(new VariableNamesOptions
         {
             KnownIdentifierNames = [ "a", "c" ],
             IgnoreCaptureGroups = null,
             IgnoreIdentifierPattern = null,
             IgnorePrefixes = null,
             IgnorePostfixes = null
-        };
+        });
 
-        _ = session.Validate(opts);
-        var res = session.CheckVariableNames(opts);
-
+        var res = report.VariableNamesResult!;
         Assert.Contains("a", res.MatchedNames);
         Assert.Contains("c", res.MatchedNames);
         Assert.Contains("b", res.UnmatchedNames);
@@ -200,16 +166,14 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "aX + pre_b + c_suf + keep";
 
-        var opts = new VariableNamesOptions
+        var report = session.Validate(new VariableNamesOptions
         {
             KnownIdentifierNames = [ "keep" ],
-            IgnorePrefixes = [ "pre_" ],
-            IgnorePostfixes = [ "_suf", "X"]
-        };
+            IgnorePrefixes = new[] { "pre_" },
+            IgnorePostfixes = new[] { "_suf", "X" }
+        });
 
-        _ = session.Validate(opts);
-        var res = session.CheckVariableNames(opts);
-
+        var res = report.VariableNamesResult!;
         Assert.Contains("keep", res.MatchedNames);
         Assert.Contains("pre_b", res.IgnoredNames);
         Assert.Contains("c_suf", res.IgnoredNames);
@@ -224,40 +188,35 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
         session.Expression = "tmp_a + TMP + keep + TmpVar";
 
         var pattern = new Regex("^(tmp_.*|[A-Z]+)$");
-        var opts = new VariableNamesOptions
+        var report = session.Validate(new VariableNamesOptions
         {
             KnownIdentifierNames = [ "keep" ],
             IgnoreIdentifierPattern = pattern
-        };
+        });
 
-        _ = session.Validate(opts);
-        var res = session.CheckVariableNames(opts);
-
+        var res = report.VariableNamesResult!;
         Assert.Contains("keep", res.MatchedNames);
         Assert.Contains("tmp_a", res.IgnoredNames);
         Assert.Contains("TMP", res.IgnoredNames);
-        // TmpVar does not match ^[A-Z]+$ and doesn't start with tmp_, so should be unmatched
         Assert.Contains("TmpVar", res.UnmatchedNames);
     }
 
     [Fact]
     public void VariableNames_IgnoreCaptureGroups_CustomTokenizer()
     {
-        // Build a custom tokenizer that marks tmp_* via a capture group named "ig"
-        var custom = TokenizerOptions.Default;
-        custom = new TokenizerOptions
+        var custom = new TokenizerOptions
         {
-            Version = custom.Version,
-            CaseSensitive = custom.CaseSensitive,
+            Version = TokenizerOptions.Default.Version,
+            CaseSensitive = TokenizerOptions.Default.CaseSensitive,
             TokenPatterns = new TokenPatterns
             {
                 Identifier = @"(?<ig>tmp_[A-Za-z]\w*)|(?<id>[A-Za-z_]\w*)",
-                Literal = custom.TokenPatterns.Literal,
-                OpenParenthesis = custom.TokenPatterns.OpenParenthesis,
-                CloseParenthesis = custom.TokenPatterns.CloseParenthesis,
-                ArgumentSeparator = custom.TokenPatterns.ArgumentSeparator,
-                Unary = custom.TokenPatterns.Unary,
-                Operators = custom.TokenPatterns.Operators
+                Literal = TokenizerOptions.Default.TokenPatterns.Literal,
+                OpenParenthesis = TokenizerOptions.Default.TokenPatterns.OpenParenthesis,
+                CloseParenthesis = TokenizerOptions.Default.TokenPatterns.CloseParenthesis,
+                ArgumentSeparator = TokenizerOptions.Default.TokenPatterns.ArgumentSeparator,
+                Unary = TokenizerOptions.Default.TokenPatterns.Unary,
+                Operators = TokenizerOptions.Default.TokenPatterns.Operators
             }
         };
 
@@ -266,15 +225,13 @@ public class ParserSessionValidationTests : IClassFixture<ItemSessionFixture>
 
         session.Expression = "tmp_a + keep + tmp_b2 + Other";
 
-        var opts = new VariableNamesOptions
+        var report = session.Validate(new VariableNamesOptions
         {
             KnownIdentifierNames = [ "keep" ],
-            IgnoreCaptureGroups = ["ig" ]
-        };
+            IgnoreCaptureGroups = new[] { "ig" }
+        });
 
-        _ = session.Validate(opts);
-        var res = session.CheckVariableNames(opts);
-
+        var res = report.VariableNamesResult!;
         Assert.Contains("keep", res.MatchedNames);
         Assert.Contains("tmp_a", res.IgnoredNames);
         Assert.Contains("tmp_b2", res.IgnoredNames);

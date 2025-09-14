@@ -10,11 +10,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 {
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
-    //protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
-    //protected Stack<Token> _stack = [];
-
-    // New: cache the built tree to avoid rebuilding between validation/optimization/evaluation
     protected TokenTree? _tree = null;
 
     public ParserSessionBase(
@@ -28,14 +24,11 @@ public class ParserSessionBase : ParserBase, IParserSession
     protected internal ParserSessionBase(ILogger logger, ParserServices services)
         : base(logger, services) { }
 
-
     protected void Reset()
     {
         _infixTokens = [];
         _postfixTokens = [];
-        //_nodeValueDictionary = [];
         _nodeDictionary = [];
-        //_stack = [];
         _tree = null;
     }
 
@@ -152,16 +145,12 @@ public class ParserSessionBase : ParserBase, IParserSession
         Variables = variables ?? [];
 
         if (string.IsNullOrWhiteSpace(_expression))
-        {
             return [];
-        }
 
         List<ValidationFailure> failures = [];
 
-        // 1) Validation (optional) — also builds infix/postfix/tree/nodeDictionary once.
         if (runValidation)
         {
-            // If options are not provided, prefer Variables.Keys as KnownIdentifierNames
             VariableNamesOptions effVarOpts =
                 variableNamesOptions ?? new VariableNamesOptions
                 {
@@ -170,65 +159,57 @@ public class ParserSessionBase : ParserBase, IParserSession
                         _options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
                 };
 
-            failures = Validate(effVarOpts, earlyReturnOnValidationErrors);
+            var report = Validate(effVarOpts, earlyReturnOnValidationErrors);
+            failures = [.. report.GetValidationFailures()];
             if (earlyReturnOnValidationErrors && failures.Count > 0)
-            {
-                // Do not proceed to optimization; state may include partial build (infix/postfix/tree) from Validate.
                 return failures;
-            }
         }
         else
         {
-            // Build infix/postfix/tree/nodeDictionary once without validation
             _infixTokens = GetInfixTokens(_expression!);
             _postfixTokens = GetPostfixTokens(_infixTokens);
             _tree = GetExpressionTree(_postfixTokens);
             _nodeDictionary = _tree.NodeDictionary;
         }
 
-        // 2) Optimization (optional)
         switch (optimizationMode)
         {
             case ExpressionOptimizationMode.None:
-                // No further changes
                 break;
 
             case ExpressionOptimizationMode.ParserInference:
-                {
-                    // Must have a tree at this point; inference reorders in-place and returns same instance/tree wrapper
-                    var currentTree = _tree ?? GetExpressionTree(_postfixTokens);
-                    var result = OptimizeTreeUsingInference(currentTree, Variables);
-                    var optimizedTree = result.Tree;
+            {
+                var currentTree = _tree ?? GetExpressionTree(_postfixTokens);
+                var result = OptimizeTreeUsingInference(currentTree, Variables);
+                var optimizedTree = result.Tree;
 
-                    _tree = optimizedTree;
-                    _infixTokens = optimizedTree.GetInfixTokens();
-                    _postfixTokens = optimizedTree.GetPostfixTokens();
-                    _nodeDictionary = optimizedTree.NodeDictionary;
-                    break;
-                }
+                _tree = optimizedTree;
+                _infixTokens = optimizedTree.GetInfixTokens();
+                _postfixTokens = optimizedTree.GetPostfixTokens();
+                _nodeDictionary = optimizedTree.NodeDictionary;
+                break;
+            }
 
             case ExpressionOptimizationMode.StaticTypeMaps:
-                {
-                    // Build a new optimized tree using supplied (or inferred) type maps
-                    variableTypes ??= BuildVariableTypesFromVariables(Variables);
-                    var optimizedTree = GetOptimizedExpressionTree(
-                        _expression!,
-                        variableTypes,
-                        functionReturnTypes,
-                        ambiguousFunctionReturnTypes);
+            {
+                variableTypes ??= BuildVariableTypesFromVariables(Variables);
+                var optimizedTree = GetOptimizedExpressionTree(
+                    _expression!,
+                    variableTypes,
+                    functionReturnTypes,
+                    ambiguousFunctionReturnTypes);
 
-                    _tree = optimizedTree;
-                    _infixTokens = optimizedTree.GetInfixTokens();
-                    _postfixTokens = optimizedTree.GetPostfixTokens();
-                    _nodeDictionary = optimizedTree.NodeDictionary;
-                    break;
-                }
+                _tree = optimizedTree;
+                _infixTokens = optimizedTree.GetInfixTokens();
+                _postfixTokens = optimizedTree.GetPostfixTokens();
+                _nodeDictionary = optimizedTree.NodeDictionary;
+                break;
+            }
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(optimizationMode), optimizationMode, null);
         }
 
-        // Ready for separate Evaluate/EvaluateType
         return failures;
     }
 
@@ -399,29 +380,29 @@ public class ParserSessionBase : ParserBase, IParserSession
     #endregion
 
     // Updated: align with CoreParser.Validate and honor provided VariableNamesOptions vs. current Variables.
-    public virtual List<ValidationFailure> Validate(
+    public virtual ParserValidationReport Validate(
         VariableNamesOptions variableNamesOptions,
         bool earlyReturnOnErrors = false)
     {
-        if (string.IsNullOrWhiteSpace(_expression)) return [];
+        var report = new ParserValidationReport { Expression = _expression };
 
-        var failures = new List<ValidationFailure>();
+        if (string.IsNullOrWhiteSpace(_expression))
+            return report;
 
         // 1) Parentheses pre-check (string-only)
         var parenthesesResult = _tokenizerValidator.CheckParentheses(_expression);
+        report.ParenthesesResult = parenthesesResult;
         if (!parenthesesResult.IsSuccess)
         {
             _logger.LogWarning("Unmatched parentheses in formula: {expr}", _expression);
-            failures.AddRange(parenthesesResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
         // 2) Acquire/reuse infix tokens
         var infixTokens = _infixTokens.Count != 0 ? _infixTokens : GetInfixTokens(_expression);
-        if (_infixTokens.Count == 0) _infixTokens = infixTokens; // keep state in sync   <--------------
+        if (_infixTokens.Count == 0) _infixTokens = infixTokens;
 
         // 3) Tokenizer stage: variable names
-        // Prefer the provided KnownIdentifierNames; if empty/null, fall back to Variables.Keys (already merged with Constants).
         var effectiveKnown =
             (variableNamesOptions.KnownIdentifierNames is { Count: > 0 })
                 ? variableNamesOptions.KnownIdentifierNames
@@ -438,69 +419,67 @@ public class ParserSessionBase : ParserBase, IParserSession
         };
 
         var variableNamesResult = _tokenizerValidator.CheckVariableNames(infixTokens, effectiveVarOpts);
+        report.VariableNamesResult = variableNamesResult;
         if (!variableNamesResult.IsSuccess)
         {
             _logger.LogWarning("Unmatched variable names in formula: {expr}", _expression);
-            failures.AddRange(variableNamesResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
-        // 4) Parser stage: function names (requires infix + metadata)
+        // 4) Parser stage: function names
         var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IParserFunctionMetadata)this);
+        report.FunctionNamesResult = functionNamesResult;
         if (!functionNamesResult.IsSuccess)
         {
             _logger.LogWarning("Unmatched function names in formula: {expr}", _expression);
-            failures.AddRange(functionNamesResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
         // 5) Build/reuse postfix and tree for node-dictionary-based checks
         var postfixTokens = _postfixTokens.Count != 0 ? _postfixTokens : GetPostfixTokens(infixTokens);
-        if (_postfixTokens.Count == 0) _postfixTokens = postfixTokens; // keep state in sync   <--------------
+        if (_postfixTokens.Count == 0) _postfixTokens = postfixTokens;
 
-        // Build tree once and keep it
         _tree = GetExpressionTree(postfixTokens);
-        _nodeDictionary = _tree.NodeDictionary; // keep state in sync   <--------------
+        _nodeDictionary = _tree.NodeDictionary;
 
-        // 6) Parser stage: empty function arguments
+        // 6) Empty function arguments
         var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);
+        report.EmptyFunctionArgumentsResult = emptyFunctionArgumentsResult;
         if (!emptyFunctionArgumentsResult.IsSuccess)
         {
             _logger.LogWarning("Empty function arguments in formula: {expr}", _expression);
-            failures.AddRange(emptyFunctionArgumentsResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
-        // 7) Parser stage: function arguments count (needs metadata)
+        // 7) Function arguments count
         var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IParserFunctionMetadata)this);
+        report.FunctionArgumentsCountResult = functionArgumentsCountResult;
         if (!functionArgumentsCountResult.IsSuccess)
         {
             _logger.LogWarning("Unmatched function arguments in formula: {expr}", _expression);
-            failures.AddRange(functionArgumentsCountResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
-        // 8) Parser stage: invalid operators
+        // 8) Invalid operators
         var operatorOperandsResult = _parserValidator.CheckOperatorOperands(_nodeDictionary);
+        report.OperatorOperandsResult = operatorOperandsResult;
         if (!operatorOperandsResult.IsSuccess)
         {
             _logger.LogWarning("Invalid operators in formula: {expr}", _expression);
-            failures.AddRange(operatorOperandsResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
-        // 9) Parser stage: orphan/invalid argument separators
+        // 9) Orphan/invalid argument separators
         var orphanArgumentSeparatorsResult = _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
+        report.OrphanArgumentSeparatorsResult = orphanArgumentSeparatorsResult;
         if (!orphanArgumentSeparatorsResult.IsSuccess)
         {
             _logger.LogWarning("Invalid argument separators in formula: {expr}", _expression);
-            failures.AddRange(orphanArgumentSeparatorsResult.GetValidationFailures());
-            if (earlyReturnOnErrors) return failures;
+            if (earlyReturnOnErrors) return report;
         }
 
-        return failures;
+        return report;
     }
+
     #endregion
-
-
 }
