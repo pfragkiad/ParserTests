@@ -42,54 +42,42 @@ public class Tokenizer : ITokenizer
 
         TokenPatterns tokenPatterns = _options.TokenPatterns;
 
-        // open parenthesis with identifier (for functions)
-        string functionPattern = $@"(?<identifier>{tokenPatterns.Identifier})\s*(?<par>\{tokenPatterns.OpenParenthesis})";
-        matches =
-            _options.CaseSensitive
-                ? Regex.Matches(expression, functionPattern)
-                : Regex.Matches(expression, functionPattern, RegexOptions.IgnoreCase);
-
-        // Track function call positions to avoid duplicate parentheses
-        // Track function identifier start indices to avoid re-adding them as identifiers
-        HashSet<int> functionIdentifierIndices = [];
+        // Track function '(' positions to avoid duplicate '(' tokens
         HashSet<int> functionParenthesisPositions = [];
 
-        if (matches.Count != 0)
-        {
-            foreach (Match m in matches.Cast<Match>())
-            {
-                Group idGroup = m.Groups["identifier"];
-                Group parGroup = m.Groups["par"];
-
-                // Create function token (identifier capture excludes any trailing whitespace)
-                tokens.Add(new Token(TokenType.Function, idGroup.Value, idGroup.Index));
-
-                // Mark identifier start index to avoid adding it again as an identifier later
-                functionIdentifierIndices.Add(idGroup.Index);
-
-                // Mark the parenthesis position as part of a function (so we don't add a separate '(' token)
-                functionParenthesisPositions.Add(parGroup.Index);
-            }
-        }
-
-        //identifiers (exclude only the identifier matches that correspond to function names by index)
+        // Identify identifiers and function calls without a regex for "identifier + '('"
         matches =
             _options.CaseSensitive
                 ? Regex.Matches(expression, tokenPatterns.Identifier!)
                 : Regex.Matches(expression, tokenPatterns.Identifier!, RegexOptions.IgnoreCase);
+
         if (matches.Count > 0)
         {
-            tokens.AddRange(matches
-                .Where(m => !functionIdentifierIndices.Contains(m.Index))
-                .Select(m => new Token(TokenType.Identifier, m)));
+            foreach (Match m in matches.Cast<Match>())
+            {
+                int i = m.Index + m.Length;
+                // Skip optional whitespace between identifier and '('
+                while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
+
+                if (i < expression.Length && expression[i] == tokenPatterns.OpenParenthesis)
+                {
+                    // Function: add function token and remember '(' position to avoid re-adding it
+                    tokens.Add(new Token(TokenType.Function, m.Value, m.Index));
+                    functionParenthesisPositions.Add(i);
+                    continue;
+                }
+
+                // Plain identifier
+                tokens.Add(new Token(TokenType.Identifier, m));
+            }
         }
 
-        //literals
+        // literals
         matches = Regex.Matches(expression, tokenPatterns.Literal!);
         if (matches.Count != 0)
             tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
 
-        // parentheses
+        // parentheses and argument separators
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
@@ -97,12 +85,9 @@ public class Tokenizer : ITokenizer
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
             else if (c == tokenPatterns.CloseParenthesis)
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
+            else if( c== tokenPatterns.ArgumentSeparator)
+                tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
-
-        // argument separators
-        matches = Regex.Matches(expression, Regex.Escape(tokenPatterns.ArgumentSeparator!));
-        if (matches.Count != 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.ArgumentSeparator, m)));
 
         // match unary operators that do NOT coincide with binary operators
         var uniqueUnary = tokenPatterns.Unary.Where(u => !tokenPatterns.OperatorDictionary.ContainsKey(u.Name));
@@ -157,7 +142,7 @@ public class Tokenizer : ITokenizer
                 token.TokenType = TokenType.OperatorUnary; continue;
             }
 
-            if(i==0 && !unary.Prefix) continue; //stay as binary
+            if (i == 0 && !unary.Prefix) continue; //stay as binary
 
             Token previousToken = tokens[i - 1];
             TokenType previousTokenType = previousToken!.TokenType;

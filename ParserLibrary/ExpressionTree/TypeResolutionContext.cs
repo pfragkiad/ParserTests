@@ -7,13 +7,13 @@ namespace ParserLibrary.ExpressionTree;
         public readonly Dictionary<string, Type> FunctionReturnTypes;
         public readonly Dictionary<string, Func<Type?[], Type?>> AmbiguousFunctionReturnTypes;
         public readonly Dictionary<Node<Token>, Type?> TypeCache = new();
-        public readonly string ArgumentSeparator;
+        public readonly char ArgumentSeparator;
 
         public TypeResolutionContext(
             Dictionary<string, Type> variableTypes,
             Dictionary<string, Type> functionReturnTypes,
             Dictionary<string, Func<Type?[], Type?>> ambiguous,
-            string argumentSeparator)
+            char argumentSeparator)
         {
             VariableTypes = variableTypes;
             FunctionReturnTypes = functionReturnTypes;

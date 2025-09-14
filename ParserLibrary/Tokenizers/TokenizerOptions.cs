@@ -30,7 +30,7 @@ public class TokenizerOptions
                 Literal = "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
                 OpenParenthesis = '(',
                 CloseParenthesis = ')',
-                ArgumentSeparator = ",",
+                ArgumentSeparator = ',',
                 Unary =
                 [
                     new() { Name = "-", Priority = 3, Prefix = true },

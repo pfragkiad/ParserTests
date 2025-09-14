@@ -193,19 +193,11 @@ public class Node<T> : NodeBase
         return iArguments;
     }
 
-    //public object[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object> nodeValueDictionary)
-    //{
-    //    int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
-    //    return GetFunctionArguments(argumentsCount, nodeValueDictionary);
-    //}
-
     public object?[] GetFunctionArguments(string argumentSeparator, Dictionary<Node<T>, object?> nodeValueDictionary)
     {
         int argumentsCount = GetFunctionArgumentsCount(argumentSeparator);
         return GetFunctionArguments(argumentsCount, nodeValueDictionary);
     }
-
-
 
     /// <summary>
     /// If we already know the number of arguments then we should call this function for better performance.

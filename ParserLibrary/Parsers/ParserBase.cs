@@ -198,7 +198,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (token.TokenType == TokenType.Function)
             {
                 Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
-                V?[] args = [.. functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator,
+                V?[] args = [.. functionNode.GetFunctionArguments(
                     nodeValueDictionary
                         .Select(e => (e.Key, Value: (object?)e.Value))
                         .ToDictionary(e => e.Key, e => e.Value))
@@ -728,10 +728,10 @@ public partial class ParserBase : Tokenizer, IParser
     #region Get arguments helpers
 
     private object?[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        functionNode.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, nodeValueDictionary);
+        functionNode.GetFunctionArguments(nodeValueDictionary);
 
     private Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
-        functionNode.GetFunctionArgumentNodes(_options.TokenPatterns.ArgumentSeparator);
+        functionNode.GetFunctionArgumentNodes();
 
     #endregion
 

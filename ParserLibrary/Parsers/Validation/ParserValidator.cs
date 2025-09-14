@@ -1,3 +1,4 @@
+using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
@@ -58,7 +59,7 @@ public sealed class ParserValidator : IParserValidator
             if (node.Value!.TokenType != TokenType.Function) continue;
 
             string name = node.Value.Text;
-            int actual = node.GetFunctionArgumentsCount(_patterns.ArgumentSeparator.ToString());
+            int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
 
             var fixedCount = metadata.GetCustomFunctionFixedArgCount(name) ??
                              metadata.GetMainFunctionFixedArgCount(name);
@@ -113,8 +114,8 @@ public sealed class ParserValidator : IParserValidator
             var token = entry.Key;
             if (token.TokenType != TokenType.Function) continue;
 
-            var node = entry.Value;
-            var args = node.GetFunctionArgumentNodes(_patterns.ArgumentSeparator);
+            var node = (Node<Token>)entry.Value;
+            var args = node.GetFunctionArgumentNodes();
             var res = new FunctionArgumentCheckResult { FunctionName = token.Text, Position = token.Index + 1 };
 
             if (args.Any(n => n.Value!.IsNull)) invalid.Add(res); else valid.Add(res);

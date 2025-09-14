@@ -11,13 +11,13 @@ public class TokenPatterns //NOT records here!
 
     public char CloseParenthesis { get; set; } = ')';
 
-    public string ArgumentSeparator { get; set; } = ",";
+    public char ArgumentSeparator { get; set; } = ',';
 
     //This is a special operator with the lowest priority.
     public Operator ArgumentSeparatorOperator =>
         new()
         {
-            Name = ArgumentSeparator,
+            Name = ArgumentSeparator.ToString(),
             Priority = _operators.Min(o=>o.Priority)-1,
             LeftToRight = true
         };
