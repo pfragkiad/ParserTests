@@ -73,6 +73,20 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         switch (optimizationMode)
         {
+            default:
+            case ExpressionOptimizationMode.ParserInference:
+                {
+                    var initialTree = GetExpressionTree(_expression!);
+                    var result = OptimizeTreeUsingInference(initialTree, Variables);
+                    var optimizedTree = result.Tree;
+
+                    _tree = optimizedTree;
+                    _infixTokens = optimizedTree.GetInfixTokens();
+                    _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    return;
+                }
+
             case ExpressionOptimizationMode.None:
                 _infixTokens = GetInfixTokens(_expression!);
                 _postfixTokens = GetPostfixTokens(_infixTokens);
@@ -97,19 +111,6 @@ public class ParserSessionBase : ParserBase, IParserSession
                     return;
                 }
 
-            default:
-            case ExpressionOptimizationMode.ParserInference:
-                {
-                    var initialTree = GetExpressionTree(_expression!);
-                    var result = OptimizeTreeUsingInference(initialTree, Variables);
-                    var optimizedTree = result.Tree;
-
-                    _tree = optimizedTree;
-                    _infixTokens = optimizedTree.GetInfixTokens();
-                    _postfixTokens = optimizedTree.GetPostfixTokens();
-                    _nodeDictionary = optimizedTree.NodeDictionary;
-                    return;
-                }
         }
     }
 

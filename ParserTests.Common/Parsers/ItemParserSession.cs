@@ -5,7 +5,6 @@ namespace ParserTests.Common.Parsers;
 
 public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
-
     //we assume that LITERALS are integer numbers only
     protected override object EvaluateLiteral(string s)
     {
@@ -26,14 +25,13 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
 
         if (operatorName == "+")
         {
-            _logger.LogDebug("Adding with + operator ${left} and ${right}", leftOperand, rightOperand);
-
+            _logger.LogDebug("Adding with + operator {Left} and {Right}", leftOperand, rightOperand);
             dynamic left = leftOperand!, right = rightOperand!;
             return left + right;
         }
         if (operatorName == "*")
         {
-            _logger.LogDebug("Multiplying with * operator ${left} and ${right}", leftOperand, rightOperand);
+            _logger.LogDebug("Multiplying with * operator {Left} and {Right}", leftOperand, rightOperand);
             dynamic left = leftOperand!, right = rightOperand!;
             return left * right;
         }
@@ -61,30 +59,41 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
         return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
     }
 
+    // Respect case sensitivity for built-in function metadata lookups
+    protected override Dictionary<string, int> MainFunctionsArgumentsCount =>
+        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        {
+            ["add"] = 2
+        };
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        if (args[0] is not Item || args[1] is not int)
+        // Normalize function name according to current case-sensitivity rules
+        var name = _options.CaseSensitive ? functionName : functionName.ToLowerInvariant();
+
+        if (args.Length < 2 || args[0] is not Item || args[1] is not int)
         {
-            _logger.LogError("Invalid arguments for function '{functionName}': expected Item and int, got {arg0} and {arg1}", functionName, args[0]?.GetType(), args[1]?.GetType());
+            _logger.LogError("Invalid arguments for function '{FunctionName}': expected Item and int, got {Arg0} and {Arg1}",
+                name, args.ElementAtOrDefault(0)?.GetType(), args.ElementAtOrDefault(1)?.GetType());
             return null;
         }
 
-        return functionName switch
+        return name switch
         {
             "add" => (Item)args[0]! + (int)args[1]!,
-            _ => base.EvaluateFunction(functionName, args)
+            _ => base.EvaluateFunction(name, args)
         };
     }
 
     protected override Type EvaluateFunctionType(string functionName, object?[] args)
     {
-        return functionName switch
+        // Normalize function name according to current case-sensitivity rules
+        var name = _options.CaseSensitive ? functionName : functionName.ToLowerInvariant();
+
+        return name switch
         {
             "add" => typeof(Item),
-            _ => base.EvaluateFunctionType(functionName, args)
+            _ => base.EvaluateFunctionType(name, args)
         };
-
     }
-
 }

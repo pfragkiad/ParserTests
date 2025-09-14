@@ -28,8 +28,6 @@ public partial class ParserBase : Tokenizer, IParser
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
-
-
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     /// <summary>
