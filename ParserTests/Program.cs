@@ -216,7 +216,7 @@ internal class Program
             { "item1", typeof(Item) },
             { "item2", typeof(Item) }
         };
-        var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
+        var optimizedTree = parser.GetOptimizedExpressionTreeResult(expression, variableTypes).Tree;
         optimizedTree.Print();
 
         Console.WriteLine($"Original Tree: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}");

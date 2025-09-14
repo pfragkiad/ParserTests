@@ -140,17 +140,6 @@ public partial class ParserBase : Tokenizer, IParser
             ambiguousFunctionReturnTypes);
     }
 
-    public TokenTree GetOptimizedExpressionTree(
-        string expression,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null) =>
-        GetOptimizedExpressionTreeResult(
-            expression,
-            variableTypes,
-            functionReturnTypes,
-            ambiguousFunctionReturnTypes).Tree;
-
     public TreeOptimizerResult GetOptimizedExpressionTreeResult(
         List<Token> postfixTokens,
         Dictionary<string, Type>? variableTypes = null,
@@ -165,16 +154,6 @@ public partial class ParserBase : Tokenizer, IParser
             ambiguousFunctionReturnTypes);
     }
 
-    public TokenTree GetOptimizedExpressionTree(
-        List<Token> postfixTokens,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null) =>
-        GetOptimizedExpressionTreeResult(
-            postfixTokens,
-            variableTypes,
-            functionReturnTypes,
-            ambiguousFunctionReturnTypes).Tree;
 
     #endregion  // close "Expression trees" region
 
@@ -311,11 +290,11 @@ public partial class ParserBase : Tokenizer, IParser
             .Where(kv => kv.Value is not null)
             .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
 
-        var optimizedTree = GetOptimizedExpressionTree(
+        var optimizedTree = GetOptimizedExpressionTreeResult(
             expression,
             variableTypes,
             functionReturnTypes: null,
-            ambiguousFunctionReturnTypes: null);
+            ambiguousFunctionReturnTypes: null).Tree;
 
         return Evaluate(optimizedTree, variables, mergeConstants: true);
     }

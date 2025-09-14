@@ -135,14 +135,14 @@ public interface IParser : ITokenizer
         Dictionary<string, Type>? functionReturnTypes = null,
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
-    /// <summary>
-    /// Returns an optimized expression tree using static type metadata.
-    /// </summary>
-    TokenTree GetOptimizedExpressionTree(
-        string expression,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    ///// <summary>
+    ///// Returns an optimized expression tree using static type metadata.
+    ///// </summary>
+    //TokenTree GetOptimizedExpressionTree(
+    //    string expression,
+    //    Dictionary<string, Type>? variableTypes = null,
+    //    Dictionary<string, Type>? functionReturnTypes = null,
+    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     /// <summary>
     /// Returns the full optimization result (including before/after metrics) using static type metadata.
@@ -153,14 +153,14 @@ public interface IParser : ITokenizer
         Dictionary<string, Type>? functionReturnTypes = null,
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
-    /// <summary>
-    /// Returns an optimized expression tree using static type metadata.
-    /// </summary>
-    TokenTree GetOptimizedExpressionTree(
-        List<Token> postfixTokens,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    ///// <summary>
+    ///// Returns an optimized expression tree using static type metadata.
+    ///// </summary>
+    //TokenTree GetOptimizedExpressionTree(
+    //    List<Token> postfixTokens,
+    //    Dictionary<string, Type>? variableTypes = null,
+    //    Dictionary<string, Type>? functionReturnTypes = null,
+    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     // ---------------- Parser-driven optimizer (runtime inference) ----------------
 

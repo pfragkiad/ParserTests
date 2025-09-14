@@ -42,8 +42,8 @@ public class Tokenizer : ITokenizer
 
         TokenPatterns tokenPatterns = _options.TokenPatterns;
 
-        //open parenthesis with identifier (for functions)
-        string functionPattern = $@"(?<identifier>{tokenPatterns.Identifier}\s*)(?<par>\{tokenPatterns.OpenParenthesis})";
+        // open parenthesis with identifier (for functions)
+        string functionPattern = $@"(?<identifier>{tokenPatterns.Identifier})\s*(?<par>\{tokenPatterns.OpenParenthesis})";
         matches =
             _options.CaseSensitive
                 ? Regex.Matches(expression, functionPattern)
@@ -61,8 +61,8 @@ public class Tokenizer : ITokenizer
                 Group idGroup = m.Groups["identifier"];
                 Group parGroup = m.Groups["par"];
 
-                // Create function token (trim any trailing whitespace captured by \s*)
-                tokens.Add(new Token(TokenType.Function, idGroup.Value.Trim(), idGroup.Index));
+                // Create function token (identifier capture excludes any trailing whitespace)
+                tokens.Add(new Token(TokenType.Function, idGroup.Value, idGroup.Index));
 
                 // Mark identifier start index to avoid adding it again as an identifier later
                 functionIdentifierIndices.Add(idGroup.Index);
