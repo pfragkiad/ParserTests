@@ -10,9 +10,12 @@ public class ParserSessionBase : ParserBase, IParserSession
 {
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];
-    protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
+    //protected internal Dictionary<Node<Token>, object?> _nodeValueDictionary = [];
     protected Dictionary<Token, Node<Token>> _nodeDictionary = [];
-    protected Stack<Token> _stack = [];
+    //protected Stack<Token> _stack = [];
+
+    // New: cache the built tree to avoid rebuilding between validation/optimization/evaluation
+    protected TokenTree? _tree = null;
 
     public ParserSessionBase(
         ILogger<ParserSessionBase> logger,
@@ -30,9 +33,10 @@ public class ParserSessionBase : ParserBase, IParserSession
     {
         _infixTokens = [];
         _postfixTokens = [];
-        _nodeValueDictionary = [];
+        //_nodeValueDictionary = [];
         _nodeDictionary = [];
-        _stack = [];
+        //_stack = [];
+        _tree = null;
     }
 
     private string _expression = "";
@@ -72,6 +76,9 @@ public class ParserSessionBase : ParserBase, IParserSession
             case ExpressionOptimizationMode.None:
                 _infixTokens = GetInfixTokens(_expression!);
                 _postfixTokens = GetPostfixTokens(_infixTokens);
+                // Build tree so downstream checks can run without rework
+                _tree = GetExpressionTree(_postfixTokens);
+                _nodeDictionary = _tree.NodeDictionary;
                 return;
 
             case ExpressionOptimizationMode.StaticTypeMaps:
@@ -83,23 +90,26 @@ public class ParserSessionBase : ParserBase, IParserSession
                         functionReturnTypes,
                         ambiguousFunctionReturnTypes);
 
+                    _tree = optimizedTree;
                     _infixTokens = optimizedTree.GetInfixTokens();
                     _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
                     return;
                 }
 
+            default:
             case ExpressionOptimizationMode.ParserInference:
                 {
                     var initialTree = GetExpressionTree(_expression!);
                     var result = OptimizeTreeUsingInference(initialTree, Variables);
                     var optimizedTree = result.Tree;
+
+                    _tree = optimizedTree;
                     _infixTokens = optimizedTree.GetInfixTokens();
                     _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
                     return;
                 }
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(optimizationMode), optimizationMode, null);
         }
     }
 
@@ -115,26 +125,152 @@ public class ParserSessionBase : ParserBase, IParserSession
         set => _variables = MergeVariableConstants(value);
     }
 
+    #region Preparation API (validate -> optimize -> ready for evaluation)
+
+    /// <summary>
+    /// Prepares the parser state for the given expression (and optional variables) in a single pass:
+    /// 1) Optionally validates (parentheses, variable names, function names, arguments, operators).
+    /// 2) Optionally optimizes the current tree (ParserInference in-place, or StaticTypeMaps with a new tree).
+    /// 3) Leaves infix/postfix/tree/node-dictionary ready for a separate Evaluate/EvaluateType call.
+    /// Returns validation failures (empty if none or validation disabled). If early return is requested and
+    /// failures occur, optimization is skipped and the state reflects whatever was built up to that point.
+    /// </summary>
+    public List<ValidationFailure> Prepare(
+        string expression,
+        Dictionary<string, object?>? variables = null,
+        VariableNamesOptions? variableNamesOptions = null,
+        bool runValidation = true,
+        bool earlyReturnOnValidationErrors = false,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
+    {
+        Reset();
+        _expression = expression;
+        Variables = variables ?? [];
+
+        if (string.IsNullOrWhiteSpace(_expression))
+        {
+            return [];
+        }
+
+        List<ValidationFailure> failures = [];
+
+        // 1) Validation (optional) — also builds infix/postfix/tree/nodeDictionary once.
+        if (runValidation)
+        {
+            // If options are not provided, prefer Variables.Keys as KnownIdentifierNames
+            VariableNamesOptions effVarOpts =
+                variableNamesOptions ?? new VariableNamesOptions
+                {
+                    KnownIdentifierNames = new HashSet<string>(
+                        Variables.Keys,
+                        _options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+                };
+
+            failures = Validate(effVarOpts, earlyReturnOnValidationErrors);
+            if (earlyReturnOnValidationErrors && failures.Count > 0)
+            {
+                // Do not proceed to optimization; state may include partial build (infix/postfix/tree) from Validate.
+                return failures;
+            }
+        }
+        else
+        {
+            // Build infix/postfix/tree/nodeDictionary once without validation
+            _infixTokens = GetInfixTokens(_expression!);
+            _postfixTokens = GetPostfixTokens(_infixTokens);
+            _tree = GetExpressionTree(_postfixTokens);
+            _nodeDictionary = _tree.NodeDictionary;
+        }
+
+        // 2) Optimization (optional)
+        switch (optimizationMode)
+        {
+            case ExpressionOptimizationMode.None:
+                // No further changes
+                break;
+
+            case ExpressionOptimizationMode.ParserInference:
+                {
+                    // Must have a tree at this point; inference reorders in-place and returns same instance/tree wrapper
+                    var currentTree = _tree ?? GetExpressionTree(_postfixTokens);
+                    var result = OptimizeTreeUsingInference(currentTree, Variables);
+                    var optimizedTree = result.Tree;
+
+                    _tree = optimizedTree;
+                    _infixTokens = optimizedTree.GetInfixTokens();
+                    _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    break;
+                }
+
+            case ExpressionOptimizationMode.StaticTypeMaps:
+                {
+                    // Build a new optimized tree using supplied (or inferred) type maps
+                    variableTypes ??= BuildVariableTypesFromVariables(Variables);
+                    var optimizedTree = GetOptimizedExpressionTree(
+                        _expression!,
+                        variableTypes,
+                        functionReturnTypes,
+                        ambiguousFunctionReturnTypes);
+
+                    _tree = optimizedTree;
+                    _infixTokens = optimizedTree.GetInfixTokens();
+                    _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    break;
+                }
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(optimizationMode), optimizationMode, null);
+        }
+
+        // Ready for separate Evaluate/EvaluateType
+        return failures;
+    }
+
+    #endregion
+
     #region Public evaluation API
 
     public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(expression, ExpressionOptimizationMode.None, variables);
+        // One-shot convenience: prepare (no validation) -> evaluate
+        Prepare(
+            expression,
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.None);
         return Evaluate();
     }
 
     public virtual object? Evaluate(Dictionary<string, object?>? variables = null)
     {
-        PrepareExpressionInternal(ExpressionOptimizationMode.None, variables);
+        // Convenience: re-prepare current expression with provided variables (no validation/optimization)
+        Prepare(
+            _expression,
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.None);
         return Evaluate();
     }
 
     public override object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(
+        // One-shot convenience: prepare (no validation) with StaticTypeMaps -> evaluate
+        Prepare(
             expression,
-            ExpressionOptimizationMode.StaticTypeMaps,
-            variables);
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.StaticTypeMaps);
         return Evaluate();
     }
 
@@ -145,12 +281,16 @@ public class ParserSessionBase : ParserBase, IParserSession
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null,
         ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.StaticTypeMaps)
     {
-        PrepareExpressionInternal(
-            optimizationMode,
+        Prepare(
+            _expression,
             variables,
-            variableTypes,
-            functionReturnTypes,
-            ambiguousFunctionReturnTypes);
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: optimizationMode,
+            variableTypes: variableTypes,
+            functionReturnTypes: functionReturnTypes,
+            ambiguousFunctionReturnTypes: ambiguousFunctionReturnTypes);
         return Evaluate();
     }
 
@@ -158,33 +298,51 @@ public class ParserSessionBase : ParserBase, IParserSession
         string expression,
         Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(
+        Prepare(
             expression,
-            ExpressionOptimizationMode.ParserInference,
-            variables);
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.ParserInference);
         return Evaluate();
     }
 
     public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
     {
-        PrepareExpression(
+        // One-shot convenience: prepare (no validation/optimization) -> type-evaluate
+        Prepare(
             expression,
-            ExpressionOptimizationMode.None,
-            variables);
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.None);
         return EvaluateType();
     }
 
     public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
     {
-        PrepareExpressionInternal(ExpressionOptimizationMode.None, variables);
+        // Convenience: re-prepare current expression with provided variables (no validation/optimization)
+        Prepare(
+            _expression,
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.None);
         return EvaluateType();
     }
 
     public object? Evaluate() =>
-        Evaluate(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
+        (_tree is not null)
+            ? Evaluate(_tree, _variables, mergeConstants: true)
+            : Evaluate(_postfixTokens, _variables);
 
     public Type EvaluateType() =>
-        EvaluateType(_postfixTokens, _variables, _stack, _nodeDictionary, _nodeValueDictionary, mergeConstants: false);
+        (_tree is not null)
+            ? EvaluateType(_tree, _variables, mergeConstants: true)
+            : EvaluateType(_postfixTokens, _variables);
 
     #endregion
 
@@ -299,8 +457,9 @@ public class ParserSessionBase : ParserBase, IParserSession
         var postfixTokens = _postfixTokens.Count != 0 ? _postfixTokens : GetPostfixTokens(infixTokens);
         if (_postfixTokens.Count == 0) _postfixTokens = postfixTokens; // keep state in sync   <--------------
 
-        var tree = GetExpressionTree(postfixTokens);
-        _nodeDictionary = tree.NodeDictionary; // keep state in sync   <--------------
+        // Build tree once and keep it
+        _tree = GetExpressionTree(postfixTokens);
+        _nodeDictionary = _tree.NodeDictionary; // keep state in sync   <--------------
 
         // 6) Parser stage: empty function arguments
         var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);

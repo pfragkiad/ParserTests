@@ -319,13 +319,112 @@ public partial class ParserBase : Tokenizer, IParser
             functionReturnTypes: null,
             ambiguousFunctionReturnTypes: null);
 
-        return EvaluateWithTreeOptimizer(optimizedTree, variables);
+        return Evaluate(optimizedTree, variables, mergeConstants:true);
     }
 
-    protected virtual object? EvaluateWithTreeOptimizer(TokenTree optimizedTree, Dictionary<string, object?>? variables = null)
+
+    // -------- Tree-based evaluation (object) --------
+    protected virtual object? Evaluate(TokenTree tree, Dictionary<string, object?>? variables = null, bool mergeConstants = true)
     {
-        var postfixTokens = optimizedTree.GetPostfixTokens();
-        return Evaluate(postfixTokens, variables);
+        if (mergeConstants)
+            variables = MergeVariableConstants(variables);
+
+        var nodeValueDictionary = new Dictionary<Node<Token>, object?>();
+
+        foreach (var nb in tree.Root.PostOrderNodes())
+        {
+            var node = (Node<Token>)nb;
+            var token = node.Value!;
+
+            switch (token.TokenType)
+            {
+                case TokenType.Literal:
+                    nodeValueDictionary[node] = EvaluateLiteral(token.Text);
+                    break;
+
+                case TokenType.Identifier:
+                    nodeValueDictionary[node] =
+                        variables is not null && variables.TryGetValue(token.Text, out var idVal)
+                            ? idVal
+                            : null;
+                    break;
+
+                case TokenType.Operator:
+                    nodeValueDictionary[node] = EvaluateOperator(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.OperatorUnary:
+                    nodeValueDictionary[node] = EvaluateUnaryOperator(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.Function:
+                    nodeValueDictionary[node] = EvaluateFunction(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.ArgumentSeparator:
+                    // No value produced for separators (used for function arg routing)
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
+            }
+        }
+
+        return nodeValueDictionary[tree.Root];
+    }
+
+    // -------- Tree-based evaluation (type inference) --------
+    protected virtual Type EvaluateType(TokenTree tree, Dictionary<string, object?>? variables = null, bool mergeConstants = true)
+    {
+        if (mergeConstants)
+            variables = MergeVariableConstants(variables);
+
+        var nodeValueDictionary = new Dictionary<Node<Token>, object?>();
+
+        foreach (var nb in tree.Root.PostOrderNodes())
+        {
+            var node = (Node<Token>)nb;
+            var token = node.Value!;
+
+            switch (token.TokenType)
+            {
+                case TokenType.Literal:
+                    nodeValueDictionary[node] = EvaluateLiteralType(token.Text);
+                    break;
+
+                case TokenType.Identifier:
+                    if (variables is not null && variables.TryGetValue(token.Text, out var v))
+                    {
+                        nodeValueDictionary[node] = v is Type tType ? tType : v?.GetType();
+                    }
+                    else
+                    {
+                        nodeValueDictionary[node] = null;
+                    }
+                    break;
+
+                case TokenType.Operator:
+                    nodeValueDictionary[node] = EvaluateOperatorType(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.OperatorUnary:
+                    nodeValueDictionary[node] = EvaluateUnaryOperatorType(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.Function:
+                    nodeValueDictionary[node] = EvaluateFunctionType(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.ArgumentSeparator:
+                    // No value produced for separators
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
+            }
+        }
+
+        return (Type)nodeValueDictionary[tree.Root]!;
     }
 
     public virtual Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
@@ -372,7 +471,7 @@ public partial class ParserBase : Tokenizer, IParser
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? value = null;
                 if (token.TokenType == TokenType.Literal)
-                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteralType(token.Text));
+                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                 {
                     if (variables[token.Text] is Type tType)

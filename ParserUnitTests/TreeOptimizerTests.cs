@@ -4,192 +4,163 @@ using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
 using ParserTests.Common.Parsers;
+using System.Numerics;
+using System.Reflection;
 using Xunit;
 
 namespace ParserUnitTests;
 
 public class TreeOptimizerTests
 {
-    [Fact]
-    public void TestTreeOptimizationWithMixedTypes()
+    // Helper: invoke the protected tree-based Evaluate via reflection
+    private static object? EvaluateViaTree(IParser parser, TokenTree tree, Dictionary<string, object?>? variables, bool mergeConstants = true)
     {
-        // Arrange
-        var app = ParserApp.GetParserApp<ItemParser>();
-        IParser parser = app.Services.GetParser();
-        
-        string expression = "a + 5 + b + 10.5 + c"; // Mixed types: Item + int + Item + double + Item
-        
-        // Define variable types for optimization
-        var variableTypes = new Dictionary<string, Type>
-        {
-            { "a", typeof(Item) },
-            { "b", typeof(Item) },
-            { "c", typeof(Item) }
-        };
-        
-        // Act - Get the optimized expression tree
-        var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        
-        // Assert - The tree should be restructured to group similar types
-        Assert.NotNull(optimizedTree);
-        Assert.NotNull(optimizedTree.Root);
-        
-        //// Print the tree structure for debugging
-        //Console.WriteLine("Optimized Tree Structure:");
-        //optimizedTree.Print();
-        
-        // Verify the tree can still be evaluated correctly
-        var variables = new Dictionary<string, object?>
-        {
-            { "a", new Item { Name = "ItemA", Value = 1 } },
-            { "b", new Item { Name = "ItemB", Value = 2 } },
-            { "c", new Item { Name = "ItemC", Value = 3 } }
-        };
-        
-        var result = parser.Evaluate(expression, variables);
-        Assert.NotNull(result);
+        var mi = parser.GetType().GetMethod(
+            name: "Evaluate",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(TokenTree), typeof(Dictionary<string, object?>), typeof(bool) },
+            modifiers: null);
+
+        if (mi is null)
+            throw new InvalidOperationException("Tree-based Evaluate(TokenTree, Dictionary<string, object?>, bool) not found. Implement the protected overload in ParserBase as discussed.");
+
+        return mi.Invoke(parser, new object?[] { tree, variables!, mergeConstants });
     }
 
-    [Fact]
-    public void TestTreeOptimizationWithCommutativeOperations()
+    private static void AssertEquivalent(object? postfix, object? tree)
     {
-        string expression = "x * 2.0 * y * 3"; // Multiplication with mixed types
-        IParser parser = ParserApp.GetDefaultParser()!;
-
-        var variableTypes = new Dictionary<string, Type>
+        switch (postfix)
         {
-            { "x", typeof(double) },
-            { "y", typeof(int) }
-        };
-        
-        // Act
-        var originalTree = parser.GetExpressionTree(expression);
-        var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        
-        // Assert
-        Assert.NotNull(originalTree);
-        Assert.NotNull(optimizedTree);
-        
-        // Both trees should evaluate to the same result
-        var variables = new Dictionary<string, object?>
-        {
-            { "x", 4.0 },
-            { "y", 5 }
-        };
-        
-        var originalResult = parser.Evaluate(expression, variables);
-        
-        // Verify optimization doesn't change the result
-        Assert.Equal(120.0, originalResult); // 4.0 * 2.0 * 5 * 3 = 120.0
-    }
-
-    [Fact]
-    public void TestTreeOptimizerWithItemTypes()
-    {
-        // Arrange
-        var app = ParserApp.GetParserApp<ItemParser>();
-        IParser parser = app.Services.GetParser();
-        
-        string expression = "item1 + 10 + item2 + 5 + item3"; // Items mixed with integers
-        
-        var variableTypes = new Dictionary<string, Type>
-        {
-            { "item1", typeof(Item) },
-            { "item2", typeof(Item) },
-            { "item3", typeof(Item) }
-        };
-        
-        // Act
-        var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        
-        // Assert
-        Assert.NotNull(optimizedTree);
-        
-        // Test evaluation with actual Item objects
-        var variables = new Dictionary<string, object?>
-        {
-            { "item1", new Item { Name = "First", Value = 100 } },
-            { "item2", new Item { Name = "Second", Value = 200 } },
-            { "item3", new Item { Name = "Third", Value = 300 } }
-        };
-        
-        var result = parser.Evaluate(expression, variables);
-        Assert.NotNull(result);
-        
-        // The result should be an Item with combined values
-        if (result is Item resultItem)
-        {
-            Assert.Contains("First", resultItem.Name);
-            Assert.Equal(615, resultItem.Value); // 100 + 10 + 200 + 5 + 300
+            case double de when tree is double dt:
+                Assert.Equal(de, dt, 10);
+                break;
+            case float fe when tree is float ft:
+                Assert.Equal(fe, ft, 5);
+                break;
+            case Complex ce when tree is Complex ct:
+                Assert.Equal(ce, ct);
+                break;
+            case Item ie when tree is Item it:
+                Assert.Equal(ie.Value, it.Value);
+                Assert.Equal(ie.ToString(), it.ToString());
+                break;
+            default:
+                Assert.Equal(postfix, tree);
+                break;
         }
     }
 
     [Fact]
-    public void TestTreeOptimizerDirectUsage()
+    public void TreeVsPostfix_FunctionsOperandsParser()
     {
-        // Arrange
-        IParser parser = ParserApp.GetDefaultParser()!;
+        var app = ParserApp.GetParserApp<FunctionsOperandsParser>(TokenizerOptions.Default);
+        var parser = app.GetParser();
+
+        string expression = "-!!a%*++2";
+        var variables = new Dictionary<string, object?> { { "a", 5.0 } };
+
+        var postfixResult = parser.Evaluate(expression, variables);
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeResult = EvaluateViaTree(parser, tree, variables);
+
+        AssertEquivalent(postfixResult, treeResult);
+    }
+
+    [Fact]
+    public void TreeVsPostfix_MixedIntDoubleParser()
+    {
+        var app = ParserApp.GetParserApp<MixedIntDoubleParser>();
+        var parser = app.GetParser();
+
+        string expression = "5.0+sin(2,3.0)";
+        var postfixResult = parser.Evaluate(expression);
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeResult = EvaluateViaTree(parser, tree, variables: null);
+
+        AssertEquivalent(postfixResult, treeResult);
+    }
+
+    [Fact]
+    public void TreeVsPostfix_SimpleFunctionParser()
+    {
+        var app = ParserApp.GetParserApp<SimpleFunctionParser>();
+        var parser = app.GetParser();
+
+        string expression = "8 + add3(5.0,g,3.0)";
+        var variables = new Dictionary<string, object?> { { "g", 3 } };
+
+        var postfixResult = parser.Evaluate(expression, variables);
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeResult = EvaluateViaTree(parser, tree, variables);
+
+        AssertEquivalent(postfixResult, treeResult);
+    }
+
+    [Fact]
+    public void TreeVsPostfix_ItemParser()
+    {
+        var parser = ParserApp.GetParser<ItemParser>();
+
+        string expression = "a + add(b,4) + 5";
+        var variables = new Dictionary<string, object?>
+        {
+            {"a", new Item { Name="foo", Value = 3}  },
+            {"b", new Item { Name="bar"}  }
+        };
+
+        var postfixResult = parser.Evaluate(expression, variables);
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeResult = EvaluateViaTree(parser, tree, variables);
+
+        AssertEquivalent(postfixResult, treeResult);
+    }
+
+    [Fact]
+    public void TreeVsPostfix_ComplexParser()
+    {
+        var parser = ParserApp.GetComplexParser();
+
+        string expression = "cos(1+i)";
+
+        var postfixResult = parser.Evaluate(expression);
+
+        var tree = parser.GetExpressionTree(expression);
+        var treeResult = EvaluateViaTree(parser, tree, variables: null);
+
+        AssertEquivalent(postfixResult, treeResult);
+    }
+
+    [Fact]
+    public void TreeVsPostfix_OnOptimizedTree_StaticTypeMaps()
+    {
+        var parser = ParserApp.GetDefaultParser()!;
 
         string expression = "a + b + 1.0 + c + 2";
-        var originalTree = parser.GetExpressionTree(expression);
-        
+        var variables = new Dictionary<string, object?>
+        {
+            { "a", 4.0 },
+            { "b", 5.0 },
+            { "c", 6 }
+        };
         var variableTypes = new Dictionary<string, Type>
         {
             { "a", typeof(double) },
             { "b", typeof(double) },
             { "c", typeof(int) }
         };
-        
-        // Act - Use TreeOptimizer directly
-        var optimizedTreeResult = originalTree.OptimizeForDataTypes(
-            parser.TokenizerOptions.TokenPatterns, variableTypes);
-        var optimizedTree = optimizedTreeResult.Tree;
-        
-        // Assert
-        Assert.NotNull(optimizedTree);
-        Assert.NotEqual(originalTree, optimizedTree); // Should be a different instance
-        
-        // Verify both trees have the same structure in terms of node count
-        Assert.Equal(originalTree.Count, optimizedTree.Count);
-        
-        //Console.WriteLine("Original Tree:");
-        //originalTree.Print2();
-        
-        //Console.WriteLine("\nOptimized Tree:");
-        //optimizedTree.Print2();
-    }
 
-    [Fact]
-    public void TestTreeOptimizerWithNonCommutativeOperations()
-    {
-        // Arrange
-        IParser parser = ParserApp.GetDefaultParser()!;
+        // Postfix (baseline)
+        var postfixResult = parser.Evaluate(expression, variables);
 
-        string expression = "a - b + c"; // Subtraction is not commutative
-        
-        var variableTypes = new Dictionary<string, Type>
-        {
-            { "a", typeof(int) },
-            { "b", typeof(int) },
-            { "c", typeof(double) }
-        };
-        
-        // Act
-        var originalTree = parser.GetExpressionTree(expression);
+        // Optimized tree should evaluate the same
         var optimizedTree = parser.GetOptimizedExpressionTree(expression, variableTypes);
-        
-        // Assert
-        Assert.NotNull(optimizedTree);
-        
-        // Verify evaluation works correctly
-        var variables = new Dictionary<string, object?>
-        {
-            { "a", 10 },
-            { "b", 3 },
-            { "c", 2.5 }
-        };
-        
-        var result = parser.Evaluate(expression, variables);
-        Assert.Equal(9.5, result); // 10 - 3 + 2.5 = 9.5
+        var treeResult = EvaluateViaTree(parser, optimizedTree, variables);
+
+        AssertEquivalent(postfixResult, treeResult);
     }
 }
