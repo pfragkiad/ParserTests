@@ -79,6 +79,8 @@ public partial class ParserBase : Tokenizer, IParser
     {
         _logger.LogDebug("Building expresion tree from postfix tokens...");
 
+        if (postfixTokens.Count == 0) return TokenTree.Empty;
+
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
 
@@ -118,8 +120,6 @@ public partial class ParserBase : Tokenizer, IParser
             NodeDictionary = nodeDictionary
         };
     }
-
-
 
     // ---------------- Tree Optimizer integration (UPDATED) ----------------
 
@@ -317,7 +317,7 @@ public partial class ParserBase : Tokenizer, IParser
             functionReturnTypes: null,
             ambiguousFunctionReturnTypes: null);
 
-        return Evaluate(optimizedTree, variables, mergeConstants:true);
+        return Evaluate(optimizedTree, variables, mergeConstants: true);
     }
 
 
@@ -337,7 +337,7 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] = EvaluateLiteral(token.Text);
+                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text);
                     break;
 
                 case TokenType.Identifier:
@@ -387,7 +387,7 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] = EvaluateLiteralType(token.Text);
+                    nodeValueDictionary[node] =  token.IsNull ? null :  EvaluateLiteralType(token.Text);
                     break;
 
                 case TokenType.Identifier:
@@ -468,8 +468,12 @@ public partial class ParserBase : Tokenizer, IParser
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? value = null;
+
                 if (token.TokenType == TokenType.Literal)
-                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
+                {
+                    // BUGFIX: store type (or null for Token.Null), not the parsed value
+                    nodeValueDictionary.Add(tokenNode, value = token.IsNull ? null : EvaluateLiteralType(token.Text));
+                }
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                 {
                     if (variables[token.Text] is Type tType)
@@ -477,6 +481,7 @@ public partial class ParserBase : Tokenizer, IParser
                     else
                         nodeValueDictionary.Add(tokenNode, value = variables[token.Text]?.GetType());
                 }
+
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
@@ -628,13 +633,12 @@ public partial class ParserBase : Tokenizer, IParser
 
     private void ThrowExceptionIfStackIsInvalid(Stack<Token> stack)
     {
-        if (stack.Count > 1)
-        {
-            string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
-            _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
-            throw new InvalidOperationException(
-                $"The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {stackItemsString}");
-        }
+        if (stack.Count <= 1) return;
+
+        string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
+        _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
+        throw new InvalidOperationException(
+            $"The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {stackItemsString}");
     }
 
     #region NodeDictionary calculations
@@ -760,6 +764,12 @@ public partial class ParserBase : Tokenizer, IParser
         return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
     }
 
+    public AdjacentOperandsCheckResult CheckAdjacentOperands(string expression)
+    {
+        var tokens = GetInfixTokens(expression);
+        return _tokenizerValidator.CheckAdjacentOperands(tokens);
+    }
+
     public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
     {
         HashSet<string> matchedNames = [];
@@ -805,10 +815,16 @@ public partial class ParserBase : Tokenizer, IParser
         return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IParserFunctionMetadata)this);
     }
 
-    public InvalidOperatorsCheckResult CheckOperatorOperands(string expression)
+    public InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckOperatorOperands(tree.NodeDictionary);
+        return _parserValidator.CheckBinaryOperatorOperands(tree.NodeDictionary);
+    }
+
+    public InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(string expression)
+    {
+        var tree = GetExpressionTree(expression);
+        return _parserValidator.CheckUnaryOperatorOperands(tree.NodeDictionary);
     }
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
@@ -818,7 +834,7 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     // Orchestrates two-step validation without doing any tokenization or tree building.
-    // - Always pre-validates parentheses via tokenizer validator (string-only).
+    // - Always pre-validates parentheses via tokenizer (string-only).
     // - If matched and inputs are provided, runs parser-level checks against infix and/or node dictionary.
     public ParserValidationReport Validate(
         string expression,
@@ -828,10 +844,8 @@ public partial class ParserBase : Tokenizer, IParser
         if (string.IsNullOrWhiteSpace(expression))
             return new ParserValidationReport { Expression = expression };
 
-        // Tokenizer stage: parentheses
         var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
 
-        //initialize report
         var report = new ParserValidationReport
         {
             Expression = expression,
@@ -840,10 +854,8 @@ public partial class ParserBase : Tokenizer, IParser
         if (!parenthesesResult.IsSuccess && earlyReturnOnErrors)
             return report;
 
-        // Build infix once (needed for variable names and function names)
         var infixTokens = GetInfixTokens(expression);
 
-        // Tokenizer stage: variable names
         var variableNamesResult = _tokenizerValidator.CheckVariableNames(infixTokens, variableNamesOptions);
         report.VariableNamesResult = variableNamesResult;
         if (!variableNamesResult.IsSuccess)
@@ -852,7 +864,6 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        // Parser stage: function names (needs infix + metadata)
         var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IParserFunctionMetadata)this);
         report.FunctionNamesResult = functionNamesResult;
         if (!functionNamesResult.IsSuccess)
@@ -861,12 +872,18 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        // Build tree for node-dictionary-based checks
+        var adjacentOperandsResult = _tokenizerValidator.CheckAdjacentOperands(infixTokens);
+        report.AdjacentOperandsResult = adjacentOperandsResult;
+        if (!adjacentOperandsResult.IsSuccess)
+        {
+            _logger.LogWarning("Adjacent operands in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
         List<Token> postfixTokens = GetPostfixTokens(infixTokens);
         TokenTree tree = GetExpressionTree(postfixTokens);
         Dictionary<Token, Node<Token>> nodeDictionary = tree.NodeDictionary;
 
-        // Parser stage: empty function arguments
         var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(nodeDictionary);
         report.EmptyFunctionArgumentsResult = emptyFunctionArgumentsResult;
         if (!emptyFunctionArgumentsResult.IsSuccess)
@@ -875,7 +892,6 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-       // Parser stage: function arguments count (needs metadata)
         var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(nodeDictionary, this);
         report.FunctionArgumentsCountResult = functionArgumentsCountResult;
         if (!functionArgumentsCountResult.IsSuccess)
@@ -884,16 +900,23 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        // Parser stage: invalid operators
-        var operatorOperandsResult = _parserValidator.CheckOperatorOperands(nodeDictionary);
-        report.OperatorOperandsResult = operatorOperandsResult;
-        if (!operatorOperandsResult.IsSuccess)
+        // NEW: unary operator operand check
+        var unaryOperatorOperandsResult = _parserValidator.CheckUnaryOperatorOperands(nodeDictionary);
+        report.UnaryOperatorOperandsResult = unaryOperatorOperandsResult;
+        if (!unaryOperatorOperandsResult.IsSuccess)
+        {
+            _logger.LogWarning("Invalid unary operator operands in formula: {expr}", expression);
+            if (earlyReturnOnErrors) return report;
+        }
+
+        var binaryOperatorOperandsResult = _parserValidator.CheckBinaryOperatorOperands(nodeDictionary);
+        report.BinaryOperatorOperandsResult = binaryOperatorOperandsResult;
+        if (!binaryOperatorOperandsResult.IsSuccess)
         {
             _logger.LogWarning("Invalid operators in formula: {expr}", expression);
             if (earlyReturnOnErrors) return report;
         }
 
-        // Parser stage: orphan/invalid argument separators
         var orphanArgumentSeparatorsResult = _parserValidator.CheckOrphanArgumentSeparators(nodeDictionary);
         report.OrphanArgumentSeparatorsResult = orphanArgumentSeparatorsResult;
         if (!orphanArgumentSeparatorsResult.IsSuccess)
@@ -902,7 +925,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-         return report;
+        return report;
     }
 
     #endregion

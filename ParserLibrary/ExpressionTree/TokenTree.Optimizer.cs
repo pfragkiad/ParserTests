@@ -7,6 +7,20 @@ public partial class TokenTree
     private static readonly HashSet<string> _numericOperators =
         new(StringComparer.Ordinal) { "+", "-", "*", "/", "^" };
 
+    public static TokenTree Empty 
+    {
+        get
+        {
+            var rootNode = new Node<Token>(Token.Null);
+            return new TokenTree()
+            {
+                Root = rootNode,
+                NodeDictionary = new Dictionary<Token, Node<Token>> { { Token.Null, rootNode } }
+            };
+        }
+    }
+        
+
     /// <summary>
     /// Optimizes commutative chains (+, *) by grouping numeric subtrees first when a mix of numeric and non-numeric operands exists.
     /// Requires the TokenPatterns used by the Tokenizer so the same argument separator is honored.

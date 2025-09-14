@@ -8,12 +8,15 @@ public sealed class VariableNamesOptions
     public string[]? IgnorePrefixes { get; init; }
     public string[]? IgnorePostfixes { get; init; }
 
-    //public static VariableNamesOptions FromKnownIdentifierNamesOnly(HashSet<string> knownIdentifierNames) => new()
-    //{
-    //    KnownIdentifierNames = knownIdentifierNames,
-    //    IgnoreCaptureGroups = [],
-    //    IgnoreIdentifierPattern = null,
-    //    IgnorePrefixes = [],
-    //    IgnorePostfixes = []
-    //};
+    // Convenience: empty options (no known identifiers, no ignores)
+    public static VariableNamesOptions Empty { get; } = new()
+    {
+        KnownIdentifierNames = [],
+        IgnoreCaptureGroups = null,
+        IgnoreIdentifierPattern = null,
+        IgnorePrefixes = null,
+        IgnorePostfixes = null
+    };
+
+    public bool IsEmpty => KnownIdentifierNames.Count == 0;
 }

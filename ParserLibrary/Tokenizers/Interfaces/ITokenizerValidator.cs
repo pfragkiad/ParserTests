@@ -15,4 +15,7 @@ public interface ITokenizerValidator
 
     // Aggregator for post stage (chooses the correct CheckVariableNames overload).
     VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options);
+
+    // NEW: detect missing operator between adjacent operands
+    AdjacentOperandsCheckResult CheckAdjacentOperands(List<Token> infixTokens);
 }

@@ -12,6 +12,8 @@ public readonly struct OperatorArgumentCheckResult
 
 public class InvalidOperatorsCheckResult : CheckResult
 {
+    public virtual string Category { get; } = "";
+
     public List<OperatorArgumentCheckResult> InvalidOperators { get; init; } = [];
 
     public List<OperatorArgumentCheckResult> ValidOperators { get; init; } = [];
@@ -22,4 +24,15 @@ public class InvalidOperatorsCheckResult : CheckResult
     {
         return [.. InvalidOperators.Select(op => new ValidationFailure("Formula", $"Invalid operator '{op.Operator}' operands at position {op.Position}."))];
     }
+}
+
+public class InvalidBinaryOperatorsCheckResult : InvalidOperatorsCheckResult
+{
+    public override string Category => "binary";
+}
+
+public class InvalidUnaryOperatorsCheckResult : InvalidOperatorsCheckResult
+{
+    public override string Category => "unary";
+
 }

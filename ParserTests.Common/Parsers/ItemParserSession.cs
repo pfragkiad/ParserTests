@@ -15,6 +15,21 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
         return double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    protected override object? EvaluateUnaryOperator(string operatorName, object? operand)
+    {
+        return operatorName switch
+        {
+            "+" => operand,//unary plus does nothing
+            "-" => -(operand as dynamic),
+            _ => base.EvaluateUnaryOperator(operatorName, operand),
+        };
+    }
+
+    protected override Type EvaluateUnaryOperatorType(string operatorName, object? operand)
+    {
+        return typeof(int);
+    }
+
     protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
         if (leftOperand is null || rightOperand is null)
@@ -63,7 +78,8 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
     protected override Dictionary<string, int> MainFunctionsArgumentsCount =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
-            ["add"] = 2
+            ["add"] = 2,
+            ["tre"] = 0
         };
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
@@ -71,16 +87,17 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
         // Normalize function name according to current case-sensitivity rules
         var name = _options.CaseSensitive ? functionName : functionName.ToLowerInvariant();
 
-        if (args.Length < 2 || args[0] is not Item || args[1] is not int)
-        {
-            _logger.LogError("Invalid arguments for function '{FunctionName}': expected Item and int, got {Arg0} and {Arg1}",
-                name, args.ElementAtOrDefault(0)?.GetType(), args.ElementAtOrDefault(1)?.GetType());
-            return null;
-        }
+        //if (args.Length < 2 || args[0] is not Item || args[1] is not int)
+        //{
+        //    _logger.LogError("Invalid arguments for function '{FunctionName}': expected Item and int, got {Arg0} and {Arg1}",
+        //        name, args.ElementAtOrDefault(0)?.GetType(), args.ElementAtOrDefault(1)?.GetType());
+        //    return null;
+        //}
 
         return name switch
         {
             "add" => (Item)args[0]! + (int)args[1]!,
+            "tre" => 100,
             _ => base.EvaluateFunction(name, args)
         };
     }
@@ -93,6 +110,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
         return name switch
         {
             "add" => typeof(Item),
+            "tre" => typeof(int),
             _ => base.EvaluateFunctionType(name, args)
         };
     }

@@ -98,9 +98,18 @@ public interface IParser : ITokenizer
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression);
 
     /// <summary>
-    /// Validates operator operands.
+    /// Validates binary operator operands.
     /// </summary>
-    InvalidOperatorsCheckResult CheckOperatorOperands(string expression);
+    InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(string expression);
+
+
+    /// <summary>
+    /// Validates unary operator operands.
+    /// </summary>
+    /// <param name="expression"></param>
+    /// <returns></returns>
+    InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(string expression);
+
 
     /// <summary>
     /// Validates argument separators for orphan/invalid placements.
@@ -164,4 +173,5 @@ public interface IParser : ITokenizer
     /// Optimizes an existing tree using runtime type inference.
     /// </summary>
     TreeOptimizerResult OptimizeTreeUsingInference(TokenTree tree, Dictionary<string, object?>? variables = null);
+    AdjacentOperandsCheckResult CheckAdjacentOperands(string expression);
 }

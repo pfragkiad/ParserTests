@@ -8,7 +8,8 @@ public class Operator
 
     public bool LeftToRight { get; init; } = true;
 
-    public override string ToString() => Name.ToString();
+    public override string ToString() =>
+        $"{Name} (binary)";
 
 
 }
@@ -21,6 +22,7 @@ public class UnaryOperator
 
     public bool Prefix { get; init; } = true;
 
-    public override string ToString() => Name.ToString();
+    public override string ToString() =>
+        $"{Name} (unary {(Prefix? "prefix" : "postfix")})";
 
 }

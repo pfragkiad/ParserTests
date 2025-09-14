@@ -44,6 +44,7 @@ public sealed class ParserValidator : IParserValidator
             UnmatchedNames = [.. unmatched]
         };
     }
+
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
         IParserFunctionMetadata metadata)
@@ -121,27 +122,6 @@ public sealed class ParserValidator : IParserValidator
 
         return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
-   
-
-    public InvalidOperatorsCheckResult CheckOperatorOperands(
-        Dictionary<Token, Node<Token>> nodeDictionary)
-    {
-        List<OperatorArgumentCheckResult> valid = [];
-        List<OperatorArgumentCheckResult> invalid = [];
-
-        foreach (var entry in nodeDictionary)
-        {
-            var token = entry.Key;
-            if (token.TokenType != TokenType.Operator) continue;
-
-            var node = entry.Value;
-            var (l, r) = node.GetBinaryArgumentNodes();
-            var check = new OperatorArgumentCheckResult { Operator = token.Text, Position = token.Index + 1 };
-            if (l.Value!.IsNull || r.Value!.IsNull) invalid.Add(check); else valid.Add(check);
-        }
-
-        return new InvalidOperatorsCheckResult { ValidOperators = [.. valid], InvalidOperators = [.. invalid] };
-    }
 
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(
         Dictionary<Token, Node<Token>> nodeDictionary)
@@ -171,7 +151,63 @@ public sealed class ParserValidator : IParserValidator
             if (!parentFound) invalid.Add(token.Index + 1);
         }
 
-        return new InvalidArgumentSeparatorsCheckResult { ValidPositions = [.. valid], InvalidPositions = [.. invalid] };
+        return new InvalidArgumentSeparatorsCheckResult {
+            ValidPositions = [.. valid], InvalidPositions = [.. invalid] };
     }
 
+    public InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(
+        Dictionary<Token, Node<Token>> nodeDictionary)
+    {
+        List<OperatorArgumentCheckResult> valid = [];
+        List<OperatorArgumentCheckResult> invalid = [];
+
+        foreach (var entry in nodeDictionary)
+        {
+            var token = entry.Key;
+            if (token.TokenType != TokenType.Operator) continue;
+
+            var node = entry.Value;
+            var (l, r) = node.GetBinaryArgumentNodes();
+            var check = new OperatorArgumentCheckResult { Operator = token.Text, Position = token.Index + 1 };
+            if (l.Value!.IsNull || r.Value!.IsNull) invalid.Add(check); else valid.Add(check);
+        }
+
+        return new InvalidBinaryOperatorsCheckResult
+        {
+            ValidOperators = [.. valid],
+            InvalidOperators = [.. invalid]
+        };
+    }
+
+    // NEW: unary operator operand validation
+    public InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(
+        Dictionary<Token, Node<Token>> nodeDictionary)
+    {
+        List<OperatorArgumentCheckResult> valid = [];
+        List<OperatorArgumentCheckResult> invalid = [];
+
+        foreach (var entry in nodeDictionary)
+        {
+            var token = entry.Key;
+            if (token.TokenType != TokenType.OperatorUnary) continue;
+
+            var node = entry.Value;
+            var isPrefix = _patterns.UnaryOperatorDictionary[token.Text].Prefix;
+            var operandNode = ((Node<Token>)node).GetUnaryArgumentNode(isPrefix);
+
+            var check = new OperatorArgumentCheckResult
+            {
+                Operator = token.Text,
+                Position = token.Index + 1
+            };
+
+            if (operandNode.Value!.IsNull) invalid.Add(check); else valid.Add(check);
+        }
+
+        return new InvalidUnaryOperatorsCheckResult
+        {
+            ValidOperators = [.. valid],
+            InvalidOperators = [.. invalid]
+        };
+    }
 }

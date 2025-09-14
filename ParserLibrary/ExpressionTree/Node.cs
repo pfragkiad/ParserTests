@@ -174,6 +174,10 @@ public class Node<T> : NodeBase
         
         if (Right is null) return 0;
 
+        // Zero-arg placeholder: Right is a Token.Null literal (Match.Empty)
+        if (Right is Node<Token> rt && rt.Value is not null && rt.Value.IsNull)
+            return 0;
+
         if (Right.Text != argumentSeparator) return 1;
         //if ((Right as Node<Token>).Value.TokenType != TokenType.ArgumentSeparator) return 1;
 
@@ -262,6 +266,8 @@ public class Node<T> : NodeBase
 
     public Node<T>[] GetFunctionArgumentNodes(int count)
     {
+        if (count == 0) return [];
+
         if (count == 1) return [(Right as Node<T>)!]; //a1
 
         if (count == 2) return [

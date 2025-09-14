@@ -206,6 +206,52 @@ public class TokenizerValidator : ITokenizerValidator
 
     #endregion
 
-    
+    // NEW: Adjacent operands – require a binary operator between them.
+    // Left: Literal or Identifier
+    // Right: Literal, Identifier, Function, or OpenParenthesis
+    public AdjacentOperandsCheckResult CheckAdjacentOperands(List<Token> infixTokens)
+    {
+        static bool IsLeftOperandOrStart(Token t) =>
+            t.TokenType == TokenType.Literal ||
+            t.TokenType == TokenType.Identifier ||
+            t.TokenType == TokenType.ClosedParenthesis;
 
+        static bool IsRightOperandOrStartOfGroupOrCall(Token t) =>
+            t.TokenType == TokenType.Literal ||
+            t.TokenType == TokenType.Identifier ||
+            t.TokenType == TokenType.Function ||
+            t.TokenType == TokenType.OpenParenthesis;
+
+        var violations = new List<AdjacentOperandsViolation>();
+
+        for (int i = 1; i < infixTokens.Count; i++)
+        {
+            var left = infixTokens[i - 1];
+            var right = infixTokens[i];
+
+            bool isInvalid = IsLeftOperandOrStart(left) && IsRightOperandOrStartOfGroupOrCall(right) ||
+                //also check for invalid operator combinations op|op, unaryOp (pre)|op, op|unaryOp (post)
+                left.TokenType  == TokenType.Operator && right.TokenType == TokenType.Operator ||
+                left.TokenType == TokenType.OperatorUnary && _patterns.UnaryOperatorDictionary[left.Text].Prefix  && right.TokenType == TokenType.Operator ||
+                left.TokenType == TokenType.Operator && right.TokenType == TokenType.OperatorUnary && !_patterns.UnaryOperatorDictionary[right.Text].Prefix
+                ;
+
+            if(isInvalid)
+            {
+                violations.Add(new AdjacentOperandsViolation
+                {
+                    LeftToken = left.Text,
+                    LeftPosition = left.Index + 1,
+                    RightToken = right.Text,
+                    RightPosition = right.Index + 1
+                });
+            }
+        }
+
+        if (violations.Count > 0)
+            _logger.LogWarning("Adjacent operands without operator: {pairs}",
+                string.Join(", ", violations.Select(v => $"{v.LeftPosition}-{v.RightPosition}")));
+
+        return new AdjacentOperandsCheckResult { Violations = violations };
+    }
 }

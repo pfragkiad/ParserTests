@@ -10,8 +10,10 @@ public interface IParserValidator
     EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(Dictionary<Token, Node<Token>> nodeDictionary);
 
     FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(Dictionary<Token, Node<Token>> nodeDictionary, IParserFunctionMetadata metadata);
-   
-    InvalidOperatorsCheckResult CheckOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
+
+    InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
+
+    InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary);
 
