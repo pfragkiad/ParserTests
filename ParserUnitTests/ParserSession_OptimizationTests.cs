@@ -21,7 +21,7 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         // Warm up caches without validation
         session.ValidateAndOptimize(session.Expression, runValidation: false);
 
-        var res = session.Optimize(ExpressionOptimizationMode.None);
+        var res = session.GetOptimizedTree(ExpressionOptimizationMode.None);
         Assert.NotNull(res.Tree);
         Assert.False(res.HasMetrics);
     }
@@ -36,7 +36,7 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         // Warm up caches
         session.ValidateAndOptimize(session.Expression, session.Variables, runValidation: false);
 
-        var res = session.Optimize(ExpressionOptimizationMode.StaticTypeMaps);
+        var res = session.GetOptimizedTree(ExpressionOptimizationMode.StaticTypeMaps);
         Assert.NotNull(res.Tree);
         Assert.True(res.Tree.Root is not null);
     }
@@ -51,8 +51,8 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         Assert.True(report.IsSuccess);
 
         var plain = session.Evaluate();
-        var optimized = session.EvaluateWithTreeOptimizer();
-
-        Assert.Equal(plain, optimized);
+        //var optimized = session.EvaluateWithTreeOptimizer();
+        var optimized = session.Evaluate(optimizationMode: ExpressionOptimizationMode.ParserInference);
+        Assert.Equal(plain, optimized.AsT0);
     }
 }

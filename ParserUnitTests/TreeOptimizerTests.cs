@@ -158,7 +158,9 @@ public class TreeOptimizerTests
         var postfixResult = parser.Evaluate(expression, variables);
 
         // Optimized tree should evaluate the same
-        var optimizedTree = parser.GetOptimizedExpressionTreeResult(expression, variableTypes).Tree;
+        //var optimizedTree = parser.GetOptimizedTree(expression, variableTypes).Tree;
+        var optimizerResult = parser.GetOptimizedTree(expression, variables);    
+        var optimizedTree = optimizerResult.Tree;
         var treeResult = EvaluateViaTree(parser, optimizedTree, variables);
 
         AssertEquivalent(postfixResult, treeResult);

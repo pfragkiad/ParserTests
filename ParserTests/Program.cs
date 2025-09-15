@@ -216,7 +216,10 @@ internal class Program
             { "item1", typeof(Item) },
             { "item2", typeof(Item) }
         };
-        var optimizedTree = parser.GetOptimizedExpressionTreeResult(expression, variableTypes).Tree;
+        //var optimizedTree = parser.GetOptimizedTree(expression, variableTypes).Tree;
+        var optimizationResult = originalTree.OptimizeForDataTypes(
+            parser.TokenizerOptions.TokenPatterns, variableTypes, null);
+        var optimizedTree = optimizationResult.Tree;
         optimizedTree.Print();
 
         Console.WriteLine($"Original Tree: Nodes={originalTree.Count}, Height={originalTree.GetHeight()}");
@@ -269,7 +272,7 @@ internal class Program
 
         for (int i = 0; i < iterations; i++)
         {
-            optimizedResult = parser.EvaluateWithTreeOptimizer(expression, variables);
+            optimizedResult = parser.Evaluate(expression, variables,optimizeTree:true);
         }
 
         optimizerStopwatch.Stop();
@@ -441,6 +444,9 @@ internal class Program
             Console.WriteLine("No change in mixed operation count (either already optimal or homogeneous operands).");
         else
             Console.WriteLine("Unexpected increase in mixed operations (review optimizer logic).");
+
+
+        
     }
     private static void Main(string[] args)
     {

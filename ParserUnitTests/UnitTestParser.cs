@@ -202,7 +202,7 @@ public class UnitTestParser
         parser.Expression = expression;
 
         //set the variables later (perhaps after a validation)
-        Item result = (Item)parser.Evaluate(variables)!;
+        Item result = (Item)parser.Evaluate(variables).AsT0!;
 
 
 

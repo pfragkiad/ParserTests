@@ -27,6 +27,15 @@ public partial class ParserBase : Tokenizer, IParser
         _parserValidator = services.ParserValidator;
         CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
+    public virtual Dictionary<string, object?> Constants => [];
+
+    protected Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
+    {
+        if (variables is null) return Constants;
+        foreach (var entry in Constants)
+            if (!variables.ContainsKey(entry.Key)) variables.Add(entry.Key, entry.Value);
+        return variables;
+    }
 
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
@@ -120,40 +129,6 @@ public partial class ParserBase : Tokenizer, IParser
             NodeDictionary = nodeDictionary
         };
     }
-
-    // ---------------- Tree Optimizer integration (UPDATED) ----------------
-
-    /// <summary>
-    /// Core optimized tree result – full signature including function & ambiguous return type maps.
-    /// </summary>
-    public TreeOptimizerResult GetOptimizedExpressionTreeResult(
-        string expression,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
-    {
-        var tree = GetExpressionTree(expression);
-        return tree.OptimizeForDataTypes(
-            _options.TokenPatterns,
-            variableTypes,
-            functionReturnTypes,
-            ambiguousFunctionReturnTypes);
-    }
-
-    public TreeOptimizerResult GetOptimizedExpressionTreeResult(
-        List<Token> postfixTokens,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
-    {
-        var tree = GetExpressionTree(postfixTokens);
-        return tree.OptimizeForDataTypes(
-            _options.TokenPatterns,
-            variableTypes,
-            functionReturnTypes,
-            ambiguousFunctionReturnTypes);
-    }
-
 
     #endregion  // close "Expression trees" region
 
@@ -267,34 +242,30 @@ public partial class ParserBase : Tokenizer, IParser
         return nodeValueDictionary[root]!;
     }
 
-    public virtual Dictionary<string, object?> Constants => [];
 
-    protected Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
-    {
-        if (variables is null) return Constants;
-        foreach (var entry in Constants)
-            if (!variables.ContainsKey(entry.Key)) variables.Add(entry.Key, entry.Value);
-        return variables;
-    }
 
-    public virtual object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
+    public virtual object? Evaluate(string expression, Dictionary<string, object?>? variables = null, bool optimizeTree = false)
     {
-        var postfixTokens = GetPostfixTokens(expression);
-        return Evaluate(postfixTokens, variables);
-    }
+        if (!optimizeTree)
+        {
+            var postfixTokens = GetPostfixTokens(expression);
+            return Evaluate(postfixTokens, variables);
+        }
 
-    public virtual object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
-    {
-        // Only variable types for optimization (function return maps could be added externally if desired)
         var variableTypes = variables?
-            .Where(kv => kv.Value is not null)
-            .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
+               .Where(kv => kv.Value is not null)
+               .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
 
-        var optimizedTree = GetOptimizedExpressionTreeResult(
-            expression,
-            variableTypes,
-            functionReturnTypes: null,
-            ambiguousFunctionReturnTypes: null).Tree;
+        //var tree = GetExpressionTree(expression);
+        //var optimizedTree =tree.OptimizeForDataTypes(
+        //    _options.TokenPatterns,
+        //    variableTypes,
+        //    functionReturnTypes: null,
+        //    ambiguousFunctionReturnTypes: null).Tree;
+
+        var tree = GetExpressionTree(expression);
+        var optimizerResult = GetOptimizedTree(tree, variables, false);
+        var optimizedTree = optimizerResult.Tree; 
 
         return Evaluate(optimizedTree, variables, mergeConstants: true);
     }
@@ -351,7 +322,10 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     // -------- Tree-based evaluation (type inference) --------
-    protected virtual Type EvaluateType(TokenTree tree, Dictionary<string, object?>? variables = null, bool mergeConstants = true)
+    protected virtual Type EvaluateType(
+        TokenTree tree,
+        Dictionary<string, object?>? variables = null,
+        bool mergeConstants = true)
     {
         if (mergeConstants)
             variables = MergeVariableConstants(variables);
@@ -366,7 +340,7 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] =  token.IsNull ? null :  EvaluateLiteralType(token.Text);
+                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteralType(token.Text);
                     break;
 
                 case TokenType.Identifier:
@@ -404,13 +378,17 @@ public partial class ParserBase : Tokenizer, IParser
         return (Type)nodeValueDictionary[tree.Root]!;
     }
 
-    public virtual Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
+    public virtual Type EvaluateType(
+        string expression,
+        Dictionary<string, object?>? variables = null)
     {
         var postfixTokens = GetPostfixTokens(expression);
         return EvaluateType(postfixTokens, variables);
     }
 
-    protected virtual Type EvaluateType(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
+    protected virtual Type EvaluateType(
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables = null)
     {
         _logger.LogDebug("Evaluating (type inference)...");
 
@@ -489,7 +467,9 @@ public partial class ParserBase : Tokenizer, IParser
         return (Type)nodeValueDictionary[root]!;
     }
 
-    protected virtual object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
+    protected virtual object? Evaluate(
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables = null)
     {
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
@@ -497,7 +477,7 @@ public partial class ParserBase : Tokenizer, IParser
         return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants: true);
     }
 
-    protected object? Evaluate(
+    protected object? Evaluate( //MAIN EVALUATE FUNCTION
         List<Token> postfixTokens,
         Dictionary<string, object?>? variables,
         Stack<Token> stack,
@@ -558,6 +538,8 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
+    #region Node creation helpers
+   
     private Node<Token> CreateFunctionNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
         Node<Token> functionNode = new(token);
@@ -619,6 +601,7 @@ public partial class ParserBase : Tokenizer, IParser
         throw new InvalidOperationException(
             $"The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {stackItemsString}");
     }
+    #endregion
 
     #region NodeDictionary calculations
 
@@ -657,7 +640,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected object? EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
-        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
+        object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
         {
@@ -677,7 +660,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
-        object?[] args = GetFunctionArguments(functionNode, nodeValueDictionary);
+        object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
         {
@@ -722,16 +705,6 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected virtual Type EvaluateFunctionType(string functionName, object?[] args) =>
         throw new InvalidOperationException($"Unknown function ({functionName})");
-
-    #endregion
-
-    #region Get arguments helpers
-
-    private object?[] GetFunctionArguments(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary) =>
-        functionNode.GetFunctionArguments(nodeValueDictionary);
-
-    private Node<Token>[] GetFunctionArgumentNodes(Node<Token> functionNode) =>
-        functionNode.GetFunctionArgumentNodes();
 
     #endregion
 

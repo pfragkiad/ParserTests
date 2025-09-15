@@ -2,40 +2,46 @@ namespace ParserLibrary.Parsers;
 
 public partial class ParserBase
 {
-
     /// <summary>
     /// Optimizes an expression by building its tree and applying a type-informed commutative reordering.
     /// Uses runtime variables for type inference.
     /// </summary>
-    public TreeOptimizerResult GetOptimizedExpressionUsingParser(
+    public TreeOptimizerResult GetOptimizedTree(
         string expression,
         Dictionary<string, object?>? variables = null)
     {
         var tree = GetExpressionTree(expression);
-        return OptimizeTreeUsingInference(tree, variables);
+        return GetOptimizedTree(tree, variables, cloneTree:false);
     }
 
     /// <summary>
     /// Optimizes an existing TokenTree using the parser's runtime type inference (variables map).
     /// Performs in-place operator reuse; no NodeDictionary rebuild required.
     /// </summary>
-    public TreeOptimizerResult OptimizeTreeUsingInference(
+    public TreeOptimizerResult GetOptimizedTree(
         TokenTree tree,
-        Dictionary<string, object?>? variables = null)
+        Dictionary<string, object?>? variables = null,
+        bool cloneTree = false)
     {
         var typeMap = InferNodeTypes(tree, variables);
 
         int before = CountMixed(tree.Root, typeMap);
 
-        var cloned = (TokenTree)tree.DeepClone();
-        OptimizeNode(cloned.Root, typeMap);
+        if (cloneTree)
+        {
+            var cloned = (TokenTree)tree.DeepClone();
+            OptimizeNode(cloned.Root, typeMap);
+            //change local reference to cloned tree
+            tree = cloned;
+        }
+        else OptimizeNode(tree.Root, typeMap);
 
-        var newTypeMap = InferNodeTypes(cloned, variables);
-        int after = CountMixed(cloned.Root, newTypeMap);
+        var newTypeMap = InferNodeTypes(tree, variables);
+        int after = CountMixed(tree.Root, newTypeMap);
 
         return new TreeOptimizerResult
         {
-            Tree = cloned,
+            Tree = tree,
             NonAllNumericBefore = before,
             NonAllNumericAfter = after
         };

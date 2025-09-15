@@ -1,4 +1,5 @@
-﻿using ParserLibrary.Parsers.Validation;
+﻿using OneOf;
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Parsers.Interfaces;
@@ -50,7 +51,7 @@ public interface IParserSession : IParser
     /// Optimization only. Updates the cached infix/postfix/tree/node-dictionary and returns the optimization result.
     /// ParserInference uses current Variables if variable types are not provided.
     /// </summary>
-    TreeOptimizerResult Optimize(
+    TreeOptimizerResult GetOptimizedTree(
         ExpressionOptimizationMode optimizationMode,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -74,25 +75,11 @@ public interface IParserSession : IParser
     /// <summary>
     /// Re-prepare current Expression with provided variables (no validation/optimization), then evaluate.
     /// </summary>
-    object? Evaluate(Dictionary<string, object?>? variables = null);
+    OneOf<object?, ParserValidationReport> Evaluate(
+       Dictionary<string, object?>? variables = null,
+       bool runValidation = false,
+       ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None);
 
-    /// <summary>
-    /// Evaluate using a tree-optimizer (by default StaticTypeMaps).
-    /// Re-prepare current Expression with provided variables and type maps.
-    /// </summary>
-    object? EvaluateWithTreeOptimizer(
-        Dictionary<string, object?>? variables = null,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null,
-        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.StaticTypeMaps);
-
-    /// <summary>
-    /// Evaluate using parser-inference optimizer for the specified expression.
-    /// </summary>
-    object? EvaluateWithParserInferenceOptimizer(
-        string expression,
-        Dictionary<string, object?>? variables = null);
 
     /// <summary>
     /// Type-evaluate current prepared state (tree or postfix), using current Variables.

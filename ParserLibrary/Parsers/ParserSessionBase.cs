@@ -3,6 +3,7 @@ using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 using ParserLibrary.Parsers.Validation;
+using OneOf;
 
 namespace ParserLibrary.Parsers;
 
@@ -108,13 +109,13 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // Optimization (optional)
         if (optimizationMode != ExpressionOptimizationMode.None)
-            _ = Optimize(optimizationMode, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
+            _ = GetOptimizedTree(optimizationMode, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
 
         return report;
     }
 
     // Optimization only — public API
-    public TreeOptimizerResult Optimize(
+    public TreeOptimizerResult GetOptimizedTree(
         ExpressionOptimizationMode optimizationMode,
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
@@ -141,34 +142,34 @@ public class ParserSessionBase : ParserBase, IParserSession
             case ExpressionOptimizationMode.None:
                 return TreeOptimizerResult.Unchanged(_tree!);
 
-              default:
-          case ExpressionOptimizationMode.ParserInference:
-            {
-                TreeOptimizerResult result = OptimizeTreeUsingInference(_tree!, Variables);
-                var optimizedTree = result.Tree;
-                _tree = optimizedTree;
-                _infixTokens = optimizedTree.GetInfixTokens();
-                _postfixTokens = optimizedTree.GetPostfixTokens();
-                _nodeDictionary = optimizedTree.NodeDictionary;
-                return result;
-            }
+            default:
+            case ExpressionOptimizationMode.ParserInference:
+                {
+                    TreeOptimizerResult result = GetOptimizedTree(_tree!, Variables);
+                    var optimizedTree = result.Tree;
+                    _tree = optimizedTree;
+                    _infixTokens = optimizedTree.GetInfixTokens();
+                    _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    return result;
+                }
 
             case ExpressionOptimizationMode.StaticTypeMaps:
-            {
-                variableTypes ??= BuildVariableTypesFromVariables(Variables);
-                var result = GetOptimizedExpressionTreeResult(
-                    _expression!,
-                    variableTypes,
-                    functionReturnTypes,
-                    ambiguousFunctionReturnTypes);
+                {
+                    variableTypes ??= BuildVariableTypesFromVariables(Variables);
+                    var result = _tree.OptimizeForDataTypes(
+                        _options.TokenPatterns,
+                        variableTypes,
+                        functionReturnTypes,
+                        ambiguousFunctionReturnTypes);
 
-                var optimizedTree = result.Tree;
-                _tree = optimizedTree;
-                _infixTokens = optimizedTree.GetInfixTokens();
-                _postfixTokens = optimizedTree.GetPostfixTokens();
-                _nodeDictionary = optimizedTree.NodeDictionary;
-                return result;
-            }
+                    var optimizedTree = result.Tree;
+                    _tree = optimizedTree;
+                    _infixTokens = optimizedTree.GetInfixTokens();
+                    _postfixTokens = optimizedTree.GetPostfixTokens();
+                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    return result;
+                }
 
         }
     }
@@ -177,86 +178,23 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #region Public evaluation API
 
-    public override object? Evaluate(string expression, Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.None);
-        return Evaluate();
-    }
-
-    public virtual object? Evaluate(Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            _expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.None);
-        return Evaluate();
-    }
-
-    public override object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.StaticTypeMaps);
-        return Evaluate();
-    }
-
-    public virtual object? EvaluateWithTreeOptimizer(
+    public virtual OneOf<object?,ParserValidationReport> Evaluate(
         Dictionary<string, object?>? variables = null,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null,
-        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.StaticTypeMaps)
+        bool runValidation = false,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None)
     {
-        ValidateAndOptimize(
+        ParserValidationReport report = ValidateAndOptimize(
             _expression,
             variables,
             variableNamesOptions: null,
-            runValidation: false,
+            runValidation: runValidation,
             earlyReturnOnValidationErrors: false,
-            optimizationMode: optimizationMode,
-            variableTypes: variableTypes,
-            functionReturnTypes: functionReturnTypes,
-            ambiguousFunctionReturnTypes: ambiguousFunctionReturnTypes);
-        return Evaluate();
-    }
+            optimizationMode: optimizationMode);
 
-    public object? EvaluateWithParserInferenceOptimizer(
-        string expression,
-        Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.ParserInference);
-        return Evaluate();
-    }
+        if (!report.IsSuccess)
+            return report;
 
-    public override Type EvaluateType(string expression, Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.None);
-        return EvaluateType();
+        return Evaluate();
     }
 
     public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)

@@ -53,17 +53,12 @@ public interface IParser : ITokenizer
     /// <summary>
     /// Evaluate to object using the parser's built-in semantics.
     /// </summary>
-    object? Evaluate(string expression, Dictionary<string, object?>? variables = null);
+    object? Evaluate(string expression, Dictionary<string, object?>? variables = null, bool optimizeTree = false);
 
     /// <summary>
     /// Returns the inferred result Type of the expression using the parser's type rules.
     /// </summary>
     Type EvaluateType(string expression, Dictionary<string, object?>? variables = null);
-
-    /// <summary>
-    /// Evaluates after building an optimized tree via static type metadata (variable/function return types).
-    /// </summary>
-    object? EvaluateWithTreeOptimizer(string expression, Dictionary<string, object?>? variables = null);
 
     // ---------------- Validation / Checks ----------------
 
@@ -124,54 +119,14 @@ public interface IParser : ITokenizer
         VariableNamesOptions variableNamesOptions,
         bool earlyReturnOnErrors = false);
 
-    // ---------------- Optimizer APIs (static metadata) ----------------
-
-    /// <summary>
-    /// Returns the full optimization result (including before/after metrics) using static type metadata.
-    /// </summary>
-    TreeOptimizerResult GetOptimizedExpressionTreeResult(
-        string expression,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    ///// <summary>
-    ///// Returns an optimized expression tree using static type metadata.
-    ///// </summary>
-    //TokenTree GetOptimizedExpressionTree(
-    //    string expression,
-    //    Dictionary<string, Type>? variableTypes = null,
-    //    Dictionary<string, Type>? functionReturnTypes = null,
-    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    /// <summary>
-    /// Returns the full optimization result (including before/after metrics) using static type metadata.
-    /// </summary>
-    TreeOptimizerResult GetOptimizedExpressionTreeResult(
-        List<Token> postfixTokens,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    ///// <summary>
-    ///// Returns an optimized expression tree using static type metadata.
-    ///// </summary>
-    //TokenTree GetOptimizedExpressionTree(
-    //    List<Token> postfixTokens,
-    //    Dictionary<string, Type>? variableTypes = null,
-    //    Dictionary<string, Type>? functionReturnTypes = null,
-    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    // ---------------- Parser-driven optimizer (runtime inference) ----------------
-
     /// <summary>
     /// Optimizes using runtime inference of variable types from provided instances.
     /// </summary>
-    TreeOptimizerResult GetOptimizedExpressionUsingParser(string expression, Dictionary<string, object?>? variables = null);
+    TreeOptimizerResult GetOptimizedTree(string expression, Dictionary<string, object?>? variables = null);
 
     /// <summary>
     /// Optimizes an existing tree using runtime type inference.
     /// </summary>
-    TreeOptimizerResult OptimizeTreeUsingInference(TokenTree tree, Dictionary<string, object?>? variables = null);
+    TreeOptimizerResult GetOptimizedTree(TokenTree tree, Dictionary<string, object?>? variables = null,  bool cloneTree = true);
     AdjacentOperandsCheckResult CheckAdjacentOperands(string expression);
 }
