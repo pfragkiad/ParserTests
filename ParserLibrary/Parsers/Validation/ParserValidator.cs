@@ -1,6 +1,6 @@
 using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Validation;
@@ -50,8 +50,8 @@ public sealed class ParserValidator : IParserValidator
         Dictionary<Token, Node<Token>> nodeDictionary,
         IParserFunctionMetadata metadata)
     {
-        HashSet<FunctionArgumentCheckResult> valid = [];
-        HashSet<FunctionArgumentCheckResult> invalid = [];
+        HashSet<FunctionArguments> valid = [];
+        HashSet<FunctionArguments> invalid = [];
 
         foreach (var entry in nodeDictionary)
         {
@@ -66,7 +66,7 @@ public sealed class ParserValidator : IParserValidator
 
             if (fixedCount is not null)
             {
-                var r = new FunctionArgumentCheckResult
+                var r = new FunctionArguments
                 {
                     FunctionName = name,
                     Position = node.Value.Index + 1,
@@ -80,7 +80,7 @@ public sealed class ParserValidator : IParserValidator
             var minVar = metadata.GetMainFunctionMinVariableArgCount(name);
             if (minVar is not null)
             {
-                var r = new FunctionArgumentCheckResult
+                var r = new FunctionArguments
                 {
                     FunctionName = name,
                     Position = node.Value.Index + 1,
@@ -91,7 +91,7 @@ public sealed class ParserValidator : IParserValidator
                 continue;
             }
 
-            invalid.Add(new FunctionArgumentCheckResult
+            invalid.Add(new FunctionArguments
             {
                 FunctionName = name,
                 Position = node.Value.Index + 1,
@@ -106,8 +106,8 @@ public sealed class ParserValidator : IParserValidator
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(
         Dictionary<Token, Node<Token>> nodeDictionary)
     {
-        List<FunctionArgumentCheckResult> valid = [];
-        List<FunctionArgumentCheckResult> invalid = [];
+        List<FunctionArguments> valid = [];
+        List<FunctionArguments> invalid = [];
 
         foreach (var entry in nodeDictionary)
         {
@@ -116,7 +116,7 @@ public sealed class ParserValidator : IParserValidator
 
             var node = (Node<Token>)entry.Value;
             var args = node.GetFunctionArgumentNodes();
-            var res = new FunctionArgumentCheckResult { FunctionName = token.Text, Position = token.Index + 1 };
+            var res = new FunctionArguments { FunctionName = token.Text, Position = token.Index + 1 };
 
             if (args.Any(n => n.Value!.IsNull)) invalid.Add(res); else valid.Add(res);
         }

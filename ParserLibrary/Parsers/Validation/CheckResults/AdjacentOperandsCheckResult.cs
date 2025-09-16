@@ -1,6 +1,6 @@
 using FluentValidation.Results;
 
-namespace ParserLibrary.Tokenizers.CheckResults;
+namespace ParserLibrary.Parsers.Validation.CheckResults;
 
 public readonly struct AdjacentOperandsViolation
 {
@@ -15,13 +15,16 @@ public sealed class AdjacentOperandsCheckResult : CheckResult
 {
     public List<AdjacentOperandsViolation> Violations { get; init; } = [];
 
-    public override bool IsSuccess => Violations.Count == 0;
+    public override bool IsSuccess => base.IsSuccess && Violations.Count == 0;
 
     public override IList<ValidationFailure> GetValidationFailures()
     {
-        return [.. Violations.Select(v =>
-            new ValidationFailure(
-                "Formula",
+        if (IsSuccess) return [];
+
+        return [
+            .. base.GetValidationFailures(),
+            .. Violations.Select(v =>
+            new ValidationFailure("Formula.AdjacentOperands",
                 $"Missing operator between '{v.LeftToken}' (pos {v.LeftPosition}) and '{v.RightToken}' (pos {v.RightPosition})."))];
     }
 

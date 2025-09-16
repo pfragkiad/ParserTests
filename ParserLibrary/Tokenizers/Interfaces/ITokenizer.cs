@@ -1,7 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 using ParserLibrary.Parsers.Validation;
+using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 using ParserLibrary.Tokenizers;
-using ParserLibrary.Tokenizers.CheckResults;
 
 namespace ParserLibrary.Tokenizers.Interfaces;
 

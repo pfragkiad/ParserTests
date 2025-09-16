@@ -1,4 +1,4 @@
-using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Validation;

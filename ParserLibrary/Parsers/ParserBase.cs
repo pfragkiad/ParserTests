@@ -1,6 +1,7 @@
 ﻿using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
-using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;

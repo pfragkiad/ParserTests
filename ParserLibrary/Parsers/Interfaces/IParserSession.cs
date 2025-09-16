@@ -1,6 +1,7 @@
 ﻿using OneOf;
 using ParserLibrary.Parsers.Validation;
-using ParserLibrary.Tokenizers.CheckResults;
+using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -29,6 +30,7 @@ public interface IParserSession : IParser
     /// Variables used during evaluation/type inference. Constants (if any) are merged internally.
     /// </summary>
     Dictionary<string, object?> Variables { get; set; }
+    ParserSessionState State { get; }
 
     // ---------------- Validation + Optimization ----------------
 
