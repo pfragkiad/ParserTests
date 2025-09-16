@@ -60,10 +60,10 @@ public interface IParserSession : IParser
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     /// <summary>
-    /// Session-scoped validation using the current Expression (no expression parameter).
-    /// Runs tokenizer + parser validations and returns a consolidated report.
+    /// Compiles the current Expression into tokens/postfix/tree and runs tokenizer + parser validations.
+    /// Returns a consolidated report.
     /// </summary>
-    ParserValidationReport Validate(
+    ParserValidationReport ValidateAndCompile(
         VariableNamesOptions variableNamesOptions,
         bool earlyReturnOnErrors = false);
 

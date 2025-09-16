@@ -2,16 +2,19 @@
 
 public enum ParserSessionState : int
 {
-    Invalid ,
+    Invalid,
     Uninitialized,
 
     ExpressionSet,
-    ParenthesesChecked,
-    TokenizedInfix, //infix
-    TokenizedPostfix, //postfix
-    TreeBuilt, //tree + node dictionary
-    Validated,
 
+    // New high-level markers around tokenization/tree build
+    Prevalidating,    // before tokenization/tree build
+    TokenizedInfix,   // infix tokens created
+    TokenizedPostfix, // postfix tokens created
+    TreeBuilt,        // expression tree built + node dictionary ready
+    Postvalidating,   // after tokenization/tree build, before/while running node-dict checks
+
+    Validated,
     Optimized,
     Calculated
 }
