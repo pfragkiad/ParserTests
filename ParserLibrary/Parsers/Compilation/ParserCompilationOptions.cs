@@ -1,6 +1,6 @@
 using ParserLibrary.Parsers.Interfaces;
 
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Compilation;
 
 public readonly record struct ParserCompilationOptions
 {

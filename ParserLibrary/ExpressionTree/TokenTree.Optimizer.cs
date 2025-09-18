@@ -7,6 +7,9 @@ public partial class TokenTree
     private static readonly HashSet<string> _numericOperators =
         new(StringComparer.Ordinal) { "+", "-", "*", "/", "^" };
 
+    /// <summary>
+    /// Represents an empty tree with only a root node containing Token.Null.
+    /// </summary>
     public static TokenTree Empty 
     {
         get

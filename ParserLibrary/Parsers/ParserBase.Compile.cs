@@ -1,14 +1,28 @@
+using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
 public partial class ParserBase
 {
-    // Compile from expression string, optimization-aware
-    public ParserCompilationResult Compile(string expression, ExpressionOptimizationMode optimizationMode)
-        => Compile(expression, ParserCompilationOptions.FromOptimizationMode(optimizationMode));
+    // Compile from expression string, optimization-aware (variables/type maps optional)
+    public ParserCompilationResult Compile(
+        string expression,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
+        => Compile(
+            expression,
+            ParserCompilationOptions.FromOptimizationMode(optimizationMode),
+            optimizationMode,
+            variables,
+            variableTypes,
+            functionReturnTypes,
+            ambiguousFunctionReturnTypes);
 
-    // Compile from expression string with explicit options
+    // Compile from expression string with explicit options (no optimization by default)
     public ParserCompilationResult Compile(string expression, ParserCompilationOptions? options = null)
     {
         options ??= ParserCompilationOptions.Full;
@@ -23,11 +37,45 @@ public partial class ParserBase
             throw new ParserCompileException(ParserValidationStage.InfixTokenization, "Could not tokenize (get infix tokens).", ex);
         }
 
-        return Compile(infixTokens, options.Value);
+        return Compile(infixTokens, options.Value, optimizationMode: ExpressionOptimizationMode.None);
     }
 
-    // Compile from already prepared infix tokens
+    // Compile from expression string with options and optimization
+    public ParserCompilationResult Compile(
+        string expression,
+        ParserCompilationOptions options,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
+    {
+        List<Token> infixTokens;
+        try
+        {
+            infixTokens = GetInfixTokens(expression);
+        }
+        catch (Exception ex)
+        {
+            throw new ParserCompileException(ParserValidationStage.InfixTokenization, "Could not tokenize (get infix tokens).", ex);
+        }
+
+        return Compile(infixTokens, options, optimizationMode, variables, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
+    }
+
+    // Compile from already prepared infix tokens (no optimization)
     public ParserCompilationResult Compile(List<Token> infixTokens, ParserCompilationOptions options)
+        => Compile(infixTokens, options, optimizationMode: ExpressionOptimizationMode.None);
+
+    // Compile from already prepared infix tokens with optimization
+    public ParserCompilationResult Compile(
+        List<Token> infixTokens,
+        ParserCompilationOptions options,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
         var resultInfix = infixTokens;
         List<Token>? postfix = null;
@@ -36,10 +84,43 @@ public partial class ParserBase
         try
         {
             if (options.BuildPostfix || options.BuildTree)
+            {
                 postfix = GetPostfixTokens(resultInfix);
+            }
 
             if (options.BuildTree)
+            {
                 tree = GetExpressionTree(postfix!);
+
+                // Optimization (optional)
+                if (optimizationMode != ExpressionOptimizationMode.None && tree is not null)
+                {
+                    switch (optimizationMode)
+                    {
+                        default:
+                        case ExpressionOptimizationMode.ParserInference:
+                        {
+                            // Optimize using runtime inference (variables)
+                            var optimized = GetOptimizedTree(tree, variables);
+                            tree = optimized.Tree;
+                            break;
+                        }
+
+                        case ExpressionOptimizationMode.StaticTypeMaps:
+                        {
+                            // Build variable types from variables if not provided
+                            variableTypes ??= BuildVariableTypesFromVariables(variables);
+                            var optimized = tree.OptimizeForDataTypes(
+                                _options.TokenPatterns,
+                                variableTypes,
+                                functionReturnTypes,
+                                ambiguousFunctionReturnTypes);
+                            tree = optimized.Tree;
+                            break;
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -56,8 +137,15 @@ public partial class ParserBase
         {
             InfixTokens = resultInfix,
             PostfixTokens = postfix,
-            Tree = tree,
+            Tree = tree
         };
     }
+
+    private static Dictionary<string, Type>? BuildVariableTypesFromVariables(Dictionary<string, object?>? variables) =>
+        (variables is null || variables.Count == 0)
+            ? null
+            : variables
+                .Where(kv => kv.Value is not null)
+                .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
 }
 

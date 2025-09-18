@@ -8,10 +8,10 @@ public readonly struct TreeOptimizerResult
     public int? NonAllNumericBefore { get; init; }
     public int? NonAllNumericAfter { get; init; }
 
-    public bool HasMetrics => NonAllNumericBefore.HasValue && NonAllNumericAfter.HasValue;
+    public bool HasOptimizationRun => NonAllNumericBefore.HasValue && NonAllNumericAfter.HasValue;
 
     public int? Improvement =>
-        HasMetrics ? NonAllNumericBefore!.Value - NonAllNumericAfter!.Value : null;
+        HasOptimizationRun ? NonAllNumericBefore!.Value - NonAllNumericAfter!.Value : null;
 
     public bool IsImproved => Improvement.HasValue && Improvement.Value > 0;
 
@@ -24,7 +24,7 @@ public readonly struct TreeOptimizerResult
     };
 
     public override string ToString() =>
-        HasMetrics
+        HasOptimizationRun
             ? $"TreeOptimizerResult(NonAllNumericBefore={NonAllNumericBefore}, NonAllNumericAfter={NonAllNumericAfter}, Improvement={Improvement})"
             : "TreeOptimizerResult(unchanged)";
 }

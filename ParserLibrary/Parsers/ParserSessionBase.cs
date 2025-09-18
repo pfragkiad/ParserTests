@@ -4,6 +4,7 @@ using ParserLibrary.Parsers.Validation;
 using OneOf;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
+using ParserLibrary.Parsers.Compilation;
 
 namespace ParserLibrary.Parsers;
 
@@ -44,11 +45,9 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
     }
 
-    // Terminal-state guard: from Invalid you can only go to Uninitialized (Reset)
     private static bool CanTransition(ParserSessionState from, ParserSessionState to) =>
         from != ParserSessionState.Invalid || to == ParserSessionState.Uninitialized;
 
-    // Bypass the guard intentionally (used by Reset)
     private void ForceState(ParserSessionState newState)
     {
         if (_state == newState) return;
@@ -58,16 +57,12 @@ public class ParserSessionBase : ParserBase, IParserSession
     }
 
     public Exception? LastException { get; protected set; }
-
     public ParserValidationReport? ValidationReport { get; protected set; }
-
     public bool HasValidated => ValidationReport is not null;
 
-    // Always reflects the current validation/transformation phase
     public ParserValidationStage LastValidationState { get; private set; } = ParserValidationStage.None;
 
     public event EventHandler<ParserSessionStateChangedEventArgs>? StateChanged;
-
     protected virtual void OnStateChanged(ParserSessionState oldState, ParserSessionState newState) =>
         StateChanged?.Invoke(this, new ParserSessionStateChangedEventArgs(oldState, newState));
 
@@ -89,7 +84,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         get => _expression;
         set
         {
-            Reset(); //always reset on expression change
+            Reset();
             _expression = value;
             State = ParserSessionState.ExpressionSet;
         }
@@ -124,7 +119,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         Dictionary<string, Type>? functionReturnTypes = null,
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
-        Expression = expression; //also resets state
+        Expression = expression;
         Variables = variables ?? [];
 
         var report = new ParserValidationReport { Expression = _expression };
@@ -144,32 +139,22 @@ public class ParserSessionBase : ParserBase, IParserSession
                         _options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
                 };
 
-            report = ValidateAndCompile(effVarOpts, earlyReturnOnValidationErrors);
-            if (earlyReturnOnValidationErrors && !report.IsSuccess)
-            {
-                State = ParserSessionState.Invalid;
-                return report;
-            }
+            // Note: optimization is performed inside base.Compile below (post checks)
+            report = ValidateAndCompile(effVarOpts, earlyReturnOnValidationErrors, optimizationMode, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
+            return report;
         }
         else
         {
             try
             {
-                // Compile only as far as needed by the selected optimization mode
-                Compile(ParserCompilationOptions.FromOptimizationMode(optimizationMode));
+                // Compile as far as needed and optimize inside compile if requested
+                Compile(optimizationMode, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
             }
             catch (Exception ex)
             {
                 report.Exception = ex;
                 return report;
             }
-        }
-
-        // Optimization (optional)
-        if (optimizationMode != ExpressionOptimizationMode.None)
-        {
-            _ = GetOptimizedTree(optimizationMode, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
-            State = ParserSessionState.Optimized;
         }
 
         return report;
@@ -185,73 +170,26 @@ public class ParserSessionBase : ParserBase, IParserSession
         if (string.IsNullOrWhiteSpace(_expression))
             throw new InvalidOperationException("Expression is empty. Set Expression before optimizing.");
 
-        // Ensure we have a baseline tree
+        // Ensure we have a baseline tree; leverage compile to build and optimize if needed
         if (_tree is null)
         {
-            State = ParserSessionState.Prevalidating;
-
-            if (_postfixTokens.Count == 0)
-            {
-                if (_infixTokens.Count == 0)
-                {
-                    try
-                    {
-                        LastValidationState = ParserValidationStage.InfixTokenization;
-                        _infixTokens = GetInfixTokens(_expression!);
-                        State = ParserSessionState.TokenizedInfix;
-                    }
-                    catch (Exception ex)
-                    {
-                        LastException = new InvalidOperationException("Could not tokenize (get infix tokens).", innerException: ex);
-                        State = ParserSessionState.Invalid;
-                        throw LastException;
-                    }
-                }
-
-                try
-                {
-                    LastValidationState = ParserValidationStage.PostfixTokenization;
-                    _postfixTokens = GetPostfixTokens(_infixTokens);
-                    State = ParserSessionState.TokenizedPostfix;
-                }
-                catch (Exception ex)
-                {
-                    LastException = new InvalidOperationException("Could not convert to postfix tokens.", innerException: ex);
-                    State = ParserSessionState.Invalid;
-                    throw LastException;
-                }
-            }
-
-            try
-            {
-                LastValidationState = ParserValidationStage.TreeBuild;
-                _tree = GetExpressionTree(_postfixTokens);
-                _nodeDictionary = _tree.NodeDictionary;
-                State = ParserSessionState.TreeBuilt;
-                State = ParserSessionState.Postvalidating;
-            }
-            catch (Exception ex)
-            {
-                LastException = new InvalidOperationException("Could not build expression tree.", innerException: ex);
-                State = ParserSessionState.Invalid;
-                throw LastException;
-            }
+            // Build tree without extra validation, but do not optimize here; caller asked explicitly for optimizer
+            Compile(ExpressionOptimizationMode.None, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
         }
 
         switch (optimizationMode)
         {
             case ExpressionOptimizationMode.None:
-                return TreeOptimizerResult.Unchanged(_tree!);
+                return new TreeOptimizerResult { Tree = _tree! };
 
             default:
             case ExpressionOptimizationMode.ParserInference:
                 {
-                    TreeOptimizerResult result = GetOptimizedTree(_tree!, Variables);
-                    var optimizedTree = result.Tree;
-                    _tree = optimizedTree;
-                    _infixTokens = optimizedTree.GetInfixTokens();
-                    _postfixTokens = optimizedTree.GetPostfixTokens();
-                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    var result = GetOptimizedTree(_tree!, Variables);
+                    _tree = result.Tree;
+                    _infixTokens = _tree.GetInfixTokens();
+                    _postfixTokens = _tree.GetPostfixTokens();
+                    _nodeDictionary = _tree.NodeDictionary;
                     State = ParserSessionState.Optimized;
                     return result;
                 }
@@ -259,21 +197,19 @@ public class ParserSessionBase : ParserBase, IParserSession
             case ExpressionOptimizationMode.StaticTypeMaps:
                 {
                     variableTypes ??= BuildVariableTypesFromVariables(Variables);
-                    var result = _tree.OptimizeForDataTypes(
+                    var result = _tree!.OptimizeForDataTypes(
                         _options.TokenPatterns,
                         variableTypes,
                         functionReturnTypes,
                         ambiguousFunctionReturnTypes);
 
-                    var optimizedTree = result.Tree;
-                    _tree = optimizedTree;
-                    _infixTokens = optimizedTree.GetInfixTokens();
-                    _postfixTokens = optimizedTree.GetPostfixTokens();
-                    _nodeDictionary = optimizedTree.NodeDictionary;
+                    _tree = result.Tree;
+                    _infixTokens = _tree.GetInfixTokens();
+                    _postfixTokens = _tree.GetPostfixTokens();
+                    _nodeDictionary = _tree.NodeDictionary;
                     State = ParserSessionState.Optimized;
                     return result;
                 }
-
         }
     }
 
@@ -331,10 +267,8 @@ public class ParserSessionBase : ParserBase, IParserSession
     #region Tokenizer 
 
     public ParenthesisCheckResult ValidateParentheses() => ValidateParentheses(_expression);
-
     public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
 
-    // MODIFIED: delegate variable-name checks directly to tokenizer validator (infix-based)
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
         string[] ignorePrefixes,
@@ -345,7 +279,6 @@ public class ParserSessionBase : ParserBase, IParserSession
        HashSet<string> knownIdentifierNames,
        Regex? ignoreIdentifierPattern = null) =>
        _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreIdentifierPattern);
-
 
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
@@ -371,7 +304,6 @@ public class ParserSessionBase : ParserBase, IParserSession
     public InvalidUnaryOperatorsCheckResult CheckUnaryOperators() =>
         _parserValidator.CheckUnaryOperatorOperands(_nodeDictionary);
 
-
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
         _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
 
@@ -383,10 +315,14 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #endregion
 
-    // Compiles tokens/postfix/tree and runs validations for the current Expression.
+    // Validation + compile + optional optimization in one pass
     public virtual ParserValidationReport ValidateAndCompile(
         VariableNamesOptions variableNamesOptions,
-        bool earlyReturnOnErrors = false)
+        bool earlyReturnOnErrors = false,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
         var report = new ParserValidationReport { Expression = _expression };
         LastValidationState = ParserValidationStage.None;
@@ -463,20 +399,29 @@ public class ParserSessionBase : ParserBase, IParserSession
         var adjacentOperandsResult = _tokenizerValidator.CheckAdjacentOperands(_infixTokens);
         report.AdjacentOperandsResult = adjacentOperandsResult;
 
-        // If we have any errors so far, ALWAYS return (cannot build postfix/tree safely)
+        // If we have any errors so far, ALWAYS return
         if (!report.IsSuccess)
         {
             State = ParserSessionState.Invalid;
             return ValidationReport = report;
         }
 
-        // 5 + 5.1) Build postfix + tree via centralized compile (using existing infix)
+        // 5 + 5.1) Build postfix + tree via centralized compile with optimization
         try
         {
-            var result = base.Compile(_infixTokens, ParserCompilationOptions.Full);
+            // IMPORTANT: During validation we ALWAYS need a tree for parser-level checks.
+            // Compile with Full depth regardless of optimizationMode.
+            var result = base.Compile(
+                _infixTokens,
+                ParserCompilationOptions.Full,
+                optimizationMode,
+                Variables,
+                variableTypes,
+                functionReturnTypes,
+                ambiguousFunctionReturnTypes);
 
             LastValidationState = ParserValidationStage.PostfixTokenization;
-            _postfixTokens = result.PostfixTokens!;
+            _postfixTokens = result.PostfixTokens ?? [];
             State = ParserSessionState.TokenizedPostfix;
 
             LastValidationState = ParserValidationStage.TreeBuild;
@@ -501,7 +446,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
 
         // Switch to post-validation phase (node-dictionary checks)
-        State = ParserSessionState.Postvalidating;
+        if (_tree is not null) State = ParserSessionState.Postvalidating;
 
         // 6) Empty function arguments
         LastValidationState = ParserValidationStage.EmptyFunctionArguments;
@@ -550,19 +495,33 @@ public class ParserSessionBase : ParserBase, IParserSession
             State = ParserSessionState.Invalid;
         }
 
-        State = ParserSessionState.Validated;
+        // Final state
+        State = report.IsSuccess
+            ? (optimizationMode != ExpressionOptimizationMode.None ? ParserSessionState.Optimized : ParserSessionState.Validated)
+            : ParserSessionState.Invalid;
+
         return ValidationReport = report;
     }
 
-    // Centralized compile step used by ValidateAndOptimize (no-validation path).
-    // Delegates to ParserBase.Compile and maps results to session fields + states based on how far we compiled.
-    private void Compile(ParserCompilationOptions options)
+    // Centralized compile step (no validation path). Builds and optionally optimizes based on mode.
+    private void Compile(
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null)
     {
         State = ParserSessionState.Prevalidating;
 
         try
         {
-            var result = base.Compile(_expression!, options);
+            var result = base.Compile(
+                _expression!,
+                ParserCompilationOptions.FromOptimizationMode(optimizationMode),
+                optimizationMode,
+                Variables,
+                variableTypes,
+                functionReturnTypes,
+                ambiguousFunctionReturnTypes);
 
             // Map to session caches
             _infixTokens = result.InfixTokens;
@@ -576,6 +535,8 @@ public class ParserSessionBase : ParserBase, IParserSession
                 LastValidationState = ParserValidationStage.TreeBuild;
                 State = ParserSessionState.TreeBuilt;
                 State = ParserSessionState.Postvalidating;
+                if (optimizationMode != ExpressionOptimizationMode.None)
+                    State = ParserSessionState.Optimized;
             }
             else if (_postfixTokens.Count > 0)
             {
@@ -603,8 +564,5 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
     }
 
-
-
     #endregion
-
 }

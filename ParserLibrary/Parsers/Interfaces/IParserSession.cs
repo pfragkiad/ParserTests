@@ -2,6 +2,7 @@
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
+using ParserLibrary.Parsers.Compilation;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -14,7 +15,7 @@ public enum ExpressionOptimizationMode
 
 /// <summary>
 /// Stateful parser session that caches infix/postfix/tree between calls,
-/// and exposes validation, optimization and evaluation helpers for the current Expression.
+/// and exposes validation, compilation, optimization and evaluation helpers for the current Expression.
 /// Inherits core APIs from IParser.
 /// </summary>
 public interface IParserSession : IParser
@@ -30,13 +31,14 @@ public interface IParserSession : IParser
     /// Variables used during evaluation/type inference. Constants (if any) are merged internally.
     /// </summary>
     Dictionary<string, object?> Variables { get; set; }
+
     ParserSessionState State { get; }
 
-    // ---------------- Validation + Optimization ----------------
+    // ---------------- Validation + Compilation + Optimization ----------------
 
     /// <summary>
-    /// Validates (optional) and optimizes (optional) the given expression and updates session caches.
-    /// Returns the full validation report (success if validation is disabled and no errors).
+    /// Validates (optional) and compiles (tokens/postfix/tree), then optionally optimizes the tree,
+    /// updating the session caches. Returns the full validation report.
     /// </summary>
     ParserValidationReport ValidateAndOptimize(
         string expression,
@@ -50,7 +52,7 @@ public interface IParserSession : IParser
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     /// <summary>
-    /// Optimization only. Updates the cached infix/postfix/tree/node-dictionary and returns the optimization result.
+    /// Optimization only. Updates the cached artifacts (infix/postfix/tree) and returns the optimization result.
     /// ParserInference uses current Variables if variable types are not provided.
     /// </summary>
     TreeOptimizerResult GetOptimizedTree(
@@ -61,11 +63,15 @@ public interface IParserSession : IParser
 
     /// <summary>
     /// Compiles the current Expression into tokens/postfix/tree and runs tokenizer + parser validations.
-    /// Returns a consolidated report.
+    /// Optionally optimizes the tree. Returns a consolidated report.
     /// </summary>
     ParserValidationReport ValidateAndCompile(
         VariableNamesOptions variableNamesOptions,
-        bool earlyReturnOnErrors = false);
+        bool earlyReturnOnErrors = false,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     // ---------------- Evaluation APIs (session) ----------------
 
@@ -75,13 +81,12 @@ public interface IParserSession : IParser
     object? Evaluate();
 
     /// <summary>
-    /// Re-prepare current Expression with provided variables (no validation/optimization), then evaluate.
+    /// Re-prepare current Expression with provided variables, then evaluate.
     /// </summary>
     OneOf<object?, ParserValidationReport> Evaluate(
        Dictionary<string, object?>? variables = null,
        bool runValidation = false,
        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None);
-
 
     /// <summary>
     /// Type-evaluate current prepared state (tree or postfix), using current Variables.
@@ -155,6 +160,5 @@ public interface IParserSession : IParser
     /// <summary>
     /// Checks for adjacent operands without an operator in between (e.g. "2 3" or "a (b + c)").
     /// </summary>
-    /// <returns></returns>
     AdjacentOperandsCheckResult CheckAdjacentOperands();
 }

@@ -1,4 +1,4 @@
-namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers.Compilation;
 
 public sealed class ParserCompilationResult
 {

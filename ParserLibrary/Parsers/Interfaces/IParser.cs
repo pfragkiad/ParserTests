@@ -4,6 +4,7 @@ using ParserLibrary.Tokenizers;
 using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
+using ParserLibrary.Parsers.Compilation;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -130,4 +131,52 @@ public interface IParser : ITokenizer
     /// </summary>
     TreeOptimizerResult GetOptimizedTree(TokenTree tree, Dictionary<string, object?>? variables = null,  bool cloneTree = true);
     AdjacentOperandsCheckResult CheckAdjacentOperands(string expression);
+
+    // ---------------- Compilation APIs ----------------
+
+    /// <summary>
+    /// Compiles the expression into tokens/postfix/tree (depth derived from optimization mode) and
+    /// optionally optimizes the tree.
+    /// </summary>
+    ParserCompilationResult Compile(
+        string expression,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    /// <summary>
+    /// Compiles the expression into tokens/postfix/tree based on explicit options (no optimization).
+    /// </summary>
+    ParserCompilationResult Compile(string expression, ParserCompilationOptions? options = null);
+
+    /// <summary>
+    /// Compiles the expression into tokens/postfix/tree based on explicit options and optimization mode.
+    /// </summary>
+    ParserCompilationResult Compile(
+        string expression,
+        ParserCompilationOptions options,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+
+    /// <summary>
+    /// Compiles from existing infix tokens based on explicit options (no optimization).
+    /// </summary>
+    ParserCompilationResult Compile(List<Token> infixTokens, ParserCompilationOptions options);
+
+    /// <summary>
+    /// Compiles from existing infix tokens based on explicit options and optimization mode.
+    /// </summary>
+    ParserCompilationResult Compile(
+        List<Token> infixTokens,
+        ParserCompilationOptions options,
+        ExpressionOptimizationMode optimizationMode,
+        Dictionary<string, object?>? variables = null,
+        Dictionary<string, Type>? variableTypes = null,
+        Dictionary<string, Type>? functionReturnTypes = null,
+        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 }

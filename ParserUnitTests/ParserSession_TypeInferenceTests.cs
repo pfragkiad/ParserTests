@@ -19,7 +19,7 @@ public class ParserSession_TypeInferenceTests : IClassFixture<ItemSessionFixture
         var session = GetItemSession();
         session.Expression = "1 + 2";
 
-        var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
 
         var t = session.EvaluateType();
@@ -32,7 +32,7 @@ public class ParserSession_TypeInferenceTests : IClassFixture<ItemSessionFixture
         var session = GetItemSession();
         session.Expression = "1.5 + 2";
 
-        var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
 
         var t = session.EvaluateType();
@@ -46,7 +46,7 @@ public class ParserSession_TypeInferenceTests : IClassFixture<ItemSessionFixture
         session.Expression = "a + 1";
         session.Variables = new() { ["a"] = typeof(Item) };
 
-        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
         Assert.True(report.IsSuccess);
 
         var t = session.EvaluateType();
@@ -59,7 +59,7 @@ public class ParserSession_TypeInferenceTests : IClassFixture<ItemSessionFixture
         var session = GetItemSession();
         session.Expression = "tre()";
 
-        var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
 
         var t = session.EvaluateType();

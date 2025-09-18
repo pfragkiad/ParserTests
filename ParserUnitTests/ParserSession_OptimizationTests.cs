@@ -18,12 +18,9 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "1 + 2";
 
-        // Warm up caches without validation
-        session.ValidateAndOptimize(session.Expression, runValidation: false);
-
         var res = session.GetOptimizedTree(ExpressionOptimizationMode.None);
-        Assert.NotNull(res.Tree);
-        Assert.False(res.HasMetrics);
+        Assert.Null(res.Tree);
+        Assert.False(res.HasOptimizationRun);
     }
 
     [Fact]
@@ -34,7 +31,9 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         session.Variables = new() { ["a"] = 5 };
 
         // Warm up caches
-        session.ValidateAndOptimize(session.Expression, session.Variables, runValidation: false);
+        //session.ValidateAndOptimize(session.Expression, session.Variables, runValidation: false);
+        var options = new VariableNamesOptions { KnownIdentifierNames = [.. session.Variables.Keys] };
+        session.ValidateAndCompile(options);
 
         var res = session.GetOptimizedTree(ExpressionOptimizationMode.StaticTypeMaps);
         Assert.NotNull(res.Tree);
@@ -47,11 +46,10 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "1 + 2";
 
-        var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
 
         var plain = session.Evaluate();
-        //var optimized = session.EvaluateWithTreeOptimizer();
         var optimized = session.Evaluate(optimizationMode: ExpressionOptimizationMode.ParserInference);
         Assert.Equal(plain, optimized.AsT0);
     }
