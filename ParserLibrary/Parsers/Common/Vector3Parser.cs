@@ -14,7 +14,7 @@ public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : P
             { "uz", Vector3.UnitZ }
         };
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         float.Parse(s, CultureInfo.InvariantCulture);
 
 

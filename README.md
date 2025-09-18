@@ -235,7 +235,7 @@ public class ComplexParser(ILogger<ComplexParser> logger, ParserServices ps) : P
             { "e", new Complex(Math.E, 0) }
         };
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
 
@@ -371,7 +371,7 @@ public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : P
             { "uz", Vector3.UnitZ }
         };
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         float.Parse(s, CultureInfo.InvariantCulture);
 
 
@@ -522,7 +522,7 @@ public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : ParserB
 {
 
     //we assume that literals are integer numbers only
-    protected override object EvaluateLiteral(string s) => int.Parse(s);
+    protected override object EvaluateLiteral(string s, string? group) => int.Parse(s);
 
     protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {
@@ -622,7 +622,7 @@ Minimal example (mirrors the logic of the stateless `ItemParser`):
 public class IntParserSession(ILogger<IntParserSession> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
     //we assume that literals are integer numbers only
-    protected override object EvaluateLiteral(string s) => int.Parse(s);
+    protected override object EvaluateLiteral(string s, string? group) => int.Parse(s);
 
     protected override object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand)
     {

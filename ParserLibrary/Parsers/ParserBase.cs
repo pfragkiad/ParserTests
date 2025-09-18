@@ -266,7 +266,7 @@ public partial class ParserBase : Tokenizer, IParser
 
         var tree = GetExpressionTree(expression);
         var optimizerResult = GetOptimizedTree(tree, variables, false);
-        var optimizedTree = optimizerResult.Tree; 
+        var optimizedTree = optimizerResult.Tree;
 
         return Evaluate(optimizedTree, variables, mergeConstants: true);
     }
@@ -288,7 +288,7 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text);
+                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup);
                     break;
 
                 case TokenType.Identifier:
@@ -341,7 +341,7 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteralType(token.Text);
+                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteralType(token.Text, token.CaptureGroup);
                     break;
 
                 case TokenType.Identifier:
@@ -430,7 +430,7 @@ public partial class ParserBase : Tokenizer, IParser
                 if (token.TokenType == TokenType.Literal)
                 {
                     // BUGFIX: store type (or null for Token.Null), not the parsed value
-                    nodeValueDictionary.Add(tokenNode, value = token.IsNull ? null : EvaluateLiteralType(token.Text));
+                    nodeValueDictionary.Add(tokenNode, value = token.IsNull ? null : EvaluateLiteralType(token.Text, token.CaptureGroup));
                 }
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                 {
@@ -506,7 +506,7 @@ public partial class ParserBase : Tokenizer, IParser
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? value = null;
                 if (token.TokenType == TokenType.Literal)
-                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text));
+                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text, token.CaptureGroup));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
@@ -540,7 +540,7 @@ public partial class ParserBase : Tokenizer, IParser
     #endregion
 
     #region Node creation helpers
-   
+
     private Node<Token> CreateFunctionNodeAndPushToExpressionStack(Stack<Token> stack, Dictionary<Token, Node<Token>> nodeDictionary, Token token)
     {
         Node<Token> functionNode = new(token);
@@ -682,10 +682,10 @@ public partial class ParserBase : Tokenizer, IParser
 
     #region Calculation definitions (virtual hooks)
 
-    protected virtual object? EvaluateLiteral(string s) => new();
-    protected virtual Type EvaluateLiteralType(string s)
+    protected virtual object? EvaluateLiteral(string s, string? group) => new();
+    protected virtual Type EvaluateLiteralType(string s, string? group)
     {
-        var value = EvaluateLiteral(s);
+        var value = EvaluateLiteral(s, group);
         return value is null ? typeof(object) : value.GetType();
     }
 

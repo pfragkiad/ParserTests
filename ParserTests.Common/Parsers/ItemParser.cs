@@ -21,7 +21,7 @@ public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : ParserB
 {
     #region Literal parsing / type inference
 
-    protected override object EvaluateLiteral(string s)
+    protected override object EvaluateLiteral(string s, string? group)
     {
         if (int.TryParse(s, out int i))
             return i;
@@ -29,7 +29,7 @@ public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : ParserB
     }
 
     // Faster and exact literal type inference (avoid parsing to value then .GetType()).
-    protected override Type EvaluateLiteralType(string s)
+    protected override Type EvaluateLiteralType(string s, string? group)
         => int.TryParse(s, out _) ? typeof(int) : typeof(double);
 
     #endregion

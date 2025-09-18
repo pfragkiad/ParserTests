@@ -5,7 +5,7 @@ namespace ParserTests.Common.Parsers;
 
 public class IntParserSession(ILogger<ParserSessionBase> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
-    protected override object EvaluateLiteral(string s)
+    protected override object EvaluateLiteral(string s, string? group)
         => int.Parse(s);
 
 

@@ -17,7 +17,7 @@ public class MixedIntDoubleParser( ILogger<DoubleParser> logger, ParserServices 
 
     }
 
-    protected override object EvaluateLiteral(string s)
+    protected override object EvaluateLiteral(string s, string? group)
     {
         if (int.TryParse(s, out int i))
             return i;

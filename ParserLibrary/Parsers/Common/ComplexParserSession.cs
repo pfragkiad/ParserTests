@@ -13,7 +13,7 @@ public class ComplexParserSession(ILogger<ComplexParser> logger, ParserServices 
             { "e", new Complex(Math.E, 0) }
         };
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
     #region Auxiliary functions to get operands

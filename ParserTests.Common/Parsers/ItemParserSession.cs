@@ -6,7 +6,7 @@ namespace ParserTests.Common.Parsers;
 public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
     //we assume that LITERALS are integer numbers only
-    protected override object EvaluateLiteral(string s)
+    protected override object EvaluateLiteral(string s, string? group)
     {
         //return int if parsed else double
         if (int.TryParse(s, out int i))

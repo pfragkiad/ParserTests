@@ -13,8 +13,11 @@ public class ComplexParser(ILogger<ComplexParser> logger, ParserServices ps) : P
             { "e", new Complex(Math.E, 0) }
         };
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);
+
+    //protected override Type EvaluateLiteralType(string s, string? group) =>
+    //    typeof(double);
 
     #region Auxiliary functions to get operands
 

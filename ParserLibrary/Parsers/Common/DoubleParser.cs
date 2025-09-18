@@ -20,7 +20,7 @@ public class DoubleParser(ILogger<DoubleParser> logger, ParserServices ps) : Par
         return base.Evaluate(postfixTokens, variables);
     }
 
-    protected override object EvaluateLiteral(string s) =>
+    protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);
 
 
