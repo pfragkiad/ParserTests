@@ -81,7 +81,7 @@ public class TokenizerValidator : ITokenizerValidator
     public VariableNamesCheckResult CheckVariableNames(
         List<Token> infixTokens,
         HashSet<string> knownIdentifierNames,
-        string[] ignoreCaptureGroups)
+        HashSet<string> ignoreCaptureGroups)
     {
         HashSet<string> matched = [];
         HashSet<string> unmatched = [];
@@ -95,7 +95,8 @@ public class TokenizerValidator : ITokenizerValidator
                 continue;
             }
 
-            if (ignoreCaptureGroups.Any(g => t.Match!.Groups[g].Success))
+            //if (ignoreCaptureGroups.Any(g => t.Match!.Groups[g].Success))
+            if(t.CaptureGroup is not null && ignoreCaptureGroups.Contains(t.CaptureGroup))
             {
                 ignored.Add(t.Text);
                 continue;
@@ -149,8 +150,8 @@ public class TokenizerValidator : ITokenizerValidator
     public VariableNamesCheckResult CheckVariableNames(
         List<Token> infixTokens,
         HashSet<string> knownIdentifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes)
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes)
     {
         HashSet<string> matched = [];
         HashSet<string> unmatched = [];
@@ -186,14 +187,14 @@ public class TokenizerValidator : ITokenizerValidator
     // Aggregator for the post stage (infix-only).
     public VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options)
     {
-        if (options.IgnoreCaptureGroups is { Length: > 0 })
+        if (options.IgnoreCaptureGroups is { Count: > 0 })
             return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreCaptureGroups);
 
         if (options.IgnoreIdentifierPattern is not null)
             return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreIdentifierPattern);
 
-        if ((options.IgnorePrefixes is not null && options.IgnorePrefixes.Length > 0) ||
-            (options.IgnorePostfixes is not null && options.IgnorePostfixes.Length > 0))
+        if ((options.IgnorePrefixes is not null && options.IgnorePrefixes.Count > 0) ||
+            (options.IgnorePostfixes is not null && options.IgnorePostfixes.Count > 0))
             return CheckVariableNames(
                 infixTokens,
                 options.KnownIdentifierNames,
@@ -209,18 +210,22 @@ public class TokenizerValidator : ITokenizerValidator
     // NEW: Adjacent operands – require a binary operator between them.
     // Left: Literal or Identifier
     // Right: Literal, Identifier, Function, or OpenParenthesis
-    public AdjacentOperandsCheckResult CheckAdjacentOperands(List<Token> infixTokens)
+    public UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens)
     {
+        var unary = _patterns.UnaryOperatorDictionary;
+
         static bool IsLeftOperandOrStart(Token t) =>
             t.TokenType == TokenType.Literal ||
             t.TokenType == TokenType.Identifier ||
             t.TokenType == TokenType.ClosedParenthesis;
 
-        static bool IsRightOperandOrStartOfGroupOrCall(Token t) =>
+        bool IsRightOperandOrStartOfGroupOrCall(Token t) =>
             t.TokenType == TokenType.Literal ||
             t.TokenType == TokenType.Identifier ||
             t.TokenType == TokenType.Function ||
-            t.TokenType == TokenType.OpenParenthesis;
+            t.TokenType == TokenType.OpenParenthesis ||
+            t.TokenType == TokenType.OperatorUnary && unary[t.Text].Prefix    // a!  or )! or 123!
+            ;
 
         var violations = new List<AdjacentOperandsViolation>();
 
@@ -231,9 +236,10 @@ public class TokenizerValidator : ITokenizerValidator
 
             bool isInvalid = IsLeftOperandOrStart(left) && IsRightOperandOrStartOfGroupOrCall(right) ||
                 //also check for invalid operator combinations op|op, unaryOp (pre)|op, op|unaryOp (post)
-                left.TokenType  == TokenType.Operator && right.TokenType == TokenType.Operator ||
-                left.TokenType == TokenType.OperatorUnary && _patterns.UnaryOperatorDictionary[left.Text].Prefix  && right.TokenType == TokenType.Operator ||
-                left.TokenType == TokenType.Operator && right.TokenType == TokenType.OperatorUnary && !_patterns.UnaryOperatorDictionary[right.Text].Prefix
+                left.TokenType  == TokenType.Operator && right.TokenType == TokenType.Operator ||                                           //**
+                left.TokenType == TokenType.OperatorUnary && unary[left.Text].Prefix  && right.TokenType == TokenType.Operator ||           //!+
+                left.TokenType == TokenType.OperatorUnary && !unary[left.Text].Prefix && right.TokenType == TokenType.OpenParenthesis ||    //%(
+                left.TokenType == TokenType.Operator && right.TokenType == TokenType.OperatorUnary && !unary[right.Text].Prefix             //+%
                 ;
 
             if(isInvalid)
@@ -252,6 +258,6 @@ public class TokenizerValidator : ITokenizerValidator
             _logger.LogWarning("Adjacent operands without operator: {pairs}",
                 string.Join(", ", violations.Select(v => $"{v.LeftPosition}-{v.RightPosition}")));
 
-        return new AdjacentOperandsCheckResult { Violations = violations };
+        return new UnexpectedOperatorOperandsCheckResult { Violations = violations };
     }
 }

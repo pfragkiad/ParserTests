@@ -1,4 +1,5 @@
 ﻿namespace ParserLibrary.Tokenizers;
+using System.Text.RegularExpressions;
 
 public enum TokenType
 {
@@ -14,19 +15,21 @@ public enum TokenType
 
 public class Token : IComparable<Token>
 {
-    public Token(TokenType tokenType, Match match) //for complex tokens
-    {
-        TokenType = tokenType;
-        Match = match;
-    }
 
-    public Token(TokenType tokenType, string text, int index) //for fixed value tokens
+    public static Token FromMatch(Match match, TokenType tokenType, string? captureGroup = null) =>
+        new(tokenType, match.Value, match.Index, captureGroup);
+
+
+    public Token(TokenType tokenType, string text, int index, string? captureGroup = null) //for fixed value tokens
     {
         TokenType = tokenType;
         _text = text;
         _index = index;
+        if (captureGroup is not null)
+            CaptureGroup = captureGroup;
     }
- public Token(TokenType tokenType, char singleChar, int index) //for fixed value tokens
+
+    public Token(TokenType tokenType, char singleChar, int index) //for fixed value tokens
     {
         TokenType = tokenType;
         _singleChar = singleChar;
@@ -34,26 +37,27 @@ public class Token : IComparable<Token>
         _index = index;
     }
 
-
     //We allow TokenType to be changed later.
     public TokenType TokenType { get; set; }
 
-    //Used only when regex is used.
+    ////Used only when regex is used.
 
-    protected Match? _match;
-    public Match? Match
-    {
-        get => _match;
-        set
-        {
-            _match = value;
-            if (_match is null) return;
+    //protected Match? _match;
+    //public Match? Match
+    //{
+    //    get => _match;
+    //    set
+    //    {
+    //        _match = value;
+    //        if (_match is null) return;
+    //        _text = value?.Value ?? "";
+    //        _index = value?.Index ?? -1;
+    //    }
+    //}
 
-            _text = value?.Value ?? "";
-            _index = value?.Index ?? -1;
-        }
-
-    }
+    // NEW: name of the first successful named capture group (identifier/literal subtype)
+    // Null if pattern has no named groups or none matched.
+    public string? CaptureGroup { get; set; }
 
 
     protected string _text = "";
@@ -91,9 +95,9 @@ public class Token : IComparable<Token>
         set { _index = value; }
     }
 
-    public static Token Null => new(TokenType.Literal, Match.Empty);
+    public static Token Null => new(TokenType.Literal, "", -1);
 
-    public bool IsNull => Match == Match.Empty;
+    public bool IsNull => _index == -1;
 
     public override string ToString() => _text ?? "";
 
@@ -117,17 +121,10 @@ public class Token : IComparable<Token>
     /// <returns>A new Token instance with the same properties</returns>
     public Token Clone()
     {
-        var cloned = new Token(TokenType, _text, _index)
+        var cloned = new Token(TokenType, _text, _index, CaptureGroup)
         {
-            SingleChar = _singleChar
+            SingleChar = _singleChar,
         };
-
-        // Note: We share the Match reference since Match objects are typically immutable
-        // and represent the original regex match from parsing
-        if (_match != null)
-        {
-            cloned.Match = _match;
-        }
 
         return cloned;
     }

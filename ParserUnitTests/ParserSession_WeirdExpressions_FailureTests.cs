@@ -104,7 +104,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
     }
 
 
@@ -154,8 +154,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -167,8 +167,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -180,8 +180,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -193,8 +193,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -206,8 +206,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
     }
 
     [Fact]
@@ -231,8 +231,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -256,8 +256,8 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
-        Assert.NotEmpty(report.AdjacentOperandsResult.GetValidationFailures());
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
+        Assert.NotEmpty(report.UnexpectedOperatorOperandsResult.GetValidationFailures());
     }
 
     [Fact]
@@ -319,6 +319,6 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
-        Assert.False(report.AdjacentOperandsResult!.IsSuccess);
+        Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
     }
 }

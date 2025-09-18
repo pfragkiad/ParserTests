@@ -3,10 +3,10 @@ namespace ParserLibrary.Parsers.Validation;
 public sealed class VariableNamesOptions
 {
     public required HashSet<string> KnownIdentifierNames { get; init; }
-    public string[]? IgnoreCaptureGroups { get; init; }
+    public HashSet<string>? IgnoreCaptureGroups { get; init; }
     public Regex? IgnoreIdentifierPattern { get; init; }
-    public string[]? IgnorePrefixes { get; init; }
-    public string[]? IgnorePostfixes { get; init; }
+    public HashSet<string>? IgnorePrefixes { get; init; }
+    public HashSet<string>? IgnorePostfixes { get; init; }
 
     // Convenience: empty options (no known identifiers, no ignores)
     public static VariableNamesOptions Empty { get; } = new()

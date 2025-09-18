@@ -18,7 +18,7 @@ public class TokenPatterns //NOT records here!
         new()
         {
             Name = ArgumentSeparator.ToString(),
-            Priority = _operators.Min(o=>o.Priority)-1,
+            Priority = _operators.Min(o => o.Priority) - 1,
             LeftToRight = true
         };
 
@@ -34,6 +34,12 @@ public class TokenPatterns //NOT records here!
         {
             _operators = value ?? [];
             _operatorDictionary = _operators.ToDictionary(op => op.Name, op => op);
+
+            if (_unary.Count > 0)
+            {
+                _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
+                _sameNameUnaryAndBinaryOperators = [.. _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys)];
+            }
         }
     }
 
@@ -48,9 +54,22 @@ public class TokenPatterns //NOT records here!
         {
             _unary = value ?? [];
             _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op);
+
+            if (_operators.Count > 0)
+            {
+                _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
+                _sameNameUnaryAndBinaryOperators = [.. _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys)];
+            }
         }
     }
+
     private Dictionary<string, UnaryOperator> _unaryOperatorDictionary = [];
     public Dictionary<string, UnaryOperator> UnaryOperatorDictionary { get => _unaryOperatorDictionary; }
+
+    private HashSet<UnaryOperator> _uniqueUnaryOperators = [];
+    public HashSet<UnaryOperator> UniqueUnaryOperators => _uniqueUnaryOperators;
+
+    private HashSet<string> _sameNameUnaryAndBinaryOperators = [];
+    public HashSet<string> SameNameUnaryAndBinaryOperators => _sameNameUnaryAndBinaryOperators;
 
 }

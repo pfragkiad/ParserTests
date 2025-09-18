@@ -11,7 +11,7 @@ public readonly struct AdjacentOperandsViolation
     public int RightPosition { get; init; } // 1-based
 }
 
-public sealed class AdjacentOperandsCheckResult : CheckResult
+public sealed class UnexpectedOperatorOperandsCheckResult : CheckResult
 {
     public List<AdjacentOperandsViolation> Violations { get; init; } = [];
 
@@ -28,5 +28,5 @@ public sealed class AdjacentOperandsCheckResult : CheckResult
                 $"Missing operator between '{v.LeftToken}' (pos {v.LeftPosition}) and '{v.RightToken}' (pos {v.RightPosition})."))];
     }
 
-    public static AdjacentOperandsCheckResult Success => new();
+    public static UnexpectedOperatorOperandsCheckResult Success => new();
 }

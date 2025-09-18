@@ -21,6 +21,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
         {
             "+" => operand,//unary plus does nothing
             "-" => -(operand as dynamic),
+            "%" => (operand as dynamic) * 10,
             _ => base.EvaluateUnaryOperator(operatorName, operand),
         };
     }

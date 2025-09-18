@@ -59,8 +59,8 @@ public interface ITokenizer
     VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> knownIdentifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes);
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes);
 
     /// <summary>
     /// Checks variable names using known names and an optional ignore regex pattern.
@@ -76,7 +76,7 @@ public interface ITokenizer
     VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> knownIdentifierNames,
-        string[] ignoreCaptureGroups);
+        HashSet<string> ignoreCaptureGroups);
 
     // ---------------- Variable names checks (options-based) ----------------
 

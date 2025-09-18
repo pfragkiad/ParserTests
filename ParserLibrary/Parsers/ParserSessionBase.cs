@@ -271,8 +271,8 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes) =>
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes) =>
         _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignorePrefixes, ignorePostfixes);
 
     public VariableNamesCheckResult CheckVariableNames(
@@ -282,7 +282,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     public VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
-        string[] ignoreCaptureGroups) =>
+        HashSet<string> ignoreCaptureGroups) =>
         _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreCaptureGroups);
 
     public VariableNamesCheckResult CheckVariableNames(VariableNamesOptions variableNameOptions) =>
@@ -295,8 +295,8 @@ public class ParserSessionBase : ParserBase, IParserSession
     public FunctionNamesCheckResult CheckFunctionNames() =>
         _parserValidator.CheckFunctionNames(_infixTokens, (IParserFunctionMetadata)this);
 
-    public AdjacentOperandsCheckResult CheckAdjacentOperands() =>
-        _tokenizerValidator.CheckAdjacentOperands(_infixTokens);
+    public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands() =>
+        _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
 
     public InvalidBinaryOperatorsCheckResult CheckBinaryOperators() =>
         _parserValidator.CheckBinaryOperatorOperands(_nodeDictionary);
@@ -396,8 +396,8 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // 4.5) Adjacent operands
         LastValidationState = ParserValidationStage.AdjacentOperands;
-        var adjacentOperandsResult = _tokenizerValidator.CheckAdjacentOperands(_infixTokens);
-        report.AdjacentOperandsResult = adjacentOperandsResult;
+        var adjacentOperandsResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
+        report.UnexpectedOperatorOperandsResult = adjacentOperandsResult;
 
         // If we have any errors so far, ALWAYS return
         if (!report.IsSuccess)

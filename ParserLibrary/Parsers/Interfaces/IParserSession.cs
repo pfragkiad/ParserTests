@@ -112,8 +112,8 @@ public interface IParserSession : IParser
 
     VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes);
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes);
 
     VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
@@ -121,7 +121,7 @@ public interface IParserSession : IParser
 
     VariableNamesCheckResult CheckVariableNames(
         HashSet<string> knownIdentifierNames,
-        string[] ignoreCaptureGroups);
+        HashSet<string> ignoreCaptureGroups);
 
     VariableNamesCheckResult CheckVariableNames(VariableNamesOptions variableNameOptions);
 
@@ -160,5 +160,5 @@ public interface IParserSession : IParser
     /// <summary>
     /// Checks for adjacent operands without an operator in between (e.g. "2 3" or "a (b + c)").
     /// </summary>
-    AdjacentOperandsCheckResult CheckAdjacentOperands();
+    UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
 }

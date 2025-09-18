@@ -9,13 +9,13 @@ public interface ITokenizerValidator
     ParenthesisCheckResult CheckParentheses(string expression);
 
     // Step 2: Post-validation (infix-only, no tokenization here).
-    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> knownIdentifierNames, string[] ignoreCaptureGroups);
+    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> knownIdentifierNames, HashSet<string> ignoreCaptureGroups);
     VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> knownIdentifierNames, Regex? ignoreIdentifierPattern);
-    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> knownIdentifierNames, string[] ignorePrefixes, string[] ignorePostfixes);
+    VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, HashSet<string> knownIdentifierNames, HashSet<string> ignorePrefixes, HashSet<string> ignorePostfixes);
 
     // Aggregator for post stage (chooses the correct CheckVariableNames overload).
     VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options);
 
     // NEW: detect missing operator between adjacent operands
-    AdjacentOperandsCheckResult CheckAdjacentOperands(List<Token> infixTokens);
+    UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens);
 }

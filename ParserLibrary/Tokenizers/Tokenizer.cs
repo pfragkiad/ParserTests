@@ -22,15 +22,63 @@ public class Tokenizer : ITokenizer
     {
         _logger = logger;
         _options = options.Value;
+        _patterns = _options.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
 
         if (_options.TokenPatterns is null) _options = TokenizerOptions.Default;
 
         _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
+
+        // ---- Cached regex initialization (singleton-friendly) ----
+        if (_patterns.Identifier is null) throw new InvalidOperationException("Identifier pattern cannot be null.");
+        if (_patterns.Literal is null) throw new InvalidOperationException("Literal pattern cannot be null.");
+
+        var identifierOptions = _options.CaseSensitive ? RegexOptions.Compiled : RegexOptions.Compiled | RegexOptions.IgnoreCase;
+        var literalOptions = identifierOptions; // case sensitivity rule is shared
+
+        _identifierRegex = new Regex(_patterns.Identifier, identifierOptions);
+        _identifierGroupNames = [.. _identifierRegex
+            .GetGroupNames()
+            .Where(n => !int.TryParse(n, out _))];
+        _identifierHasNamedGroups = _identifierGroupNames.Length > 0;
+
+        _literalRegex = new Regex(_patterns.Literal, literalOptions);
+        _literalGroupNames = [.. _literalRegex
+            .GetGroupNames()
+            .Where(n => !int.TryParse(n, out _))];
+        _literalHasNamedGroups = _literalGroupNames.Length > 0;
+
+        // Precompile per-operator regexes (binary & same-name unary/binary). Keep behavior: case-sensitive.
+        _operatorRegexes = [.. (_patterns.Operators ?? []).Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), RegexOptions.Compiled)))];
+
+        // Precompile unique unary operator regexes (those not sharing name with binary operators)
+        _uniqueUnaryOperatorRegexes = _patterns.UniqueUnaryOperators is { Count: > 0 }
+            ? [.. _patterns.UniqueUnaryOperators.Select(u => (op: u, regex: new Regex(Regex.Escape(u.Name), RegexOptions.Compiled)))]
+            : [];
     }
 
+    protected readonly TokenPatterns _patterns;
 
     protected readonly TokenizerOptions _options;
     public TokenizerOptions TokenizerOptions => _options;
+
+    // Cached regex fields
+    private readonly Regex _identifierRegex;
+    private readonly string[] _identifierGroupNames;
+    private readonly bool _identifierHasNamedGroups;
+
+    private readonly Regex _literalRegex;
+    private readonly string[] _literalGroupNames;
+    private readonly bool _literalHasNamedGroups;
+
+    private readonly (Operator op, Regex regex)[] _operatorRegexes;
+    private readonly (UnaryOperator op, Regex regex)[] _uniqueUnaryOperatorRegexes;
+
+    private static string? FirstSuccessfulNamedGroup(Match m, string[] groupNames)
+    {
+        foreach (var g in groupNames)
+            if (m.Groups[g].Success) return g;
+        return null;
+    }
 
 
     //The second property contains the number of arguments needed by each corresponding function.
@@ -39,75 +87,78 @@ public class Tokenizer : ITokenizer
         _logger.LogDebug("Retrieving infix tokens...");
 
         List<Token> tokens = [];
-        MatchCollection matches;
-
-        TokenPatterns tokenPatterns = _options.TokenPatterns;
-
-        // Track function '(' positions to avoid duplicate '(' tokens
         HashSet<int> functionParenthesisPositions = [];
 
-        // Identify identifiers and function calls without a regex for "identifier + '('"
-        matches =
-            _options.CaseSensitive
-                ? Regex.Matches(expression, tokenPatterns.Identifier!)
-                : Regex.Matches(expression, tokenPatterns.Identifier!, RegexOptions.IgnoreCase);
-
-        if (matches.Count > 0)
+        // IDENTIFIERS (+ possible functions) - uses cached regex
+        MatchCollection idMatches = _identifierRegex.Matches(expression);
+        if (idMatches.Count > 0)
         {
-            foreach (Match m in matches.Cast<Match>())
+            foreach (Match m in idMatches)
             {
+                string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
+
                 int i = m.Index + m.Length;
                 // Skip optional whitespace between identifier and '('
                 while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
 
-                if (i < expression.Length && expression[i] == tokenPatterns.OpenParenthesis)
+                if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
                 {
                     // Function: add function token and remember '(' position to avoid re-adding it
-                    tokens.Add(new Token(TokenType.Function, m.Value, m.Index));
+                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
                     functionParenthesisPositions.Add(i);
                     continue;
                 }
 
                 // Plain identifier
-                tokens.Add(new Token(TokenType.Identifier, m));
+                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
             }
         }
 
-        // literals
-        matches = Regex.Matches(expression, tokenPatterns.Literal!);
-        if (matches.Count != 0)
-            tokens.AddRange(matches.Select(m => new Token(TokenType.Literal, m)));
+        // LITERALS - cached regex
+        MatchCollection litMatches = _literalRegex.Matches(expression);
+        if (litMatches.Count > 0)
+        {
+            foreach (Match m in litMatches)
+            {
+                string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
+                tokens.Add(Token.FromMatch(m, TokenType.Literal, group));
+            }
+        }
 
-        // parentheses and argument separators
+        // Parentheses & argument separators (single pass over chars)
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
-            if (c == tokenPatterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
+            if (c == _patterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
-            else if (c == tokenPatterns.CloseParenthesis)
+            else if (c == _patterns.CloseParenthesis)
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
-            else if( c== tokenPatterns.ArgumentSeparator)
+            else if (c == _patterns.ArgumentSeparator)
                 tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
 
-        // match unary operators that do NOT coincide with binary operators
-        var uniqueUnary = tokenPatterns.Unary.Where(u => !tokenPatterns.OperatorDictionary.ContainsKey(u.Name));
-        if (uniqueUnary.Any())
+        // Unique unary operators (precompiled)
+        if (_uniqueUnaryOperatorRegexes.Length > 0)
         {
-            foreach (var op in uniqueUnary)
+            foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
             {
-                matches = Regex.Matches(expression, Regex.Escape(op.Name));
-                if (matches.Count != 0)
-                    tokens.AddRange(matches.Select(m => new Token(TokenType.OperatorUnary, m)));
+                var matches = regex.Matches(expression);
+                if (matches.Count == 0) continue;
+                foreach (Match m in matches)
+                    tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
             }
         }
 
-        // operators
-        foreach (var op in tokenPatterns.Operators ?? [])
+        // Operators (binary or ambiguous)
+        if (_operatorRegexes.Length > 0)
         {
-            matches = Regex.Matches(expression, Regex.Escape(op.Name));
-            if (matches.Count != 0)
-                tokens.AddRange(matches.Select(m => new Token(TokenType.Operator, m)));
+            foreach (var (op, regex) in _operatorRegexes)
+            {
+                var matches = regex.Matches(expression);
+                if (matches.Count == 0) continue;
+                foreach (Match m in matches)
+                    tokens.Add(Token.FromMatch(m, TokenType.Operator));
+            }
         }
 
         // sort by index (infix ordering)
@@ -115,18 +166,18 @@ public class Tokenizer : ITokenizer
 
         FixUnaryOperators(tokens);
 
-        if (_logger is not null)
-        {
-            foreach (var token in tokens)
-                _logger.LogDebug("{token} ({type})", token.Text, token.TokenType);
-        }
+        //if (_logger is not null)
+        //{
+        //    foreach (var token in tokens)
+        //        _logger.LogDebug("{token} ({type}) [cg={cg}]", token.Text, token.TokenType, token.CaptureGroup ?? "-");
+        //}
 
         return tokens;
     }
 
     private void FixUnaryOperators(List<Token> tokens)
     {
-        var unaryDictionary = _options.TokenPatterns.UnaryOperatorDictionary;
+        var unaryDictionary = _patterns.UnaryOperatorDictionary;
 
         for (int i = 0; i < tokens.Count; i++)
         {
@@ -134,8 +185,10 @@ public class Tokenizer : ITokenizer
             if (token.TokenType != TokenType.Operator) continue;
 
             // Only process operators that could be unary
-            bool foundSameUnary = _options.TokenPatterns.UnaryOperatorDictionary.TryGetValue(token.Text, out UnaryOperator? matchedUnaryOp);
+            bool foundSameUnary = _patterns.SameNameUnaryAndBinaryOperators.Contains(token.Text);
             if (!foundSameUnary) continue;
+
+            var matchedUnaryOp = unaryDictionary[token.Text];
 
             UnaryOperator unary = matchedUnaryOp!;
             if (i == 0 && unary.Prefix || i == tokens.Count - 1 && !unary.Prefix)
@@ -170,6 +223,7 @@ public class Tokenizer : ITokenizer
                 previousTokenType == TokenType.Literal ||    //5*
                 previousTokenType == TokenType.Identifier || //a*
                 (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); //previous is postfix: %*, *+            if (!canBePostfix) continue; //stay as binary
+            if (!canBePostfix) continue; //stay as binary
 
             Token nextToken = tokens[i + 1];
             TokenType nextTokenType = nextToken.TokenType;
@@ -199,14 +253,14 @@ public class Tokenizer : ITokenizer
         List<Token> postfixTokens = [];
         Stack<Token> operatorStack = new();
 
-        void LogState() => _logger.LogDebug("OP STACK: {stack}, POSTFIX {postfix}",
-                    //reverse the operator stack so that the head is the last element
-                    operatorStack.Count != 0 ? string.Join(" ", operatorStack.Reverse().Select(o => o.Text)) : "<empty>",
-                    postfixTokens.Count != 0 ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
+        //void LogState() => _logger.LogDebug("OP STACK: {stack}, POSTFIX {postfix}",
+        //            //reverse the operator stack so that the head is the last element
+        //            operatorStack.Count != 0 ? string.Join(" ", operatorStack.Reverse().Select(o => o.Text)) : "<empty>",
+        //            postfixTokens.Count != 0 ? string.Join(" ", postfixTokens.Select(o => o.Text)) : "<empty>");
 
-        var operators = _options.TokenPatterns.OperatorDictionary;
-        var unary = _options.TokenPatterns.UnaryOperatorDictionary;
-        var argumentOperator = _options.TokenPatterns.ArgumentSeparatorOperator;
+        var operators = _patterns.OperatorDictionary;
+        var unary = _patterns.UnaryOperatorDictionary;
+        var argumentOperator = _patterns.ArgumentSeparatorOperator;
 
         _logger.LogDebug("Retrieving postfix tokens...");
 
@@ -218,7 +272,7 @@ public class Tokenizer : ITokenizer
             {
                 postfixTokens.Add(token);
                 _logger.LogDebug("Push to postfix expression -> {token}", token);
-                LogState();
+                //LogState();
                 continue;
             }
 
@@ -227,7 +281,7 @@ public class Tokenizer : ITokenizer
             {
                 operatorStack.Push(token);
                 _logger.LogDebug("Push to stack (open parenthesis) -> {token}", token);
-                LogState();
+                //LogState();
                 continue;
             }
 
@@ -248,7 +302,7 @@ public class Tokenizer : ITokenizer
                         previousTokenType == TokenType.ArgumentSeparator || // ,)
                         previousTokenType == TokenType.Function ||   // func())
                         (previousTokenType == TokenType.OperatorUnary
-                         && _options.TokenPatterns.UnaryOperatorDictionary[previousToken.Text].Prefix)) // (-)
+                         && unary[previousToken.Text].Prefix)) // (-)
                     {
                         //add null token to postfix expression
                         postfixTokens.Add(Token.Null);
@@ -267,7 +321,7 @@ public class Tokenizer : ITokenizer
                     if (stackToken.TokenType == TokenType.OpenParenthesis) break;
                     postfixTokens.Add(stackToken);
                     _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
-                    LogState();
+                    //LogState();
                     if (stackToken.TokenType == TokenType.Function) break;
                 } while (true);
                 continue;
@@ -284,7 +338,7 @@ public class Tokenizer : ITokenizer
             else if (token.TokenType == TokenType.OperatorUnary)
                 currentUnaryOperator = unary[token.Text!];
 
-            // ADD NULL OPERAND IF NEEDED
+            // ADD NULL FOR MISSING LEFT OPERAND 
             if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.ArgumentSeparator)
             {
                 TokenType? previousTokenType = iToken > 0 ? infixTokens[iToken - 1].TokenType : null;
@@ -298,6 +352,49 @@ public class Tokenizer : ITokenizer
                     postfixTokens.Add(Token.Null);
                 }
             }
+
+            ////----------------
+            //// ADD NULL FOR MISSING RIGHT OPERAND OF PRECEDING BINARY OP
+            //// Case: a+!  -> need Null after '+' (before it is popped) AND later Null for '!' itself.
+            //// We only add this when:
+            ////  - current token is a PREFIX unary operator
+            ////  - its own operand is missing (end of expression OR next token cannot start an operand)
+            ////  - previous token is a binary operator (TokenType.Operator) that already has a left operand (so we did NOT add a Null above)
+            //if (token.TokenType == TokenType.OperatorUnary && currentUnaryOperator is not null && currentUnaryOperator.Prefix)
+            //{
+            //    bool unaryMissingOperand;
+            //    if (iToken == infixTokens.Count - 1)
+            //    {
+            //        unaryMissingOperand = true; // end of expression
+            //    }
+            //    else
+            //    {
+            //        var nextToken = infixTokens[iToken + 1];
+            //        var nt = nextToken.TokenType;
+
+            //        bool nextStartsOperand =
+            //            nt == TokenType.Literal ||
+            //            nt == TokenType.Identifier ||
+            //            nt == TokenType.OpenParenthesis ||
+            //            nt == TokenType.Function ||
+            //            (nt == TokenType.OperatorUnary &&
+            //            unary[nextToken.Text].Prefix); // chained prefixes allowed
+
+            //        unaryMissingOperand = !nextStartsOperand;
+            //    }
+
+            //    if (unaryMissingOperand && iToken > 0)
+            //    {
+            //        var previous = infixTokens[iToken - 1];
+            //        if (previous.TokenType == TokenType.Operator)
+            //        {
+            //            // Ensure we did not already emit a Null for the right operand (we wouldn't have,
+            //            // because that logic only covers missing LEFT operands).
+            //            postfixTokens.Add(Token.Null);
+            //        }
+            //    }
+            //}
+            ////----------------
 
             string message = "";
             while (operatorStack.Count != 0)
@@ -334,14 +431,14 @@ public class Tokenizer : ITokenizer
                 var stackToken = operatorStack.Pop();
                 postfixTokens.Add(stackToken);
                 _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
-                LogState();
+                //LogState();
             }
 
             operatorStack.Push(token);
             if (operatorStack.Count == 1)
                 message = "Push to stack (empty stack) -> {token}";
             _logger.LogDebug(message, token);
-            LogState();
+            //LogState();
         }
 
         //add dummy node if the expression ends with an operator or separator
@@ -349,7 +446,7 @@ public class Tokenizer : ITokenizer
         if (lastToken.TokenType == TokenType.Operator            // ... + 
             || lastToken.TokenType == TokenType.ArgumentSeparator // ... ,
             || (lastToken.TokenType == TokenType.OperatorUnary    // ... -
-                && _options.TokenPatterns.UnaryOperatorDictionary[lastToken.Text].Prefix)) // prefix-unary at end
+                && unary[lastToken.Text].Prefix)) // prefix-unary at end
         {
             postfixTokens.Add(Token.Null);
         }
@@ -372,7 +469,7 @@ public class Tokenizer : ITokenizer
 
             postfixTokens.Add(stackToken);
             _logger.LogDebug("Pop stack to postfix expression -> {token}", stackToken);
-            LogState();
+            //LogState();
         }
         return postfixTokens;
     }
@@ -409,8 +506,8 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> knownIdentifierNames,
-        string[] ignorePrefixes,
-        string[] ignorePostfixes)
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes)
     {
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, knownIdentifierNames, ignorePrefixes, ignorePostfixes);
@@ -428,7 +525,7 @@ public class Tokenizer : ITokenizer
     public VariableNamesCheckResult CheckVariableNames(
         string expression,
         HashSet<string> knownIdentifierNames,
-        string[] ignoreCaptureGroups)
+        HashSet<string> ignoreCaptureGroups)
     {
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, knownIdentifierNames, ignoreCaptureGroups);

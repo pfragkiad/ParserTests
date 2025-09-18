@@ -572,7 +572,7 @@ public partial class ParserBase : Tokenizer, IParser
             _logger.LogDebug("Pop {rightToken} from stack (right child)", rightToken);
             _logger.LogDebug("Pop {leftToken} from stack (left child)", leftToken);
         }
-        else
+        else //UNARY
         {
             Token childToken = stack.Pop();
             UnaryOperator op = _options.TokenPatterns.UnaryOperatorDictionary[token.Text];
@@ -717,10 +717,10 @@ public partial class ParserBase : Tokenizer, IParser
         return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
     }
 
-    public AdjacentOperandsCheckResult CheckAdjacentOperands(string expression)
+    public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands(string expression)
     {
         var tokens = GetInfixTokens(expression);
-        return _tokenizerValidator.CheckAdjacentOperands(tokens);
+        return _tokenizerValidator.CheckUnexpectedOperatorOperands(tokens);
     }
 
     public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens)
@@ -825,8 +825,8 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        var adjacentOperandsResult = _tokenizerValidator.CheckAdjacentOperands(infixTokens);
-        report.AdjacentOperandsResult = adjacentOperandsResult;
+        var adjacentOperandsResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(infixTokens);
+        report.UnexpectedOperatorOperandsResult = adjacentOperandsResult;
         if (!adjacentOperandsResult.IsSuccess)
         {
             _logger.LogWarning("Adjacent operands in formula: {expr}", expression);

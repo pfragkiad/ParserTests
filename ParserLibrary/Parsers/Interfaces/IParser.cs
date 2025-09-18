@@ -130,7 +130,7 @@ public interface IParser : ITokenizer
     /// Optimizes an existing tree using runtime type inference.
     /// </summary>
     TreeOptimizerResult GetOptimizedTree(TokenTree tree, Dictionary<string, object?>? variables = null,  bool cloneTree = true);
-    AdjacentOperandsCheckResult CheckAdjacentOperands(string expression);
+    UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands(string expression);
 
     // ---------------- Compilation APIs ----------------
 

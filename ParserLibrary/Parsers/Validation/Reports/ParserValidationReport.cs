@@ -7,7 +7,7 @@ public sealed class ParserValidationReport : TokenizerValidationReport
 {
     public override bool IsSuccess =>
         base.IsSuccess &&
-        (AdjacentOperandsResult?.IsSuccess ?? true) &&
+        (UnexpectedOperatorOperandsResult?.IsSuccess ?? true) &&
         (FunctionNamesResult?.IsSuccess ?? true) &&
         (EmptyFunctionArgumentsResult?.IsSuccess ?? true) &&
         (BinaryOperatorOperandsResult?.IsSuccess ?? true) &&
@@ -16,7 +16,7 @@ public sealed class ParserValidationReport : TokenizerValidationReport
         (FunctionArgumentsCountResult?.IsSuccess ?? true);
 
     // NEW
-    public AdjacentOperandsCheckResult? AdjacentOperandsResult { get; set; }
+    public UnexpectedOperatorOperandsCheckResult? UnexpectedOperatorOperandsResult { get; set; }
 
     // Parser-level checks (optional)
     public FunctionNamesCheckResult? FunctionNamesResult { get; set; }
@@ -35,8 +35,8 @@ public sealed class ParserValidationReport : TokenizerValidationReport
         var baseFailures = base.GetValidationFailures();
         if (baseFailures.Count > 0) failures.AddRange(baseFailures);
 
-        if (AdjacentOperandsResult is { IsSuccess: false })
-            failures.AddRange(AdjacentOperandsResult.GetValidationFailures());
+        if (UnexpectedOperatorOperandsResult is { IsSuccess: false })
+            failures.AddRange(UnexpectedOperatorOperandsResult.GetValidationFailures());
 
         if (FunctionNamesResult is { IsSuccess: false })
             failures.AddRange(FunctionNamesResult.GetValidationFailures());
