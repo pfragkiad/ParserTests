@@ -8,6 +8,7 @@ public class TokenizerValidationReport : CheckResult
     public string Expression { get; init; } = string.Empty;
 
     public ParenthesisCheckResult? ParenthesesResult { get; set; }
+
     public VariableNamesCheckResult? VariableNamesResult { get; set; }
 
     public FunctionNamesCheckResult? FunctionNamesResult { get; set; }

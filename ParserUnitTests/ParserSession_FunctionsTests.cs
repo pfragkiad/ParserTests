@@ -19,7 +19,8 @@ public class ParserSession_FunctionsTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "tre()";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
         Assert.True(report.FunctionArgumentsCountResult!.IsSuccess);
@@ -42,7 +43,9 @@ public class ParserSession_FunctionsTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "tre(   )";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
         Assert.True(report.FunctionArgumentsCountResult!.IsSuccess);
@@ -58,7 +61,9 @@ public class ParserSession_FunctionsTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "TrE()";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
         Assert.True(report.FunctionArgumentsCountResult!.IsSuccess);
 
@@ -72,7 +77,9 @@ public class ParserSession_FunctionsTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "tre(,)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.EmptyFunctionArgumentsResult!.IsSuccess);
         Assert.False(report.FunctionArgumentsCountResult!.IsSuccess);
@@ -89,7 +96,9 @@ public class ParserSession_FunctionsTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "tre(1)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.FunctionArgumentsCountResult!.IsSuccess);
         var invalidTre = report.FunctionArgumentsCountResult.InvalidFunctions

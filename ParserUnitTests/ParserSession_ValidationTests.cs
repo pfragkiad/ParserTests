@@ -15,7 +15,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "(a + (b * 2)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty, earlyReturnOnErrors: true);
+        var report = session.Validate(VariableNamesOptions.Empty, earlyReturnOnErrors: true);
 
         Assert.False(report.ParenthesesResult!.IsSuccess);
         Assert.NotEmpty(report.ParenthesesResult.GetValidationFailures());
@@ -28,7 +28,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         session.Expression = "a + b + c";
 
         var opts = new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] };
-        var report = session.ValidateAndCompile(opts);
+        var report = session.Validate(opts);
 
         Assert.False(report.VariableNamesResult!.IsSuccess);
         Assert.Contains("c", report.VariableNamesResult.UnmatchedNames);
@@ -40,7 +40,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "foo(1) + add(b,4)";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["b"] });
 
         Assert.False(report.FunctionNamesResult!.IsSuccess);
         Assert.Contains("foo", report.FunctionNamesResult.UnmatchedNames);
@@ -53,11 +53,11 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
 
         session.Expression = "add(,4)";
-        var report1 = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report1 = session.Validate(VariableNamesOptions.Empty);
         Assert.False(report1.EmptyFunctionArgumentsResult!.IsSuccess);
 
         session.Expression = "add(4,)";
-        var report2 = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report2 = session.Validate(VariableNamesOptions.Empty);
         Assert.False(report2.EmptyFunctionArgumentsResult!.IsSuccess);
     }
 
@@ -67,7 +67,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "add(1)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.FunctionArgumentsCountResult!.IsSuccess);
         Assert.NotEmpty(report.FunctionArgumentsCountResult.InvalidFunctions);
@@ -79,7 +79,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "a + 1";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.True(report.BinaryOperatorOperandsResult!.IsSuccess);
         Assert.Empty(report.BinaryOperatorOperandsResult.InvalidOperators);
@@ -91,7 +91,7 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "a, b";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.OrphanArgumentSeparatorsResult!.IsSuccess);
         Assert.NotEmpty(report.OrphanArgumentSeparatorsResult.GetValidationFailures());
@@ -103,13 +103,13 @@ public class ParserSession_ValidationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
 
         session.Expression = "(a + b";
-        var reportParen = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] }, earlyReturnOnErrors: true);
+        var reportParen = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] }, earlyReturnOnErrors: true);
         Assert.False(reportParen.ParenthesesResult!.IsSuccess);
 
         session.Expression = "a + b";
         session.Variables = new() { { "a", 1 }, { "b", 2 } };
 
-        var reportVars = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var reportVars = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
         Assert.False(reportVars.VariableNamesResult!.IsSuccess);
         Assert.Contains("b", reportVars.VariableNamesResult.UnmatchedNames);
     }

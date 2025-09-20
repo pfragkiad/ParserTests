@@ -63,7 +63,7 @@ public partial class ParserBase : Tokenizer, IParser
         var body = parts[1].Trim();
 
         var nameAndParams = header.Split('(', 2);
-        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(")"))
+        if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(')'))
             throw new ArgumentException("Invalid function header format.");
 
         var name = nameAndParams[0].Trim();

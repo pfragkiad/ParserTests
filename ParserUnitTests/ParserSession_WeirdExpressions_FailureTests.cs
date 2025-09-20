@@ -16,7 +16,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
     }
@@ -27,7 +27,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "   \t  \r\n ";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
     }
@@ -38,7 +38,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 + $";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
     }
@@ -49,7 +49,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = ",a";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.OrphanArgumentSeparatorsResult!.IsSuccess);
@@ -62,7 +62,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = ",";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.OrphanArgumentSeparatorsResult!.IsSuccess);
@@ -75,7 +75,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a,,b";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.OrphanArgumentSeparatorsResult!.IsSuccess);
@@ -88,7 +88,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "*1";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.BinaryOperatorOperandsResult!.IsSuccess);
@@ -101,7 +101,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 + * 2";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -113,7 +113,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
     {
         var session = GetItemSession();
         session.Expression = "-----1";
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
         Assert.Equal(-1, session.Evaluate());
     }
@@ -125,7 +125,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         // '%' is postfix-unary by default (see existing tests)
         session.Expression = "5%%";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
     }
@@ -136,7 +136,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "()";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.True(report.IsSuccess);
 
@@ -151,7 +151,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "(1)(2)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -164,7 +164,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 2";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -177,7 +177,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a b";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -190,7 +190,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 a";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -203,7 +203,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a 1";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -216,7 +216,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a tre()";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -228,7 +228,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 tre()";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -241,7 +241,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a (b)";
 
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.FunctionNamesResult!.IsSuccess);
@@ -253,7 +253,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "1 (2)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);
@@ -266,7 +266,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "a(1) + b";
         // Both identifiers are known variables; 'a(1)' should be treated as a function call to unknown 'a'
-        var report = session.ValidateAndCompile(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
+        var report = session.Validate(new VariableNamesOptions { KnownIdentifierNames = ["a", "b"] });
 
         Assert.False(report.IsSuccess);
         Assert.False(report.FunctionNamesResult!.IsSuccess);
@@ -280,7 +280,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "add(1 2)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
     }
@@ -291,7 +291,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "add(1,)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.EmptyFunctionArgumentsResult!.IsSuccess);
@@ -303,7 +303,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "add(, ,)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.EmptyFunctionArgumentsResult!.IsSuccess);
@@ -316,7 +316,7 @@ public class ParserSession_WeirdExpressions_FailureTests : IClassFixture<ItemSes
         var session = GetItemSession();
         session.Expression = "-*1";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnexpectedOperatorOperandsResult!.IsSuccess);

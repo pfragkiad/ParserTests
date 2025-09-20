@@ -1,4 +1,5 @@
 using ParserLibrary.Parsers;
+using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.ExpressionTree;
 using Xunit;
 using ParserLibrary.Parsers.Interfaces;
@@ -18,9 +19,9 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "1 + 2";
 
-        var res = session.GetOptimizedTree(ExpressionOptimizationMode.None);
-        Assert.Null(res.Tree);
-        Assert.False(res.HasOptimizationRun);
+        // Compile without optimization; returns compiled tree (no metrics API in this path)
+        var comp = session.Compile(optimize:false);
+        Assert.False(comp.HasOptimizationRun);
     }
 
     [Fact]
@@ -30,14 +31,15 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         session.Expression = "a + 1";
         session.Variables = new() { ["a"] = 5 };
 
-        // Warm up caches
-        //session.ValidateAndOptimize(session.Expression, session.Variables, runValidation: false);
+        // Warm up caches and validate
         var options = new VariableNamesOptions { KnownIdentifierNames = [.. session.Variables.Keys] };
-        session.ValidateAndCompile(options);
+        var report = session.Validate(options);
+        Assert.True(report.IsSuccess);
 
-        var res = session.GetOptimizedTree(ExpressionOptimizationMode.StaticTypeMaps);
-        Assert.NotNull(res.Tree);
-        Assert.True(res.Tree.Root is not null);
+        // Compile with StaticTypeMaps optimization; Compile builds and optimizes tree
+        var comp = session.Compile(session.Expression, ExpressionOptimizationMode.StaticTypeMaps, session.Variables);
+        Assert.NotNull(comp.Tree);
+        Assert.True(comp.Tree!.Root is not null);
     }
 
     [Fact]
@@ -46,7 +48,7 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         var session = GetItemSession();
         session.Expression = "1 + 2";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
 
         var plain = session.Evaluate();

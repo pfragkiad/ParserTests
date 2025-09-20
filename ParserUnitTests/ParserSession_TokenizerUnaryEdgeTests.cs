@@ -16,7 +16,9 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
         var session = GetItemSession();
         session.Expression = "-";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnaryOperatorOperandsResult!.IsSuccess);
@@ -28,7 +30,9 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
         var session = GetItemSession();
         session.Expression = "(-)";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.UnaryOperatorOperandsResult!.IsSuccess);
@@ -40,7 +44,9 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
         var session = GetItemSession();
         session.Expression = "5%"; // '%' is postfix-unary by default
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
         Assert.True(report.IsSuccess);
         Assert.True(report.UnaryOperatorOperandsResult!.IsSuccess);
     }
@@ -51,7 +57,9 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
         var session = GetItemSession();
         session.Expression = "1 +";
 
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+
+        //var report = session.Validate(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
 
         Assert.False(report.IsSuccess);
         Assert.False(report.BinaryOperatorOperandsResult!.IsSuccess);
@@ -74,7 +82,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = expr;
-        var report = session.ValidateAndCompile(new VariableNamesOptions()
+        var report = session.Validate(new VariableNamesOptions()
         { KnownIdentifierNames = ["a", "b"] });
 
 
@@ -95,7 +103,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = "a%()";  //also try a+!
-        var report = session.ValidateAndCompile(new VariableNamesOptions()
+        var report = session.Validate(new VariableNamesOptions()
         { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
@@ -108,7 +116,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = "(a)!";  //also try a+!
-        var report = session.ValidateAndCompile( new VariableNamesOptions()
+        var report = session.Validate( new VariableNamesOptions()
         { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
@@ -120,7 +128,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = "a+!";  //also try a+!
-        var report = session.ValidateAndCompile(new VariableNamesOptions()
+        var report = session.Validate(new VariableNamesOptions()
         { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
@@ -132,7 +140,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = "a!";  //also try a+!
-        var report = session.ValidateAndCompile(new VariableNamesOptions()
+        var report = session.Validate(new VariableNamesOptions()
         { KnownIdentifierNames = ["a"] });
 
         Assert.False(report.IsSuccess);
@@ -145,7 +153,7 @@ public class ParserSession_TokenizerUnaryEdgeTests : IClassFixture<ItemSessionFi
     {
         var session = GetItemSession();
         session.Expression = "+!";
-        var report = session.ValidateAndCompile(VariableNamesOptions.Empty);
+        var report = session.Validate(VariableNamesOptions.Empty);
         Assert.False(report.IsSuccess);
     }
 }

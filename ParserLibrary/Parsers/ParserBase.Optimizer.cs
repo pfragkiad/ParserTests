@@ -180,7 +180,7 @@ public partial class ParserBase
         Node<Token> GetNode(Token t) => tree.NodeDictionary[t];
 
         // For building "argument value dictionary" similar to EvaluateType (values here are Types)
-        Dictionary<Node<Token>, object?> boxedMap = new();
+        Dictionary<Node<Token>, object?> boxedMap = [];
 
         foreach (var token in postfixTokens)
         {

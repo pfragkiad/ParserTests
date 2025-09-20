@@ -36,42 +36,42 @@ public interface IParserSession : IParser
 
     // ---------------- Validation + Compilation + Optimization ----------------
 
-    /// <summary>
-    /// Validates (optional) and compiles (tokens/postfix/tree), then optionally optimizes the tree,
-    /// updating the session caches. Returns the full validation report.
-    /// </summary>
-    ParserValidationReport ValidateAndOptimize(
-        string expression,
-        Dictionary<string, object?>? variables = null,
-        VariableNamesOptions? variableNamesOptions = null,
-        bool runValidation = true,
-        bool earlyReturnOnValidationErrors = false,
-        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    ///// <summary>
+    ///// Validates (optional) and compiles (tokens/postfix/tree), then optionally optimizes the tree,
+    ///// updating the session caches. Returns the full validation report.
+    ///// </summary>
+    //ParserValidationReport ValidateAndOptimize(
+    //    string expression,
+    //    Dictionary<string, object?>? variables = null,
+    //    VariableNamesOptions? variableNamesOptions = null,
+    //    bool runValidation = true,
+    //    bool earlyReturnOnValidationErrors = false,
+    //    ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
+    //    Dictionary<string, Type>? variableTypes = null,
+    //    Dictionary<string, Type>? functionReturnTypes = null,
+    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
-    /// <summary>
-    /// Optimization only. Updates the cached artifacts (infix/postfix/tree) and returns the optimization result.
-    /// ParserInference uses current Variables if variable types are not provided.
-    /// </summary>
-    TreeOptimizerResult GetOptimizedTree(
-        ExpressionOptimizationMode optimizationMode,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    ///// <summary>
+    ///// Optimization only. Updates the cached artifacts (infix/postfix/tree) and returns the optimization result.
+    ///// ParserInference uses current Variables if variable types are not provided.
+    ///// </summary>
+    //TreeOptimizerResult GetOptimizedTree(
+    //    ExpressionOptimizationMode optimizationMode,
+    //    Dictionary<string, Type>? variableTypes = null,
+    //    Dictionary<string, Type>? functionReturnTypes = null,
+    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
-    /// <summary>
-    /// Compiles the current Expression into tokens/postfix/tree and runs tokenizer + parser validations.
-    /// Optionally optimizes the tree. Returns a consolidated report.
-    /// </summary>
-    ParserValidationReport ValidateAndCompile(
-        VariableNamesOptions variableNamesOptions,
-        bool earlyReturnOnErrors = false,
-        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
-        Dictionary<string, Type>? variableTypes = null,
-        Dictionary<string, Type>? functionReturnTypes = null,
-        Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    ///// <summary>
+    ///// Compiles the current Expression into tokens/postfix/tree and runs tokenizer + parser validations.
+    ///// Optionally optimizes the tree. Returns a consolidated report.
+    ///// </summary>
+    //ParserValidationReport ValidateAndCompile(
+    //    VariableNamesOptions variableNamesOptions,
+    //    bool earlyReturnOnErrors = false,
+    //    ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
+    //    Dictionary<string, Type>? variableTypes = null,
+    //    Dictionary<string, Type>? functionReturnTypes = null,
+    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
 
     // ---------------- Evaluation APIs (session) ----------------
 
@@ -86,7 +86,7 @@ public interface IParserSession : IParser
     OneOf<object?, ParserValidationReport> Evaluate(
        Dictionary<string, object?>? variables = null,
        bool runValidation = false,
-       ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None);
+       bool optimize = false);
 
     /// <summary>
     /// Type-evaluate current prepared state (tree or postfix), using current Variables.

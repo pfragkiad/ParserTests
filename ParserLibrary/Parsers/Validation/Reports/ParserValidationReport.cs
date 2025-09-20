@@ -66,9 +66,11 @@ public sealed class ParserValidationReport : TokenizerValidationReport
             Expression = report.Expression,
             InfixTokens = report.InfixTokens,
 
+            ParenthesesResult = report.ParenthesesResult,
             VariableNamesResult = report.VariableNamesResult,
             FunctionNamesResult = report.FunctionNamesResult,
             UnexpectedOperatorOperandsResult = report.UnexpectedOperatorOperandsResult,
+         
             Exception = report.Exception
         };
 }
