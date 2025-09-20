@@ -21,7 +21,7 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
 
         // Compile without optimization; returns compiled tree (no metrics API in this path)
         var comp = session.Compile(optimize:false);
-        Assert.False(comp.HasOptimizationRun);
+        Assert.False(comp.IsOptimized);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class ParserSession_OptimizationTests : IClassFixture<ItemSessionFixture>
         Assert.True(report.IsSuccess);
 
         var plain = session.Evaluate();
-        var optimized = session.Evaluate(optimizationMode: ExpressionOptimizationMode.ParserInference);
-        Assert.Equal(plain, optimized.AsT0);
+        var optimized = session.Evaluate(optimize:true);
+        Assert.Equal(plain, optimized);
     }
 }

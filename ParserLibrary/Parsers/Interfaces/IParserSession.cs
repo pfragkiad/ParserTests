@@ -34,45 +34,6 @@ public interface IParserSession : IParser
 
     ParserSessionState State { get; }
 
-    // ---------------- Validation + Compilation + Optimization ----------------
-
-    ///// <summary>
-    ///// Validates (optional) and compiles (tokens/postfix/tree), then optionally optimizes the tree,
-    ///// updating the session caches. Returns the full validation report.
-    ///// </summary>
-    //ParserValidationReport ValidateAndOptimize(
-    //    string expression,
-    //    Dictionary<string, object?>? variables = null,
-    //    VariableNamesOptions? variableNamesOptions = null,
-    //    bool runValidation = true,
-    //    bool earlyReturnOnValidationErrors = false,
-    //    ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
-    //    Dictionary<string, Type>? variableTypes = null,
-    //    Dictionary<string, Type>? functionReturnTypes = null,
-    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    ///// <summary>
-    ///// Optimization only. Updates the cached artifacts (infix/postfix/tree) and returns the optimization result.
-    ///// ParserInference uses current Variables if variable types are not provided.
-    ///// </summary>
-    //TreeOptimizerResult GetOptimizedTree(
-    //    ExpressionOptimizationMode optimizationMode,
-    //    Dictionary<string, Type>? variableTypes = null,
-    //    Dictionary<string, Type>? functionReturnTypes = null,
-    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
-    ///// <summary>
-    ///// Compiles the current Expression into tokens/postfix/tree and runs tokenizer + parser validations.
-    ///// Optionally optimizes the tree. Returns a consolidated report.
-    ///// </summary>
-    //ParserValidationReport ValidateAndCompile(
-    //    VariableNamesOptions variableNamesOptions,
-    //    bool earlyReturnOnErrors = false,
-    //    ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None,
-    //    Dictionary<string, Type>? variableTypes = null,
-    //    Dictionary<string, Type>? functionReturnTypes = null,
-    //    Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
-
     // ---------------- Evaluation APIs (session) ----------------
 
     /// <summary>
@@ -83,7 +44,7 @@ public interface IParserSession : IParser
     /// <summary>
     /// Re-prepare current Expression with provided variables, then evaluate.
     /// </summary>
-    OneOf<object?, ParserValidationReport> Evaluate(
+    object? Evaluate(
        Dictionary<string, object?>? variables = null,
        bool runValidation = false,
        bool optimize = false);
@@ -162,4 +123,6 @@ public interface IParserSession : IParser
     /// </summary>
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
     ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
+
+    ParserCompilationResult Compile(bool optimize);
 }

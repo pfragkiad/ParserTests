@@ -100,7 +100,17 @@ public class ParserSessionBase : ParserBase, IParserSession
     public Dictionary<string, object?> Variables
     {
         get => _variables;
-        set => _variables = MergeVariableConstants(value);
+        set
+        {
+            _variables = MergeVariableConstants(value);
+        }
+    }
+
+    private void ChangeVariablesIfNotNull(Dictionary<string, object?>? variables)
+    {
+        if (variables is not null)
+            Variables = variables;
+        if (_variables.Count == 0) _variables = Constants;
     }
 
     #region Validation + Optimization API
@@ -467,62 +477,60 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #region Public evaluation API
 
-    public virtual OneOf<object?, ParserValidationReport> Evaluate(
+    public virtual object? Evaluate(
         Dictionary<string, object?>? variables = null,
         bool runValidation = false,
         bool optimize = false)
     {
-        //ParserValidationReport report = ValidateAndOptimize(
-        //    _expression,
-        //    variables,
-        //    variableNamesOptions: null,
-        //    runValidation: runValidation,
-        //    earlyReturnOnValidationErrors: false,
-        //    optimizationMode: optimizationMode);
+        ChangeVariablesIfNotNull(variables);
 
-        if(runValidation)
+        if (runValidation)
         {
-            var report = Validate(
+            ValidationReport = Validate(
                 new VariableNamesOptions
                 {
                     KnownIdentifierNames = new HashSet<string>(
-                        (variables ?? _variables).Keys,
+                        _variables.Keys,
                         _options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
                 },
                 earlyReturnOnErrors: false);
-            if (!report.IsSuccess)
-                return report;
+            if (!ValidationReport.IsSuccess)
+                return null;
         }
 
         Compile(optimize);
-        if(optimize) State = ParserSessionState.Optimized;
+        if (optimize) State = ParserSessionState.Optimized;
 
-        var value = Evaluate();
+        var value = (_tree is not null)
+            ? Evaluate(_tree, _variables, mergeConstants: false)
+            : Evaluate(_postfixTokens, _variables);
+
         State = ParserSessionState.Calculated;
         return value;
     }
 
-    public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
+    public virtual Type EvaluateType(
+        Dictionary<string, object?>? variables = null)
     {
-        //ValidateAndOptimize(
-        //    _expression,
-        //    variables,
-        //    variableNamesOptions: null,
-        //    runValidation: false,
-        //    earlyReturnOnValidationErrors: false,
-        //    optimizationMode: ExpressionOptimizationMode.None);
+        ChangeVariablesIfNotNull(variables);
+
         Compile(optimize: false);
-        return EvaluateType();
+        Type type = EvaluateType();
+        return type;
     }
 
-    public object? Evaluate() =>
-        (_tree is not null)
-            ? Evaluate(_tree, _variables, mergeConstants: true)
-            : Evaluate(_postfixTokens, _variables);
+    public object? Evaluate()
+    {
+        var result = _tree is not null
+              ? Evaluate(_tree, _variables, mergeConstants: false)
+              : Evaluate(_postfixTokens, _variables);
+        State = ParserSessionState.Calculated;
+        return result;
+    }
 
     public Type EvaluateType() =>
         (_tree is not null)
-            ? EvaluateType(_tree, _variables, mergeConstants: true)
+            ? EvaluateType(_tree, _variables, mergeConstants: false)
             : EvaluateType(_postfixTokens, _variables);
 
     #endregion
@@ -675,14 +683,14 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     // Simplified, incremental compile. Builds infix/postfix if missing.
     // Builds tree and optimizes only when optimizationMode == ParserInference.
-    public TreeOptimizerResult Compile(bool optimize)
+    public ParserCompilationResult Compile(bool optimize)
     {
         if (string.IsNullOrWhiteSpace(_expression))
-            return TreeOptimizerResult.Unchanged(TokenTree.Empty);
+            return new ParserCompilationResult { InfixTokens = [], PostfixTokens = [], Tree = TokenTree.Empty };
 
         // occurs after validation only (validation forces the tree build)
         if (!optimize && _tree is not null)
-            return TreeOptimizerResult.Unchanged(_tree);
+            return new ParserCompilationResult() { Tree = _tree, InfixTokens = _infixTokens, PostfixTokens = _postfixTokens };
 
         LastValidationState = ParserValidationStage.None;
         LastException = null;
@@ -724,7 +732,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
 
         if (!optimize) // we have already the postfix tokens, no need to build the tree
-            return TreeOptimizerResult.Unchanged(TokenTree.Empty);
+            return new ParserCompilationResult { InfixTokens = _infixTokens, PostfixTokens = _postfixTokens };
 
         // Build tree if missing
         if (_tree is null)
@@ -755,7 +763,13 @@ public class ParserSessionBase : ParserBase, IParserSession
             _postfixTokens = _tree.GetPostfixTokens();
             _nodeDictionary = _tree.NodeDictionary;
             State = ParserSessionState.Optimized;
-            return result;
+            return new ParserCompilationResult()
+            {
+                InfixTokens = _infixTokens,
+                PostfixTokens = _postfixTokens,
+                Tree = _tree,
+                OptimizerResult = result
+            };
         }
         catch (Exception ex)
         {

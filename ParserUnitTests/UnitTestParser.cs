@@ -197,14 +197,9 @@ public class UnitTestParser
             {"a", new Item { Name="foo", Value = 3}  },
             {"b", new Item { Name="bar"}  }
         };
-        //Item result = (Item)parser.Evaluate(expression, variables)!;
 
         parser.Expression = expression;
-
-        //set the variables later (perhaps after a validation)
-        Item result = (Item)parser.Evaluate(variables).AsT0!;
-
-
+        Item result = (Item)parser.Evaluate(variables)!;
 
         Assert.Equal("foo bar 12", result.ToString());
     }
