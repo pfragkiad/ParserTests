@@ -601,7 +601,7 @@ public class Tokenizer : ITokenizer
 
     #region Utility validation methods
 
-    public ParenthesisCheckResult ValidateParentheses(string expression)
+    public ParenthesisCheckResult CheckParentheses(string expression)
     {
         return _tokenizerValidator.CheckParentheses(expression);
     }
@@ -640,6 +640,13 @@ public class Tokenizer : ITokenizer
         var tokens = GetInfixTokens(expression);
         return _tokenizerValidator.CheckVariableNames(tokens, variableNameOptions);
     }
+
+    public UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(string expression)
+    {
+        var tokens = GetInfixTokens(expression);
+        return _tokenizerValidator.CheckUnexpectedOperatorOperands(tokens);
+    }
+
 
     // Full validation report (convenience method if no Parser validation is needed)
     public TokenizerValidationReport Validate(

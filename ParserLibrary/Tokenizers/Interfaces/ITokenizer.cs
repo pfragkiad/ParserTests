@@ -37,7 +37,7 @@ public interface ITokenizer
     /// <summary>
     /// Validates only parentheses balance/matching in the expression (string-only).
     /// </summary>
-    ParenthesisCheckResult ValidateParentheses(string expression);
+    ParenthesisCheckResult CheckParentheses(string expression);
 
     // ---------------- Variable names helpers ----------------
 
@@ -91,4 +91,5 @@ public interface ITokenizer
     /// Runs tokenizer-level validation (parentheses and variable names) and produces a report.
     /// </summary>
     TokenizerValidationReport Validate(string expression, VariableNamesOptions variableNameOptions);
+    UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(string expression);
 }

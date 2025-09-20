@@ -266,7 +266,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #region Tokenizer 
 
-    public ParenthesisCheckResult ValidateParentheses() => ValidateParentheses(_expression);
+    public ParenthesisCheckResult ValidateParentheses() => CheckParentheses(_expression);
     public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
 
     public VariableNamesCheckResult CheckVariableNames(
@@ -293,7 +293,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     #region Parser
 
     public FunctionNamesCheckResult CheckFunctionNames() =>
-        _parserValidator.CheckFunctionNames(_infixTokens, (IParserFunctionMetadata)this);
+        _parserValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
 
     public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands() =>
         _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
@@ -308,7 +308,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
-        _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IParserFunctionMetadata)this);
+        _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IFunctionDescriptors)this);
 
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
         _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);
@@ -386,7 +386,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // 4) Functions (names)
         LastValidationState = ParserValidationStage.FunctionNames;
-        var functionNamesResult = _parserValidator.CheckFunctionNames(_infixTokens, (IParserFunctionMetadata)this);
+        var functionNamesResult = _parserValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
         report.FunctionNamesResult = functionNamesResult;
         if (!functionNamesResult.IsSuccess)
         {
@@ -396,8 +396,8 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // 4.5) Adjacent operands
         LastValidationState = ParserValidationStage.AdjacentOperands;
-        var adjacentOperandsResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
-        report.UnexpectedOperatorOperandsResult = adjacentOperandsResult;
+        var unexpectedOperatorOperandsResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
+        report.UnexpectedOperatorOperandsResult = unexpectedOperatorOperandsResult;
 
         // If we have any errors so far, ALWAYS return
         if (!report.IsSuccess)
@@ -411,7 +411,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         {
             // IMPORTANT: During validation we ALWAYS need a tree for parser-level checks.
             // Compile with Full depth regardless of optimizationMode.
-            var result = base.Compile(
+            ParserCompilationResult result = base.Compile(
                 _infixTokens,
                 ParserCompilationOptions.Full,
                 optimizationMode,
@@ -460,7 +460,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // 7) Function arguments count
         LastValidationState = ParserValidationStage.FunctionArgumentsCount;
-        var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IParserFunctionMetadata)this);
+        var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IFunctionDescriptors)this);
         report.FunctionArgumentsCountResult = functionArgumentsCountResult;
         if (!functionArgumentsCountResult.IsSuccess)
         {

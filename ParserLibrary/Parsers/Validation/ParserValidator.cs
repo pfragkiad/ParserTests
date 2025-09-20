@@ -1,7 +1,5 @@
-using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation.CheckResults;
-using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Validation;
 
@@ -12,8 +10,7 @@ public sealed class ParserValidator : IParserValidator
 
     public ParserValidator(
         ILogger<ParserValidator> logger,
-        ITokenizerValidator tokenizerValidator,
-        TokenPatterns patterns)
+        TokenPatterns patterns) 
     {
         _logger = logger;
         _patterns = patterns;
@@ -23,7 +20,7 @@ public sealed class ParserValidator : IParserValidator
 
     public FunctionNamesCheckResult CheckFunctionNames(
         List<Token> infixTokens,
-        IParserFunctionMetadata metadata)
+        IFunctionDescriptors functionDescriptors)
     {
         HashSet<string> matched = [];
         HashSet<string> unmatched = [];
@@ -32,9 +29,9 @@ public sealed class ParserValidator : IParserValidator
         {
             // Consider a function "known" if metadata can provide either a fixed count or a min variable count
             bool known =
-                metadata.GetCustomFunctionFixedArgCount(t.Text) is not null ||
-                metadata.GetMainFunctionFixedArgCount(t.Text) is not null ||
-                metadata.GetMainFunctionMinVariableArgCount(t.Text) is not null;
+                functionDescriptors.GetCustomFunctionFixedArgCount(t.Text) is not null ||
+                functionDescriptors.GetMainFunctionFixedArgCount(t.Text) is not null ||
+                functionDescriptors.GetMainFunctionMinVariableArgCount(t.Text) is not null;
 
             if (known) matched.Add(t.Text); else unmatched.Add(t.Text);
         }
@@ -48,7 +45,7 @@ public sealed class ParserValidator : IParserValidator
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
-        IParserFunctionMetadata metadata)
+        IFunctionDescriptors metadata)
     {
         HashSet<FunctionArguments> valid = [];
         HashSet<FunctionArguments> invalid = [];

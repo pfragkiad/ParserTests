@@ -1,5 +1,7 @@
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Tokenizers.Interfaces;
+using ParserLibrary.Parsers.Validation.Reports; // ADDED
 
 namespace ParserLibrary.Parsers.Validation;
 
@@ -7,11 +9,27 @@ public class TokenizerValidator : ITokenizerValidator
 {
     private readonly ILogger<TokenizerValidator> _logger;
     private readonly TokenPatterns _patterns;
+    Dictionary<string, UnaryOperator> unary;
+
+    // Precomputed for fast unary checks (avoid dictionary lookups per token)
+    private readonly HashSet<string> _prefixUnaryNames;
+    private readonly HashSet<string> _postfixUnaryNames;
 
     public TokenizerValidator(ILogger<TokenizerValidator> logger, TokenPatterns patterns)
     {
         _logger = logger;
         _patterns = patterns;
+
+        unary = patterns.UnaryOperatorDictionary;
+
+        var comparer = unary.Comparer;
+        _prefixUnaryNames = new HashSet<string>(comparer);
+        _postfixUnaryNames = new HashSet<string>(comparer);
+        foreach (var kv in unary)
+        {
+            if (kv.Value.Prefix) _prefixUnaryNames.Add(kv.Key);
+            else _postfixUnaryNames.Add(kv.Key);
+        }
     }
 
     #region Parentheses
@@ -95,8 +113,7 @@ public class TokenizerValidator : ITokenizerValidator
                 continue;
             }
 
-            //if (ignoreCaptureGroups.Any(g => t.Match!.Groups[g].Success))
-            if(t.CaptureGroup is not null && ignoreCaptureGroups.Contains(t.CaptureGroup))
+            if (t.CaptureGroup is not null && ignoreCaptureGroups.Contains(t.CaptureGroup))
             {
                 ignored.Add(t.Text);
                 continue;
@@ -207,42 +224,65 @@ public class TokenizerValidator : ITokenizerValidator
 
     #endregion
 
-    // NEW: Adjacent operands – require a binary operator between them.
-    // Left: Literal or Identifier
-    // Right: Literal, Identifier, Function, or OpenParenthesis
+    #region Unexpected operator/operands
+
+    // Helpers for unexpected operands (fast, allocation-free)
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static bool IsLeftOperandOrStart(TokenType type) =>
+        type == TokenType.Literal ||
+        type == TokenType.Identifier ||
+        type == TokenType.ClosedParenthesis;
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private bool RightStartsOperandOrGroup(TokenType type, string text) =>
+        type == TokenType.Literal ||
+        type == TokenType.Identifier ||
+        type == TokenType.Function ||
+        type == TokenType.OpenParenthesis ||
+        (type == TokenType.OperatorUnary && _prefixUnaryNames.Contains(text)); // a!  or )! or 123!
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static bool IsBinaryOperator(TokenType type) => type == TokenType.Operator;
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private bool IsUnaryPrefix(TokenType type, string text) =>
+        type == TokenType.OperatorUnary && _prefixUnaryNames.Contains(text);
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private bool IsUnaryPostfix(TokenType type, string text) =>
+        type == TokenType.OperatorUnary && _postfixUnaryNames.Contains(text);
+
     public UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens)
     {
-        var unary = _patterns.UnaryOperatorDictionary;
-
-        static bool IsLeftOperandOrStart(Token t) =>
-            t.TokenType == TokenType.Literal ||
-            t.TokenType == TokenType.Identifier ||
-            t.TokenType == TokenType.ClosedParenthesis;
-
-        bool IsRightOperandOrStartOfGroupOrCall(Token t) =>
-            t.TokenType == TokenType.Literal ||
-            t.TokenType == TokenType.Identifier ||
-            t.TokenType == TokenType.Function ||
-            t.TokenType == TokenType.OpenParenthesis ||
-            t.TokenType == TokenType.OperatorUnary && unary[t.Text].Prefix    // a!  or )! or 123!
-            ;
-
         var violations = new List<AdjacentOperandsViolation>();
 
         for (int i = 1; i < infixTokens.Count; i++)
         {
-            var left = infixTokens[i - 1];
-            var right = infixTokens[i];
+            Token left = infixTokens[i - 1];
+            Token right = infixTokens[i];
 
-            bool isInvalid = IsLeftOperandOrStart(left) && IsRightOperandOrStartOfGroupOrCall(right) ||
+            // Cache types/text once (avoid repeated property lookups and set/dictionary checks)
+            TokenType lt = left.TokenType;
+            TokenType rt = right.TokenType;
+            string ltxt = left.Text;
+            string rtxt = right.Text;
+            bool leftStarts = IsLeftOperandOrStart(lt);
+            bool rightStarts = RightStartsOperandOrGroup(rt, rtxt);
+            bool leftIsOp = IsBinaryOperator(lt);
+            bool rightIsOp = IsBinaryOperator(rt);
+            bool leftIsPrefix = IsUnaryPrefix(lt, ltxt);
+            bool leftIsPostfix = IsUnaryPostfix(lt, ltxt);
+            bool rightIsPostfix = IsUnaryPostfix(rt, rtxt);
+
+            bool isInvalid =
+                leftStarts && rightStarts ||
                 //also check for invalid operator combinations op|op, unaryOp (pre)|op, op|unaryOp (post)
-                left.TokenType  == TokenType.Operator && right.TokenType == TokenType.Operator ||                                           //**
-                left.TokenType == TokenType.OperatorUnary && unary[left.Text].Prefix  && right.TokenType == TokenType.Operator ||           //!+
-                left.TokenType == TokenType.OperatorUnary && !unary[left.Text].Prefix && right.TokenType == TokenType.OpenParenthesis ||    //%(
-                left.TokenType == TokenType.Operator && right.TokenType == TokenType.OperatorUnary && !unary[right.Text].Prefix             //+%
-                ;
+                (leftIsOp && rightIsOp) ||                                           //**
+                (leftIsPrefix && rightIsOp) ||                                       //!+
+                (leftIsPostfix && rt == TokenType.OpenParenthesis) ||                //%(
+                (leftIsOp && rightIsPostfix);                                        //+%
 
-            if(isInvalid)
+            if (isInvalid)
             {
                 violations.Add(new AdjacentOperandsViolation
                 {
@@ -254,10 +294,169 @@ public class TokenizerValidator : ITokenizerValidator
             }
         }
 
-        if (violations.Count > 0)
-            _logger.LogWarning("Adjacent operands without operator: {pairs}",
-                string.Join(", ", violations.Select(v => $"{v.LeftPosition}-{v.RightPosition}")));
+        //if (violations.Count > 0)
+        //    _logger.LogWarning("Adjacent operands without operator: {pairs}",
+        //        string.Join(", ", violations.Select(v => $"{v.LeftPosition}-{v.RightPosition}")));
 
         return new UnexpectedOperatorOperandsCheckResult { Violations = violations };
+    }
+
+    #endregion
+
+
+    // NEW: Function names check moved to TokenizerValidator
+    public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors functionDescriptors)
+    {
+        HashSet<string> matched = [];
+        HashSet<string> unmatched = [];
+
+        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
+        {
+            string name = t.Text;
+            bool known =
+                functionDescriptors.GetCustomFunctionFixedArgCount(name).HasValue ||
+                functionDescriptors.GetMainFunctionFixedArgCount(name).HasValue ||
+                functionDescriptors.GetMainFunctionMinVariableArgCount(name).HasValue;
+
+            if (known) matched.Add(name);
+            else unmatched.Add(name);
+        }
+
+        return new FunctionNamesCheckResult
+        {
+            MatchedNames = [.. matched],
+            UnmatchedNames = [.. unmatched]
+        };
+    }
+
+
+
+    // NEW: Single-pass over infix that collects VariableNames, FunctionNames, and UnexpectedOperatorOperands
+    public TokenizerValidationReport ValidateInfixStage(
+        List<Token> infixTokens,
+        VariableNamesOptions options,
+        IFunctionDescriptors functionDescriptors)
+    {
+        // Variable names accumulation
+        var known = options.KnownIdentifierNames;
+        HashSet<string> matchedVars = [];
+        HashSet<string> unmatchedVars = [];
+        HashSet<string> ignoredVars = [];
+
+        // Function names
+        IgnoreMode mode = options.IgnoreMode;
+        var ignoreGroups = options.IgnoreCaptureGroups ?? [];
+        var ignorePattern = options.IgnoreIdentifierPattern;
+        var ignorePrefixes = options.IgnorePrefixes is { Count: > 0 } ? options.IgnorePrefixes.ToArray() : Array.Empty<string>();
+        var ignorePostfixes = options.IgnorePostfixes is { Count: > 0 } ? options.IgnorePostfixes.ToArray() : Array.Empty<string>();
+        HashSet<string> matchedFuncs = [];
+        HashSet<string> unmatchedFuncs = [];
+
+        // Unexpected operands
+        List<AdjacentOperandsViolation> violations = [];
+
+        for (int i = 0; i < infixTokens.Count; i++)
+        {
+            var t = infixTokens[i];
+
+            #region Variables
+            if (t.TokenType == TokenType.Identifier)
+            {
+                string name = t.Text;
+                if (known.Contains(name))
+                {
+                    matchedVars.Add(name);
+                }
+                else
+                {
+                    bool isIgnored = mode switch
+                    {
+                        IgnoreMode.CaptureGroups => t.CaptureGroup is not null && ignoreGroups.Contains(t.CaptureGroup),
+                        IgnoreMode.Pattern => ignorePattern is not null && ignorePattern.IsMatch(name),
+                        IgnoreMode.PrefixPostfix =>
+                            ignorePrefixes.Length > 0 && ignorePrefixes.Any(p => t.Text.StartsWith(p)) ||
+                            ignorePostfixes.Length > 0 && ignorePostfixes.Any(s => t.Text.EndsWith(s)),
+                        _ => false
+                    };
+                    if (isIgnored) ignoredVars.Add(name);
+                    else unmatchedVars.Add(name);
+                }
+            }
+            #endregion
+
+            #region Function names
+            if (t.TokenType == TokenType.Function)
+            {
+                string fname = t.Text;
+                bool knownFunc =
+                    functionDescriptors.GetCustomFunctionFixedArgCount(fname).HasValue ||
+                    functionDescriptors.GetMainFunctionFixedArgCount(fname).HasValue ||
+                    functionDescriptors.GetMainFunctionMinVariableArgCount(fname).HasValue;
+
+                if (knownFunc) matchedFuncs.Add(fname);
+                else unmatchedFuncs.Add(fname);
+            }
+            #endregion
+
+            #region Unexpected operands
+
+            if (i == 0) continue;
+            var left = infixTokens[i - 1];
+            var right = t;
+            // Cache types/text once (avoid repeated property lookups and set/dictionary checks)
+            TokenType lt = left.TokenType;
+            TokenType rt = right.TokenType;
+            string ltxt = left.Text;
+            string rtxt = right.Text;
+            bool leftStarts = IsLeftOperandOrStart(lt);
+            bool rightStarts = RightStartsOperandOrGroup(rt, rtxt);
+            bool leftIsOp = IsBinaryOperator(lt);
+            bool rightIsOp = IsBinaryOperator(rt);
+            bool leftIsPrefix = IsUnaryPrefix(lt, ltxt);
+            bool leftIsPostfix = IsUnaryPostfix(lt, ltxt);
+            bool rightIsPostfix = IsUnaryPostfix(rt, rtxt);
+            bool isInvalid =
+                leftStarts && rightStarts ||
+                //also check for invalid operator combinations op|op, unaryOp (pre)|op, op|unaryOp (post)
+                (leftIsOp && rightIsOp) ||                                           //**
+                (leftIsPrefix && rightIsOp) ||                                       //!+
+                (leftIsPostfix && rt == TokenType.OpenParenthesis) ||                //%(
+                (leftIsOp && rightIsPostfix);                                        //+%
+            if (isInvalid)
+            {
+                violations.Add(new AdjacentOperandsViolation
+                {
+                    LeftToken = left.Text,
+                    LeftPosition = left.Index + 1,
+                    RightToken = right.Text,
+                    RightPosition = right.Index + 1
+                });
+            }
+
+            #endregion
+        
+        }
+
+        var variableNamesResult = new VariableNamesCheckResult
+        {
+            MatchedNames = [.. matchedVars],
+            UnmatchedNames = [.. unmatchedVars],
+            IgnoredNames = [.. ignoredVars]
+        };
+
+        var functionNamesResult = new FunctionNamesCheckResult
+        {
+            MatchedNames = [.. matchedFuncs],
+            UnmatchedNames = [.. unmatchedFuncs]
+        };
+
+        var unexpectedResult = new UnexpectedOperatorOperandsCheckResult { Violations = violations };
+
+        return new TokenizerValidationReport
+        {
+            VariableNamesResult = variableNamesResult,
+            FunctionNamesResult = functionNamesResult,
+            UnexpectedOperatorOperandsResult = unexpectedResult
+        };
     }
 }

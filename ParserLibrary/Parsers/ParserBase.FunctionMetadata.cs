@@ -2,20 +2,20 @@ using ParserLibrary.Parsers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
-public partial class ParserBase : IParserFunctionMetadata
+public partial class ParserBase : IFunctionDescriptors
 {
-    int? IParserFunctionMetadata.GetCustomFunctionFixedArgCount(string functionName)
+    int? IFunctionDescriptors.GetCustomFunctionFixedArgCount(string functionName)
     {
         if (CustomFunctions.TryGetValue(functionName, out var def)) return def.Parameters.Length;
         return null;
     }
 
-    int? IParserFunctionMetadata.GetMainFunctionFixedArgCount(string functionName)
+    int? IFunctionDescriptors.GetMainFunctionFixedArgCount(string functionName)
     {
         return MainFunctionsArgumentsCount.TryGetValue(functionName, out var n) ? n : null;
     }
 
-    int? IParserFunctionMetadata.GetMainFunctionMinVariableArgCount(string functionName)
+    int? IFunctionDescriptors.GetMainFunctionMinVariableArgCount(string functionName)
     {
         return MainFunctionsMinVariableArgumentsCount.TryGetValue(functionName, out var n) ? n : null;
     }

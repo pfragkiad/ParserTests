@@ -5,11 +5,11 @@ namespace ParserLibrary.Parsers.Interfaces;
 public interface IParserValidator
 {
     // Granular checks (all require precomputed inputs)
-    FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IParserFunctionMetadata metadata);
+    FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors metadata);
 
     EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(Dictionary<Token, Node<Token>> nodeDictionary);
 
-    FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(Dictionary<Token, Node<Token>> nodeDictionary, IParserFunctionMetadata metadata);
+    FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(Dictionary<Token, Node<Token>> nodeDictionary, IFunctionDescriptors metadata);
 
     InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
 

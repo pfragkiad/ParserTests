@@ -10,10 +10,17 @@ public class TokenizerValidationReport : CheckResult
     public ParenthesisCheckResult? ParenthesesResult { get; set; }
     public VariableNamesCheckResult? VariableNamesResult { get; set; }
 
+    public FunctionNamesCheckResult? FunctionNamesResult { get; set; }
+
+    public UnexpectedOperatorOperandsCheckResult? UnexpectedOperatorOperandsResult { get; set; }
+
+
     public override bool IsSuccess =>
         base.IsSuccess &&
         (ParenthesesResult?.IsSuccess ?? true) &&
-        (VariableNamesResult?.IsSuccess ?? true);
+        (VariableNamesResult?.IsSuccess ?? true) &&
+        (UnexpectedOperatorOperandsResult?.IsSuccess ?? true) &&
+        (FunctionNamesResult?.IsSuccess ?? true);
 
     public override IList<ValidationFailure> GetValidationFailures()
     {
@@ -28,6 +35,13 @@ public class TokenizerValidationReport : CheckResult
 
         if (VariableNamesResult is { IsSuccess: false })
             failures.AddRange(VariableNamesResult.GetValidationFailures());
+
+        if (FunctionNamesResult is { IsSuccess: false })
+            failures.AddRange(FunctionNamesResult.GetValidationFailures());
+
+        if (UnexpectedOperatorOperandsResult is { IsSuccess: false })
+            failures.AddRange(UnexpectedOperatorOperandsResult.GetValidationFailures());
+
 
         return failures;
     }

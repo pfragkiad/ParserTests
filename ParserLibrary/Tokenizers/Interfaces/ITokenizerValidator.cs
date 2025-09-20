@@ -1,5 +1,7 @@
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 
 namespace ParserLibrary.Tokenizers.Interfaces;
 
@@ -18,4 +20,6 @@ public interface ITokenizerValidator
 
     // NEW: detect missing operator between adjacent operands
     UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens);
+    FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors functionDescriptors);
+    TokenizerValidationReport ValidateInfixStage(List<Token> infixTokens, VariableNamesOptions options, IFunctionDescriptors functionDescriptors);
 }

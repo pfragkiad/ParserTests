@@ -714,7 +714,7 @@ public partial class ParserBase : Tokenizer, IParser
     public FunctionNamesCheckResult CheckFunctionNames(string expression)
     {
         var tokens = GetInfixTokens(expression);
-        return _parserValidator.CheckFunctionNames(tokens, (IParserFunctionMetadata)this);
+        return _parserValidator.CheckFunctionNames(tokens, (IFunctionDescriptors)this);
     }
 
     public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands(string expression)
@@ -765,7 +765,7 @@ public partial class ParserBase : Tokenizer, IParser
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IParserFunctionMetadata)this);
+        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IFunctionDescriptors)this);
     }
 
     public InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(string expression)
@@ -817,7 +817,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IParserFunctionMetadata)this);
+        var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IFunctionDescriptors)this);
         report.FunctionNamesResult = functionNamesResult;
         if (!functionNamesResult.IsSuccess)
         {
@@ -825,9 +825,9 @@ public partial class ParserBase : Tokenizer, IParser
             if (earlyReturnOnErrors) return report;
         }
 
-        var adjacentOperandsResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(infixTokens);
-        report.UnexpectedOperatorOperandsResult = adjacentOperandsResult;
-        if (!adjacentOperandsResult.IsSuccess)
+        var unexpectedOperatorOperansResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(infixTokens);
+        report.UnexpectedOperatorOperandsResult = unexpectedOperatorOperansResult;
+        if (!unexpectedOperatorOperansResult.IsSuccess)
         {
             _logger.LogWarning("Adjacent operands in formula: {expr}", expression);
             if (earlyReturnOnErrors) return report;
