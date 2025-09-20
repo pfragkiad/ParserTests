@@ -161,4 +161,5 @@ public interface IParserSession : IParser
     /// Checks for adjacent operands without an operator in between (e.g. "2 3" or "a (b + c)").
     /// </summary>
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
+    ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
 }

@@ -26,6 +26,9 @@ public sealed class ParserCompileException : InvalidOperationException
     public static ParserCompileException TreeBuildException(Exception inner) =>
         new (ParserValidationStage.TreeBuild, "Error during expression tree building", inner);
 
+    public static ParserCompileException TreeOptimizeException(Exception inner) =>
+        new (ParserValidationStage.TreeOptimize, "Error during expression tree optimization", inner);
+
 
     //unexpected parser error
     public static ParserCompileException ParserException(Exception inner) =>

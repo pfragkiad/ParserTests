@@ -17,6 +17,8 @@ public enum ParserValidationStage
     PostfixTokenization,
     TreeBuild,
 
+    TreeOptimize,
+
     // Parser (node-dictionary based)
     EmptyFunctionArguments,
     FunctionArgumentsCount,

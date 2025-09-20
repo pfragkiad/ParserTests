@@ -4,6 +4,7 @@ namespace ParserLibrary.Parsers;
 
 public partial class ParserBase : IFunctionDescriptors
 {
+    //useful for validation purposes 
     int? IFunctionDescriptors.GetCustomFunctionFixedArgCount(string functionName)
     {
         if (CustomFunctions.TryGetValue(functionName, out var def)) return def.Parameters.Length;

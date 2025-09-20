@@ -1,10 +1,11 @@
-﻿using ParserLibrary.Parsers.Interfaces;
-using ParserLibrary.Tokenizers.Interfaces;
+﻿using OneOf;
+using ParserLibrary.Parsers.Compilation;
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
-using OneOf;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
-using ParserLibrary.Parsers.Compilation;
+using ParserLibrary.Tokenizers.Interfaces;
+using System.Linq.Expressions;
 
 namespace ParserLibrary.Parsers;
 
@@ -212,109 +213,6 @@ public class ParserSessionBase : ParserBase, IParserSession
                 }
         }
     }
-
-    #endregion
-
-    #region Public evaluation API
-
-    public virtual OneOf<object?, ParserValidationReport> Evaluate(
-        Dictionary<string, object?>? variables = null,
-        bool runValidation = false,
-        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None)
-    {
-        ParserValidationReport report = ValidateAndOptimize(
-            _expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: runValidation,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: optimizationMode);
-
-        if (!report.IsSuccess)
-            return report;
-
-        var value = Evaluate();
-        State = ParserSessionState.Calculated;
-        return value;
-    }
-
-    public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
-    {
-        ValidateAndOptimize(
-            _expression,
-            variables,
-            variableNamesOptions: null,
-            runValidation: false,
-            earlyReturnOnValidationErrors: false,
-            optimizationMode: ExpressionOptimizationMode.None);
-        return EvaluateType();
-    }
-
-    public object? Evaluate() =>
-        (_tree is not null)
-            ? Evaluate(_tree, _variables, mergeConstants: true)
-            : Evaluate(_postfixTokens, _variables);
-
-    public Type EvaluateType() =>
-        (_tree is not null)
-            ? EvaluateType(_tree, _variables, mergeConstants: true)
-            : EvaluateType(_postfixTokens, _variables);
-
-    #endregion
-
-    #region Utility validation methods
-
-    #region Tokenizer 
-
-    public ParenthesisCheckResult ValidateParentheses() => CheckParentheses(_expression);
-    public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
-
-    public VariableNamesCheckResult CheckVariableNames(
-        HashSet<string> knownIdentifierNames,
-        HashSet<string> ignorePrefixes,
-        HashSet<string> ignorePostfixes) =>
-        _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignorePrefixes, ignorePostfixes);
-
-    public VariableNamesCheckResult CheckVariableNames(
-       HashSet<string> knownIdentifierNames,
-       Regex? ignoreIdentifierPattern = null) =>
-       _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreIdentifierPattern);
-
-    public VariableNamesCheckResult CheckVariableNames(
-        HashSet<string> knownIdentifierNames,
-        HashSet<string> ignoreCaptureGroups) =>
-        _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreCaptureGroups);
-
-    public VariableNamesCheckResult CheckVariableNames(VariableNamesOptions variableNameOptions) =>
-        _tokenizerValidator.CheckVariableNames(_infixTokens, variableNameOptions);
-
-    #endregion
-
-    #region Parser
-
-    public FunctionNamesCheckResult CheckFunctionNames() =>
-        _parserValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
-
-    public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands() =>
-        _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
-
-    public InvalidBinaryOperatorsCheckResult CheckBinaryOperators() =>
-        _parserValidator.CheckBinaryOperatorOperands(_nodeDictionary);
-
-    public InvalidUnaryOperatorsCheckResult CheckUnaryOperators() =>
-        _parserValidator.CheckUnaryOperatorOperands(_nodeDictionary);
-
-    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
-        _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
-
-    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
-        _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IFunctionDescriptors)this);
-
-    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
-        _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);
-
-    #endregion
-
     // Validation + compile + optional optimization in one pass
     public virtual ParserValidationReport ValidateAndCompile(
         VariableNamesOptions variableNamesOptions,
@@ -386,7 +284,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         // 4) Functions (names)
         LastValidationState = ParserValidationStage.FunctionNames;
-        var functionNamesResult = _parserValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
+        var functionNamesResult = _tokenizerValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
         report.FunctionNamesResult = functionNamesResult;
         if (!functionNamesResult.IsSuccess)
         {
@@ -564,5 +462,294 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
     }
 
+
     #endregion
+
+    #region Public evaluation API
+
+    public virtual OneOf<object?, ParserValidationReport> Evaluate(
+        Dictionary<string, object?>? variables = null,
+        bool runValidation = false,
+        ExpressionOptimizationMode optimizationMode = ExpressionOptimizationMode.None)
+    {
+        ParserValidationReport report = ValidateAndOptimize(
+            _expression,
+            variables,
+            variableNamesOptions: null,
+            runValidation: runValidation,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: optimizationMode);
+
+        if (!report.IsSuccess)
+            return report;
+
+        var value = Evaluate();
+        State = ParserSessionState.Calculated;
+        return value;
+    }
+
+    public virtual Type EvaluateType(Dictionary<string, object?>? variables = null)
+    {
+        ValidateAndOptimize(
+            _expression,
+            variables,
+            variableNamesOptions: null,
+            runValidation: false,
+            earlyReturnOnValidationErrors: false,
+            optimizationMode: ExpressionOptimizationMode.None);
+        return EvaluateType();
+    }
+
+    public object? Evaluate() =>
+        (_tree is not null)
+            ? Evaluate(_tree, _variables, mergeConstants: true)
+            : Evaluate(_postfixTokens, _variables);
+
+    public Type EvaluateType() =>
+        (_tree is not null)
+            ? EvaluateType(_tree, _variables, mergeConstants: true)
+            : EvaluateType(_postfixTokens, _variables);
+
+    #endregion
+
+    #region Utility validation methods
+
+    #region Tokenizer 
+
+    public ParenthesisCheckResult ValidateParentheses() => CheckParentheses(_expression);
+    public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
+
+    public VariableNamesCheckResult CheckVariableNames(
+        HashSet<string> knownIdentifierNames,
+        HashSet<string> ignorePrefixes,
+        HashSet<string> ignorePostfixes) =>
+        _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignorePrefixes, ignorePostfixes);
+
+    public VariableNamesCheckResult CheckVariableNames(
+       HashSet<string> knownIdentifierNames,
+       Regex? ignoreIdentifierPattern = null) =>
+       _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreIdentifierPattern);
+
+    public VariableNamesCheckResult CheckVariableNames(
+        HashSet<string> knownIdentifierNames,
+        HashSet<string> ignoreCaptureGroups) =>
+        _tokenizerValidator.CheckVariableNames(_infixTokens, knownIdentifierNames, ignoreCaptureGroups);
+
+    public VariableNamesCheckResult CheckVariableNames(VariableNamesOptions variableNameOptions) =>
+        _tokenizerValidator.CheckVariableNames(_infixTokens, variableNameOptions);
+
+    #endregion
+
+    #region Parser
+
+    public FunctionNamesCheckResult CheckFunctionNames() =>
+        _tokenizerValidator.CheckFunctionNames(_infixTokens, (IFunctionDescriptors)this);
+
+    public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands() =>
+        _tokenizerValidator.CheckUnexpectedOperatorOperands(_infixTokens);
+
+    public InvalidBinaryOperatorsCheckResult CheckBinaryOperators() =>
+        _parserValidator.CheckBinaryOperatorOperands(_nodeDictionary);
+
+    public InvalidUnaryOperatorsCheckResult CheckUnaryOperators() =>
+        _parserValidator.CheckUnaryOperatorOperands(_nodeDictionary);
+
+    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators() =>
+        _parserValidator.CheckOrphanArgumentSeparators(_nodeDictionary);
+
+    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount() =>
+        _parserValidator.CheckFunctionArgumentsCount(_nodeDictionary, (IFunctionDescriptors)this);
+
+    public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments() =>
+        _parserValidator.CheckEmptyFunctionArguments(_nodeDictionary);
+
+    #endregion
+
+    #endregion
+
+    public virtual ParserValidationReport Validate(
+        VariableNamesOptions nameOptions,
+        bool earlyReturnOnErrors = false)
+    {
+        LastValidationState = ParserValidationStage.None;
+        LastException = null;
+        ValidationReport = null;
+
+        if (string.IsNullOrWhiteSpace(_expression))
+        {
+            State = ParserSessionState.Validated;
+            return ValidationReport = new() { Expression = _expression }; ;
+        }
+
+        State = ParserSessionState.Prevalidating;
+
+        // Run tokenizer-level validation (single pass over infix), mirror ParserBase.Validate
+        TokenizerValidationReport tokenizerReport = ((Tokenizer)this).Validate(
+                _expression,
+                nameOptions,
+                functionDescriptors: this,
+                earlyReturnOnErrors: earlyReturnOnErrors);
+
+        ParserValidationReport report = ParserValidationReport.FromTokenizerReport(tokenizerReport);
+        LastValidationState = ParserValidationStage.InfixTokenization;
+        _infixTokens = report.InfixTokens ?? [];
+
+        // Always return on tokenizer errors
+        if (!tokenizerReport.IsSuccess)
+        {
+            State = ParserSessionState.Invalid;
+            this.LastException = report.Exception = tokenizerReport.Exception;
+            return ValidationReport = report;
+        }
+
+
+        List<Token> postfixTokens;
+
+        // Build postfix and tree (NO optimization here)
+        try
+        {
+            LastValidationState = ParserValidationStage.PostfixTokenization;
+            postfixTokens = report.PostfixTokens = GetPostfixTokens(_infixTokens);
+            _postfixTokens = postfixTokens;
+        }
+        catch (Exception ex)
+        {
+            var pce = ParserCompileException.PostfixException(ex);
+            LastValidationState = pce.Stage;
+            LastException = pce;
+            report.Exception = pce;
+            State = ParserSessionState.Invalid;
+            return ValidationReport = report;
+        }
+
+        try
+        {
+            LastValidationState = ParserValidationStage.TreeBuild;
+            _tree = report.Tree = GetExpressionTree(postfixTokens);
+            _nodeDictionary = _tree.NodeDictionary;
+            report.NodeDictionary = _nodeDictionary;
+            State = ParserSessionState.TreeBuilt;
+        }
+        catch (Exception ex)
+        {
+            var pce = ParserCompileException.TreeBuildException(ex);
+            LastValidationState = pce.Stage;
+            LastException = pce;
+            report.Exception = pce;
+            State = ParserSessionState.Invalid;
+            return ValidationReport = report;
+        }
+
+        // Parser-level validations (single pass over node dictionary)
+        State = ParserSessionState.Postvalidating;
+        var postfixReport = _parserValidator.ValidateTreePostfixStage(
+            _nodeDictionary,
+            this,
+            earlyReturnOnErrors);
+
+        report.FunctionArgumentsCountResult = postfixReport.FunctionArgumentsCountResult;
+        report.EmptyFunctionArgumentsResult = postfixReport.EmptyFunctionArgumentsResult;
+        report.OrphanArgumentSeparatorsResult = postfixReport.OrphanArgumentSeparatorsResult;
+        report.BinaryOperatorOperandsResult = postfixReport.BinaryOperatorOperandsResult;
+        report.UnaryOperatorOperandsResult = postfixReport.UnaryOperatorOperandsResult;
+        this.LastException = report.Exception = postfixReport.Exception;
+
+        State = report.IsSuccess ? ParserSessionState.Validated : ParserSessionState.Invalid;
+        return ValidationReport = report;
+    }
+
+    // Simplified, incremental compile. Builds infix/postfix if missing.
+    // Builds tree and optimizes only when optimizationMode == ParserInference.
+    public TreeOptimizerResult Compile(bool optimize)
+    {
+        if (string.IsNullOrWhiteSpace(_expression))
+            return TreeOptimizerResult.Unchanged(TokenTree.Empty);
+
+        // occurs after validation only (validation forces the tree build)
+        if (!optimize && _tree is not null)
+            return TreeOptimizerResult.Unchanged(_tree);
+
+        LastValidationState = ParserValidationStage.None;
+        LastException = null;
+
+        // Infix
+        if (_infixTokens.Count == 0)
+        {
+            LastValidationState = ParserValidationStage.InfixTokenization;
+            try
+            {
+                _infixTokens = GetInfixTokens(_expression);
+                State = ParserSessionState.TokenizedInfix;
+            }
+            catch (Exception ex)
+            {
+                var iex = new InvalidOperationException("Could not tokenize (get infix tokens).", ex);
+                LastException = iex;
+                State = ParserSessionState.Invalid;
+                throw iex;
+            }
+        }
+
+        // Postfix
+        if (_postfixTokens.Count == 0)
+        {
+            LastValidationState = ParserValidationStage.PostfixTokenization;
+            try
+            {
+                _postfixTokens = GetPostfixTokens(_infixTokens);
+                State = ParserSessionState.TokenizedPostfix;
+            }
+            catch (Exception ex)
+            {
+                var pce = ParserCompileException.PostfixException(ex);
+                LastException = pce;
+                State = ParserSessionState.Invalid;
+                throw pce;
+            }
+        }
+
+        if (!optimize) // we have already the postfix tokens, no need to build the tree
+            return TreeOptimizerResult.Unchanged(TokenTree.Empty);
+
+        // Build tree if missing
+        if (_tree is null)
+        {
+            LastValidationState = ParserValidationStage.TreeBuild;
+            try
+            {
+                _tree = GetExpressionTree(_postfixTokens);
+                _nodeDictionary = _tree.NodeDictionary;
+                State = ParserSessionState.TreeBuilt;
+            }
+            catch (Exception ex)
+            {
+                var pce = ParserCompileException.TreeBuildException(ex);
+                LastException = pce;
+                State = ParserSessionState.Invalid;
+                throw pce;
+            }
+        }
+
+        // Optimize here using parser inference only in this context
+        try
+        {
+            LastValidationState = ParserValidationStage.TreeOptimize;
+            TreeOptimizerResult result = GetOptimizedTree(_tree!, Variables);
+            _tree = result.Tree;
+            _infixTokens = _tree.GetInfixTokens();
+            _postfixTokens = _tree.GetPostfixTokens();
+            _nodeDictionary = _tree.NodeDictionary;
+            State = ParserSessionState.Optimized;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            var pce = ParserCompileException.TreeOptimizeException(ex);
+            LastException = pce;
+            State = ParserSessionState.Invalid;
+            throw;
+        }
+    }
+
+
 }

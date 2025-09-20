@@ -193,13 +193,6 @@ public sealed class ParserValidator : IParserValidator
         IFunctionDescriptors? functionDescriptors = null,
         bool earlyReturnOnErrors = false)
     {
-        // Build reverse map to quickly check a child's token by its node
-        var nodeToToken = new Dictionary<Node<Token>, Token>(nodeDictionary.Count);
-        foreach (var kvp in nodeDictionary)
-            nodeToToken[kvp.Value] = kvp.Key;
-
-        // Accumulators
-
         // Function argument count
         HashSet<FunctionArguments> funcCountValid = [];
         HashSet<FunctionArguments> funcCountInvalid = [];
@@ -223,8 +216,8 @@ public sealed class ParserValidator : IParserValidator
 
         foreach (var entry in nodeDictionary)
         {
-            var token = entry.Key;
-            var node = entry.Value;
+            Token token = entry.Key;
+            Node<Token> node = entry.Value;
 
             // Track all separators (positions reported after we collect parents)
             if (token.TokenType == TokenType.ArgumentSeparator)
