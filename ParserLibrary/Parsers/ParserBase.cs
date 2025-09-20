@@ -123,6 +123,7 @@ public partial class ParserBase : Tokenizer, IParser
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
+        //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW: orphan separators validation
 
         var root = nodeDictionary[stack.Pop()];
         return new TokenTree
@@ -240,6 +241,8 @@ public partial class ParserBase : Tokenizer, IParser
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
+        //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW
+
         Node<Token> root = nodeDictionary[stack.Pop()];
         return nodeValueDictionary[root]!;
     }
@@ -313,6 +316,7 @@ public partial class ParserBase : Tokenizer, IParser
 
                 case TokenType.ArgumentSeparator:
                     // No value produced for separators (used for function arg routing)
+                    nodeValueDictionary[node] = null;
                     break;
 
                 default:
@@ -465,6 +469,8 @@ public partial class ParserBase : Tokenizer, IParser
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
+        //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW
+
         var root = nodeDictionary[stack.Pop()];
         return (Type)nodeValueDictionary[root]!;
     }
@@ -528,13 +534,17 @@ public partial class ParserBase : Tokenizer, IParser
                 }
                 else
                 {
+                    nodeValueDictionary.Add(operatorNode, null); //argument separator produces no result
                     _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
             }
         }
 
         ThrowExceptionIfStackIsInvalid(stack);
+        //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW
+
         var root = nodeDictionary[stack.Pop()];
+
         return nodeValueDictionary[root];
     }
 
@@ -603,6 +613,41 @@ public partial class ParserBase : Tokenizer, IParser
         throw new InvalidOperationException(
             $"The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {stackItemsString}");
     }
+
+    // NEW: Validate that all ArgumentSeparator nodes have a valid parent (Function or ArgumentSeparator) and are not the root.
+    protected static void ThrowExceptionForOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary)
+    {
+        // Build a quick lookup to find parents by child reference
+        foreach (var kv in nodeDictionary)
+        {
+            var token = kv.Key;
+            if (token.TokenType != TokenType.ArgumentSeparator) continue;
+
+            var sepNode = kv.Value;
+            Node<Token>? parent = null;
+
+            foreach (var candidate in nodeDictionary.Values)
+            {
+                if (ReferenceEquals(candidate.Left, sepNode) || ReferenceEquals(candidate.Right, sepNode))
+                {
+                    parent = candidate;
+                    break;
+                }
+            }
+
+            // If no parent found => it's the root or detached => invalid
+            if (parent is null)
+                throw new OrphanArgumentSeparatorException(token.Index + 1);
+
+            var parentTok = (Token)parent.Value!;
+            if (parentTok.TokenType != TokenType.Function && parentTok.TokenType != TokenType.ArgumentSeparator)
+                throw new OrphanArgumentSeparatorException(token.Index + 1);
+        }
+    }
+
+
+
+
     #endregion
 
     #region NodeDictionary calculations

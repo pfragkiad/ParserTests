@@ -67,7 +67,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     protected virtual void OnStateChanged(ParserSessionState oldState, ParserSessionState newState) =>
         StateChanged?.Invoke(this, new ParserSessionStateChangedEventArgs(oldState, newState));
 
-    protected void Reset()
+    public void Reset()
     {
         _infixTokens = [];
         _postfixTokens = [];
@@ -106,7 +106,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
     }
 
-    private void ChangeVariablesIfNotNull(Dictionary<string, object?>? variables)
+    private void ChangeVariablesIfNotNullAndKeepConstantsAtLeast(Dictionary<string, object?>? variables)
     {
         if (variables is not null)
             Variables = variables;
@@ -482,7 +482,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         bool runValidation = false,
         bool optimize = false)
     {
-        ChangeVariablesIfNotNull(variables);
+        ChangeVariablesIfNotNullAndKeepConstantsAtLeast(variables);
 
         if (runValidation)
         {
@@ -512,7 +512,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     public virtual Type EvaluateType(
         Dictionary<string, object?>? variables = null)
     {
-        ChangeVariablesIfNotNull(variables);
+        ChangeVariablesIfNotNullAndKeepConstantsAtLeast(variables);
 
         Compile(optimize: false);
         Type type = EvaluateType();
@@ -683,7 +683,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     // Simplified, incremental compile. Builds infix/postfix if missing.
     // Builds tree and optimizes only when optimizationMode == ParserInference.
-    public ParserCompilationResult Compile(bool optimize)
+    public ParserCompilationResult Compile(bool optimize, bool forceTreeBuild = false)
     {
         if (string.IsNullOrWhiteSpace(_expression))
             return new ParserCompilationResult { InfixTokens = [], PostfixTokens = [], Tree = TokenTree.Empty };
@@ -731,7 +731,7 @@ public class ParserSessionBase : ParserBase, IParserSession
             }
         }
 
-        if (!optimize) // we have already the postfix tokens, no need to build the tree
+        if (!optimize && !forceTreeBuild) // we have already the postfix tokens, no need to build the tree
             return new ParserCompilationResult { InfixTokens = _infixTokens, PostfixTokens = _postfixTokens };
 
         // Build tree if missing
@@ -752,6 +752,9 @@ public class ParserSessionBase : ParserBase, IParserSession
                 throw pce;
             }
         }
+
+        if(!optimize)
+            return new ParserCompilationResult() { InfixTokens = _infixTokens, PostfixTokens = _postfixTokens, Tree = _tree };
 
         // Optimize here using parser inference only in this context
         try

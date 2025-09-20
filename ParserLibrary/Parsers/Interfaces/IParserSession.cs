@@ -32,6 +32,8 @@ public interface IParserSession : IParser
     /// </summary>
     Dictionary<string, object?> Variables { get; set; }
 
+    void Reset();
+
     ParserSessionState State { get; }
 
     // ---------------- Evaluation APIs (session) ----------------
@@ -124,5 +126,5 @@ public interface IParserSession : IParser
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
     ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
 
-    ParserCompilationResult Compile(bool optimize);
+    ParserCompilationResult Compile(bool optimize, bool forceTreeBuild = false);
 }
