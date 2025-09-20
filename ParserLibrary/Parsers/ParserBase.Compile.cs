@@ -34,7 +34,7 @@ public partial class ParserBase
         }
         catch (Exception ex)
         {
-            throw new ParserCompileException(ParserValidationStage.InfixTokenization, "Could not tokenize (get infix tokens).", ex);
+            throw ParserCompileException.InfixException(ex);
         }
 
         return Compile(infixTokens, options.Value, optimizationMode: ExpressionOptimizationMode.None);
@@ -57,7 +57,7 @@ public partial class ParserBase
         }
         catch (Exception ex)
         {
-            throw new ParserCompileException(ParserValidationStage.InfixTokenization, "Could not tokenize (get infix tokens).", ex);
+            throw ParserCompileException.InfixException(ex);
         }
 
         return Compile(infixTokens, options, optimizationMode, variables, variableTypes, functionReturnTypes, ambiguousFunctionReturnTypes);
@@ -125,10 +125,10 @@ public partial class ParserBase
         catch (Exception ex)
         {
             if (postfix is null && (options.BuildPostfix || options.BuildTree))
-                throw new ParserCompileException(ParserValidationStage.PostfixTokenization, "Could not convert to postfix tokens.", ex);
+                throw ParserCompileException.PostfixException(ex);
 
             if (tree is null && options.BuildTree)
-                throw new ParserCompileException(ParserValidationStage.TreeBuild, "Could not build expression tree.", ex);
+                throw ParserCompileException.TreeBuildException(ex);
 
             throw;
         }

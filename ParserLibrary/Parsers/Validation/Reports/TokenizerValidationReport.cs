@@ -14,6 +14,8 @@ public class TokenizerValidationReport : CheckResult
 
     public UnexpectedOperatorOperandsCheckResult? UnexpectedOperatorOperandsResult { get; set; }
 
+    public List<Token>? InfixTokens { get; set; }
+
 
     public override bool IsSuccess =>
         base.IsSuccess &&

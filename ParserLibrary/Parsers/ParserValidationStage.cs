@@ -5,11 +5,12 @@ public enum ParserValidationStage
     None = 0,
 
     // Tokenizer (string/infix)
+    Tokenizer,
     Parentheses,
     InfixTokenization,
     VariableNames,
-    AdjacentOperands,
     FunctionNames, // parser-level check but still infix-based
+    AdjacentOperands,
 
     // Preparation (postfix/tree)
     PostfixTokenization,

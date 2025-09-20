@@ -1,8 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
 using ParserLibrary.Tokenizers.Interfaces;
+using System.Linq.Expressions;
 
 namespace ParserLibrary.Tokenizers;
 
@@ -647,34 +649,51 @@ public class Tokenizer : ITokenizer
         return _tokenizerValidator.CheckUnexpectedOperatorOperands(tokens);
     }
 
-
     // Full validation report (convenience method if no Parser validation is needed)
     public TokenizerValidationReport Validate(
         string expression,
         VariableNamesOptions nameOptions)
     {
+
+        TokenizerValidationReport report = new() { Expression = expression };
         if (string.IsNullOrWhiteSpace(expression)) return TokenizerValidationReport.Success;
-        var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
-        if (!parenthesesResult.IsSuccess)
-            return new TokenizerValidationReport
-            {
-                Expression = expression,
-                ParenthesesResult = parenthesesResult
-            };
 
-        //calculate the infix tokens only if we need to check variable names
-        List<Token> infixTokens = GetInfixTokens(expression);
-
-        var namesResult = _tokenizerValidator.CheckVariableNames(infixTokens, nameOptions);
-
-        return new TokenizerValidationReport
+        try
         {
-            Expression = expression,
-            ParenthesesResult = parenthesesResult,
-            VariableNamesResult = namesResult
-        };
-    }
+            var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
+            if (!parenthesesResult.IsSuccess)
+            {
+                report.ParenthesesResult = parenthesesResult;
+                return report;
+            }
 
+            //calculate the infix tokens only if we need to check variable names
+            List<Token> infixTokens;
+            try
+            {
+                infixTokens = GetInfixTokens(expression);
+            }
+            catch (Exception ex)
+            {
+                report.Exception = ParserCompileException.InfixException(ex);
+                return report;
+            }
+
+            var infixReport = _tokenizerValidator.ValidateInfixStage(infixTokens, nameOptions);
+            report.VariableNamesResult = infixReport.VariableNamesResult;
+            report.FunctionNamesResult = infixReport.FunctionNamesResult;
+            report.UnexpectedOperatorOperandsResult = infixReport.UnexpectedOperatorOperandsResult;
+
+            //put infix tokens in the report for further use
+            report.InfixTokens = infixTokens;
+            return report;
+        }
+        catch (Exception ex) //unexpected tokenizer error
+        {
+            report.Exception = ParserCompileException.TokenizerException(ex);
+            return report;
+        }
+    }
     #endregion
 
 }

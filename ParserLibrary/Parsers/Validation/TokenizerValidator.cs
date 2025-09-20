@@ -8,28 +8,18 @@ namespace ParserLibrary.Parsers.Validation;
 public class TokenizerValidator : ITokenizerValidator
 {
     private readonly ILogger<TokenizerValidator> _logger;
-    private readonly TokenPatterns _patterns;
-    Dictionary<string, UnaryOperator> unary;
 
-    // Precomputed for fast unary checks (avoid dictionary lookups per token)
-    private readonly HashSet<string> _prefixUnaryNames;
-    private readonly HashSet<string> _postfixUnaryNames;
+    private readonly TokenPatterns _patterns;
+    private readonly HashSet<string> _prefix;
+    private readonly HashSet<string> _postfix;
 
     public TokenizerValidator(ILogger<TokenizerValidator> logger, TokenPatterns patterns)
     {
         _logger = logger;
+
         _patterns = patterns;
-
-        unary = patterns.UnaryOperatorDictionary;
-
-        var comparer = unary.Comparer;
-        _prefixUnaryNames = new HashSet<string>(comparer);
-        _postfixUnaryNames = new HashSet<string>(comparer);
-        foreach (var kv in unary)
-        {
-            if (kv.Value.Prefix) _prefixUnaryNames.Add(kv.Key);
-            else _postfixUnaryNames.Add(kv.Key);
-        }
+        _prefix = patterns.PrefixUnaryNames; 
+        _postfix = patterns.PostfixUnaryNames;
     }
 
     #region Parentheses
@@ -239,18 +229,18 @@ public class TokenizerValidator : ITokenizerValidator
         type == TokenType.Identifier ||
         type == TokenType.Function ||
         type == TokenType.OpenParenthesis ||
-        (type == TokenType.OperatorUnary && _prefixUnaryNames.Contains(text)); // a!  or )! or 123!
+        (type == TokenType.OperatorUnary && _prefix.Contains(text)); // a!  or )! or 123!
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     private static bool IsBinaryOperator(TokenType type) => type == TokenType.Operator;
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     private bool IsUnaryPrefix(TokenType type, string text) =>
-        type == TokenType.OperatorUnary && _prefixUnaryNames.Contains(text);
+        type == TokenType.OperatorUnary && _prefix.Contains(text);
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     private bool IsUnaryPostfix(TokenType type, string text) =>
-        type == TokenType.OperatorUnary && _postfixUnaryNames.Contains(text);
+        type == TokenType.OperatorUnary && _postfix.Contains(text);
 
     public UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens)
     {
@@ -335,7 +325,7 @@ public class TokenizerValidator : ITokenizerValidator
     public TokenizerValidationReport ValidateInfixStage(
         List<Token> infixTokens,
         VariableNamesOptions options,
-        IFunctionDescriptors functionDescriptors)
+        IFunctionDescriptors? functionDescriptors = null)
     {
         // Variable names accumulation
         var known = options.KnownIdentifierNames;
@@ -347,8 +337,8 @@ public class TokenizerValidator : ITokenizerValidator
         IgnoreMode mode = options.IgnoreMode;
         var ignoreGroups = options.IgnoreCaptureGroups ?? [];
         var ignorePattern = options.IgnoreIdentifierPattern;
-        var ignorePrefixes = options.IgnorePrefixes is { Count: > 0 } ? options.IgnorePrefixes.ToArray() : Array.Empty<string>();
-        var ignorePostfixes = options.IgnorePostfixes is { Count: > 0 } ? options.IgnorePostfixes.ToArray() : Array.Empty<string>();
+        var ignorePrefixes = options.IgnorePrefixes is { Count: > 0 } ? options.IgnorePrefixes : [];
+        var ignorePostfixes = options.IgnorePostfixes is { Count: > 0 } ? options.IgnorePostfixes : [];
         HashSet<string> matchedFuncs = [];
         HashSet<string> unmatchedFuncs = [];
 
@@ -374,8 +364,8 @@ public class TokenizerValidator : ITokenizerValidator
                         IgnoreMode.CaptureGroups => t.CaptureGroup is not null && ignoreGroups.Contains(t.CaptureGroup),
                         IgnoreMode.Pattern => ignorePattern is not null && ignorePattern.IsMatch(name),
                         IgnoreMode.PrefixPostfix =>
-                            ignorePrefixes.Length > 0 && ignorePrefixes.Any(p => t.Text.StartsWith(p)) ||
-                            ignorePostfixes.Length > 0 && ignorePostfixes.Any(s => t.Text.EndsWith(s)),
+                            ignorePrefixes.Count > 0 && ignorePrefixes.Any(p => t.Text.StartsWith(p)) ||
+                            ignorePostfixes.Count > 0 && ignorePostfixes.Any(s => t.Text.EndsWith(s)),
                         _ => false
                     };
                     if (isIgnored) ignoredVars.Add(name);
@@ -385,7 +375,7 @@ public class TokenizerValidator : ITokenizerValidator
             #endregion
 
             #region Function names
-            if (t.TokenType == TokenType.Function)
+            if (functionDescriptors is not null && t.TokenType == TokenType.Function)
             {
                 string fname = t.Text;
                 bool knownFunc =

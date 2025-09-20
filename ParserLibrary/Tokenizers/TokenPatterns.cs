@@ -54,6 +54,8 @@ public class TokenPatterns //NOT records here!
         {
             _unary = value ?? [];
             _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op);
+            _prefixUnaryNames = [.. _unary.Where(uo => uo.Prefix).Select(uo => uo.Name)];
+            _postfixUnaryNames = [.. _unary.Where(uo => !uo.Prefix).Select(uo => uo.Name)];
 
             if (_operators.Count > 0)
             {
@@ -71,5 +73,11 @@ public class TokenPatterns //NOT records here!
 
     private HashSet<string> _sameNameUnaryAndBinaryOperators = [];
     public HashSet<string> SameNameUnaryAndBinaryOperators => _sameNameUnaryAndBinaryOperators;
+
+    private HashSet<string> _prefixUnaryNames = [];
+    public HashSet<string> PrefixUnaryNames => _prefixUnaryNames;
+
+    private HashSet<string> _postfixUnaryNames = [];
+    public HashSet<string> PostfixUnaryNames => _postfixUnaryNames;
 
 }
