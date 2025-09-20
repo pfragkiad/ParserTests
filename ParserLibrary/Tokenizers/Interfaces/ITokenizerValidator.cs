@@ -21,5 +21,5 @@ public interface ITokenizerValidator
     // NEW: detect missing operator between adjacent operands
     UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(List<Token> infixTokens);
     FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors functionDescriptors);
-    TokenizerValidationReport ValidateInfixStage(List<Token> infixTokens, VariableNamesOptions options, IFunctionDescriptors? functionDescriptors = null);
+    TokenizerValidationReport ValidateInfixStage(List<Token> infixTokens, VariableNamesOptions options, IFunctionDescriptors? functionDescriptors = null,bool earlyReturnOnErrors = false);
 }

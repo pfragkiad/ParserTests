@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
@@ -90,6 +91,9 @@ public interface ITokenizer
     /// <summary>
     /// Runs tokenizer-level validation (parentheses and variable names) and produces a report.
     /// </summary>
-    TokenizerValidationReport Validate(string expression, VariableNamesOptions variableNameOptions);
+    TokenizerValidationReport Validate(string expression, VariableNamesOptions variableNameOptions,
+        IFunctionDescriptors? functionDescriptors = null,
+        bool earlyReturnOnErrors = false);
     UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(string expression);
+    FunctionNamesCheckResult CheckFunctionNames(string expression, IFunctionDescriptors functionDescriptors);
 }

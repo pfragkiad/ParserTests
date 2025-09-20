@@ -48,5 +48,4 @@ public class TokenizerValidationReport : CheckResult
         return failures;
     }
 
-    public static TokenizerValidationReport Success { get => new(); }
 }

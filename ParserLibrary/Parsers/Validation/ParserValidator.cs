@@ -1,5 +1,6 @@
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 
 namespace ParserLibrary.Parsers.Validation;
 
@@ -10,38 +11,12 @@ public sealed class ParserValidator : IParserValidator
 
     public ParserValidator(
         ILogger<ParserValidator> logger,
-        TokenPatterns patterns) 
+        TokenPatterns patterns)
     {
         _logger = logger;
         _patterns = patterns;
     }
 
-    // ---- Granular checks (no tokenization / no tree building) ----
-
-    public FunctionNamesCheckResult CheckFunctionNames(
-        List<Token> infixTokens,
-        IFunctionDescriptors functionDescriptors)
-    {
-        HashSet<string> matched = [];
-        HashSet<string> unmatched = [];
-
-        foreach (var t in infixTokens.Where(t => t.TokenType == TokenType.Function))
-        {
-            // Consider a function "known" if metadata can provide either a fixed count or a min variable count
-            bool known =
-                functionDescriptors.GetCustomFunctionFixedArgCount(t.Text) is not null ||
-                functionDescriptors.GetMainFunctionFixedArgCount(t.Text) is not null ||
-                functionDescriptors.GetMainFunctionMinVariableArgCount(t.Text) is not null;
-
-            if (known) matched.Add(t.Text); else unmatched.Add(t.Text);
-        }
-
-        return new FunctionNamesCheckResult
-        {
-            MatchedNames = [.. matched],
-            UnmatchedNames = [.. unmatched]
-        };
-    }
 
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
@@ -120,9 +95,8 @@ public sealed class ParserValidator : IParserValidator
 
         return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
-
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(
-        Dictionary<Token, Node<Token>> nodeDictionary)
+          Dictionary<Token, Node<Token>> nodeDictionary)
     {
         List<int> valid = [];
         List<int> invalid = [];
@@ -149,8 +123,11 @@ public sealed class ParserValidator : IParserValidator
             if (!parentFound) invalid.Add(token.Index + 1);
         }
 
-        return new InvalidArgumentSeparatorsCheckResult {
-            ValidPositions = [.. valid], InvalidPositions = [.. invalid] };
+        return new InvalidArgumentSeparatorsCheckResult
+        {
+            ValidPositions = [.. valid],
+            InvalidPositions = [.. invalid]
+        };
     }
 
     public InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(
@@ -206,6 +183,258 @@ public sealed class ParserValidator : IParserValidator
         {
             ValidOperators = [.. valid],
             InvalidOperators = [.. invalid]
+        };
+    }
+
+
+    // NEW: Unified single-pass validator for the Postfix/Tree stage
+    public ParserValidationReport ValidateTreePostfixStage(
+        Dictionary<Token, Node<Token>> nodeDictionary,
+        IFunctionDescriptors? functionDescriptors = null,
+        bool earlyReturnOnErrors = false)
+    {
+        // Build reverse map to quickly check a child's token by its node
+        var nodeToToken = new Dictionary<Node<Token>, Token>(nodeDictionary.Count);
+        foreach (var kvp in nodeDictionary)
+            nodeToToken[kvp.Value] = kvp.Key;
+
+        // Accumulators
+
+        // Function argument count
+        HashSet<FunctionArguments> funcCountValid = [];
+        HashSet<FunctionArguments> funcCountInvalid = [];
+
+        // Empty function arguments
+        List<FunctionArguments> emptyArgsValid = [];
+        List<FunctionArguments> emptyArgsInvalid = [];
+
+        // Binary operators
+        List<OperatorArgumentCheckResult> binValid = [];
+        List<OperatorArgumentCheckResult> binInvalid = [];
+
+        // Unary operators
+        List<OperatorArgumentCheckResult> unValid = [];
+        List<OperatorArgumentCheckResult> unInvalid = [];
+
+        // Argument separators: collect all and which have valid parents
+        var separatorNodes = new HashSet<Node<Token>>();
+        var separatorsWithValidParents = new HashSet<Node<Token>>();
+        var allSeparators = new List<(Node<Token> Node, Token Tok)>();
+
+        foreach (var entry in nodeDictionary)
+        {
+            var token = entry.Key;
+            var node = entry.Value;
+
+            // Track all separators (positions reported after we collect parents)
+            if (token.TokenType == TokenType.ArgumentSeparator)
+            {
+                var n = (Node<Token>)node;
+                separatorNodes.Add(n);
+                allSeparators.Add((n, token));
+            }
+
+            // As a parent, mark children that are argument separators with valid parent type
+            bool parentCanOwnSep = token.TokenType == TokenType.Function || token.TokenType == TokenType.ArgumentSeparator;
+            if (parentCanOwnSep)
+            {
+                if (node.Left is Node<Token> ln && separatorNodes.Contains(ln))
+                    separatorsWithValidParents.Add(ln);
+                if (node.Right is Node<Token> rn && separatorNodes.Contains(rn))
+                    separatorsWithValidParents.Add(rn);
+            }
+
+            // Function-based checks
+            if (token.TokenType == TokenType.Function)
+            {
+                // Empty-args
+                Node<Token>[] args = node.GetFunctionArgumentNodes();
+                var res = new FunctionArguments { FunctionName = token.Text, Position = token.Index + 1 };
+                if (args.Any(n => n.Value!.IsNull)) emptyArgsInvalid.Add(res); else emptyArgsValid.Add(res);
+
+                if (earlyReturnOnErrors && emptyArgsInvalid.Count > 0)
+                {
+                    return new ParserValidationReport
+                    {
+                        EmptyFunctionArgumentsResult = new EmptyFunctionArgumentsCheckResult
+                        {
+                            ValidFunctions = [.. emptyArgsValid],
+                            InvalidFunctions = [.. emptyArgsInvalid]
+                        }
+                    };
+                }
+
+                // Count check (only if metadata provided)
+                if (functionDescriptors is not null)
+                {
+                    string name = token.Text;
+                    //int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
+                    int actual = args.Length;
+
+                    var fixedCount =
+                        functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
+                        functionDescriptors.GetMainFunctionFixedArgCount(name);
+
+                    if (fixedCount is not null)
+                    {
+                        var r = new FunctionArguments
+                        {
+                            FunctionName = name,
+                            Position = token.Index + 1,
+                            ActualArgumentsCount = actual,
+                            ExpectedArgumentsCount = fixedCount.Value
+                        };
+                        if (actual != fixedCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+                    }
+                    else
+                    {
+                        var minVar = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
+                        if (minVar is not null)
+                        {
+                            var r = new FunctionArguments
+                            {
+                                FunctionName = name,
+                                Position = token.Index + 1,
+                                ActualArgumentsCount = actual,
+                                MinExpectedArgumentsCount = minVar.Value
+                            };
+                            if (actual < minVar.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+                        }
+                        else
+                        {
+                            funcCountInvalid.Add(new FunctionArguments
+                            {
+                                FunctionName = name,
+                                Position = token.Index + 1,
+                                ActualArgumentsCount = actual,
+                                ExpectedArgumentsCount = 0
+                            });
+                        }
+                    }
+
+                    if (earlyReturnOnErrors && funcCountInvalid.Count > 0)
+                    {
+                        return new ParserValidationReport
+                        {
+                            FunctionArgumentsCountResult = new FunctionArgumentsCountCheckResult
+                            {
+                                ValidFunctions = [.. funcCountValid],
+                                InvalidFunctions = [.. funcCountInvalid]
+                            }
+                        };
+                    }
+                }
+            }
+
+            // Binary operators
+            if (token.TokenType == TokenType.Operator)
+            {
+                var (l, r) = ((Node<Token>)node).GetBinaryArgumentNodes();
+                var check = new OperatorArgumentCheckResult { Operator = token.Text, Position = token.Index + 1 };
+                if (l.Value!.IsNull || r.Value!.IsNull) binInvalid.Add(check); else binValid.Add(check);
+
+                if (earlyReturnOnErrors && binInvalid.Count > 0)
+                {
+                    return new ParserValidationReport
+                    {
+                        BinaryOperatorOperandsResult = new InvalidBinaryOperatorsCheckResult
+                        {
+                            ValidOperators = [.. binValid],
+                            InvalidOperators = [.. binInvalid]
+                        }
+                    };
+                }
+            }
+
+            // Unary operators
+            if (token.TokenType == TokenType.OperatorUnary)
+            {
+                var isPrefix = _patterns.UnaryOperatorDictionary[token.Text].Prefix;
+                var operandNode = ((Node<Token>)node).GetUnaryArgumentNode(isPrefix);
+
+                var check = new OperatorArgumentCheckResult
+                {
+                    Operator = token.Text,
+                    Position = token.Index + 1
+                };
+
+                if (operandNode.Value!.IsNull) unInvalid.Add(check); else unValid.Add(check);
+
+                if (earlyReturnOnErrors && unInvalid.Count > 0)
+                {
+                    return new ParserValidationReport
+                    {
+                        UnaryOperatorOperandsResult = new InvalidUnaryOperatorsCheckResult
+                        {
+                            ValidOperators = [.. unValid],
+                            InvalidOperators = [.. unInvalid]
+                        }
+                    };
+                }
+            }
+        }
+
+        // Finalize argument separators (need full pass to know parents)
+        var validPos = new List<int>(allSeparators.Count);
+        var invalidPos = new List<int>();
+        foreach (var (n, tok) in allSeparators)
+        {
+            if (separatorsWithValidParents.Contains(n)) validPos.Add(tok.Index + 1);
+            else invalidPos.Add(tok.Index + 1);
+        }
+
+        if (earlyReturnOnErrors && invalidPos.Count > 0)
+        {
+            return new ParserValidationReport
+            {
+                OrphanArgumentSeparatorsResult = new InvalidArgumentSeparatorsCheckResult
+                {
+                    ValidPositions = validPos,
+                    InvalidPositions = invalidPos
+                }
+            };
+        }
+
+        // Build all results
+        FunctionArgumentsCountCheckResult? funcCountResult =
+            functionDescriptors is null ? null :
+            new FunctionArgumentsCountCheckResult
+            {
+                ValidFunctions = [.. funcCountValid],
+                InvalidFunctions = [.. funcCountInvalid]
+            };
+
+        var emptyArgsResult = new EmptyFunctionArgumentsCheckResult
+        {
+            ValidFunctions = [.. emptyArgsValid],
+            InvalidFunctions = [.. emptyArgsInvalid]
+        };
+
+        var binOpsResult = new InvalidBinaryOperatorsCheckResult
+        {
+            ValidOperators = [.. binValid],
+            InvalidOperators = [.. binInvalid]
+        };
+
+        var unOpsResult = new InvalidUnaryOperatorsCheckResult
+        {
+            ValidOperators = [.. unValid],
+            InvalidOperators = [.. unInvalid]
+        };
+
+        var sepResult = new InvalidArgumentSeparatorsCheckResult
+        {
+            ValidPositions = validPos,
+            InvalidPositions = invalidPos
+        };
+
+        return new ParserValidationReport
+        {
+            FunctionArgumentsCountResult = funcCountResult,
+            EmptyFunctionArgumentsResult = emptyArgsResult,
+            BinaryOperatorOperandsResult = binOpsResult,
+            UnaryOperatorOperandsResult = unOpsResult,
+            OrphanArgumentSeparatorsResult = sepResult
         };
     }
 }

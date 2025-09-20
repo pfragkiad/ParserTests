@@ -1,11 +1,11 @@
 using ParserLibrary.Parsers.Validation.CheckResults;
+using ParserLibrary.Parsers.Validation.Reports;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
 public interface IParserValidator
 {
     // Granular checks (all require precomputed inputs)
-    FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors metadata);
 
     EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(Dictionary<Token, Node<Token>> nodeDictionary);
 
@@ -16,5 +16,5 @@ public interface IParserValidator
     InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary);
-
+    ParserValidationReport ValidateTreePostfixStage(Dictionary<Token, Node<Token>> nodeDictionary, IFunctionDescriptors? functionDescriptors = null, bool earlyReturnOnErrors = false);
 }

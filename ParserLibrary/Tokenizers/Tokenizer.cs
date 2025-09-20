@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary.Parsers.Compilation;
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
@@ -649,14 +650,24 @@ public class Tokenizer : ITokenizer
         return _tokenizerValidator.CheckUnexpectedOperatorOperands(tokens);
     }
 
+    public FunctionNamesCheckResult CheckFunctionNames(
+        string expression,
+        IFunctionDescriptors functionDescriptors)
+    {
+        var tokens = GetInfixTokens(expression);
+        return _tokenizerValidator.CheckFunctionNames(tokens, functionDescriptors);
+    }
+
     // Full validation report (convenience method if no Parser validation is needed)
     public TokenizerValidationReport Validate(
         string expression,
-        VariableNamesOptions nameOptions)
+        VariableNamesOptions nameOptions,
+        IFunctionDescriptors? functionDescriptors = null,
+        bool earlyReturnOnErrors = false)
     {
 
         TokenizerValidationReport report = new() { Expression = expression };
-        if (string.IsNullOrWhiteSpace(expression)) return TokenizerValidationReport.Success;
+        if (string.IsNullOrWhiteSpace(expression)) return report;
 
         try
         {
@@ -679,7 +690,11 @@ public class Tokenizer : ITokenizer
                 return report;
             }
 
-            var infixReport = _tokenizerValidator.ValidateInfixStage(infixTokens, nameOptions);
+            var infixReport = _tokenizerValidator.ValidateInfixStage(
+                infixTokens,
+                nameOptions,
+                functionDescriptors,
+                earlyReturnOnErrors);
             report.VariableNamesResult = infixReport.VariableNamesResult;
             report.FunctionNamesResult = infixReport.FunctionNamesResult;
             report.UnexpectedOperatorOperandsResult = infixReport.UnexpectedOperatorOperandsResult;

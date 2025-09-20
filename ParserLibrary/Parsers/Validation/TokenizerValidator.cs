@@ -18,7 +18,7 @@ public class TokenizerValidator : ITokenizerValidator
         _logger = logger;
 
         _patterns = patterns;
-        _prefix = patterns.PrefixUnaryNames; 
+        _prefix = patterns.PrefixUnaryNames;
         _postfix = patterns.PostfixUnaryNames;
     }
 
@@ -325,7 +325,8 @@ public class TokenizerValidator : ITokenizerValidator
     public TokenizerValidationReport ValidateInfixStage(
         List<Token> infixTokens,
         VariableNamesOptions options,
-        IFunctionDescriptors? functionDescriptors = null)
+        IFunctionDescriptors? functionDescriptors = null,
+        bool earlyReturnOnErrors = false)
     {
         // Variable names accumulation
         var known = options.KnownIdentifierNames;
@@ -369,7 +370,21 @@ public class TokenizerValidator : ITokenizerValidator
                         _ => false
                     };
                     if (isIgnored) ignoredVars.Add(name);
-                    else unmatchedVars.Add(name);
+                    else
+                    {
+                        unmatchedVars.Add(name);
+
+                        if (earlyReturnOnErrors) //we will not return other errors since we are exiting early
+                            return new TokenizerValidationReport
+                            {
+                                VariableNamesResult = new VariableNamesCheckResult
+                                {
+                                    MatchedNames = [.. matchedVars],
+                                    UnmatchedNames = [.. unmatchedVars],
+                                    IgnoredNames = [.. ignoredVars]
+                                }
+                            };
+                    }
                 }
             }
             #endregion
@@ -384,7 +399,19 @@ public class TokenizerValidator : ITokenizerValidator
                     functionDescriptors.GetMainFunctionMinVariableArgCount(fname).HasValue;
 
                 if (knownFunc) matchedFuncs.Add(fname);
-                else unmatchedFuncs.Add(fname);
+                else
+                {
+                    unmatchedFuncs.Add(fname);
+                    if (earlyReturnOnErrors) //we will not return other errors since we are exiting early
+                        return new TokenizerValidationReport
+                        {
+                            FunctionNamesResult = new FunctionNamesCheckResult
+                            {
+                                MatchedNames = [.. matchedFuncs],
+                                UnmatchedNames = [.. unmatchedFuncs]
+                            }
+                        };
+                }
             }
             #endregion
 
@@ -421,10 +448,19 @@ public class TokenizerValidator : ITokenizerValidator
                     RightToken = right.Text,
                     RightPosition = right.Index + 1
                 });
+
+                if(earlyReturnOnErrors) //we will not return other errors since we are exiting early
+                    return new TokenizerValidationReport
+                    {
+                        UnexpectedOperatorOperandsResult = new UnexpectedOperatorOperandsCheckResult
+                        {
+                            Violations = violations
+                        }
+                    };
             }
 
             #endregion
-        
+
         }
 
         var variableNamesResult = new VariableNamesCheckResult
@@ -449,4 +485,5 @@ public class TokenizerValidator : ITokenizerValidator
             UnexpectedOperatorOperandsResult = unexpectedResult
         };
     }
+
 }

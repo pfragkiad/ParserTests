@@ -1,4 +1,5 @@
-﻿using ParserLibrary.Parsers.Interfaces;
+﻿using ParserLibrary.Parsers.Compilation;
+using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
@@ -711,11 +712,8 @@ public partial class ParserBase : Tokenizer, IParser
 
     #region Utility validation methods
 
-    public FunctionNamesCheckResult CheckFunctionNames(string expression)
-    {
-        var tokens = GetInfixTokens(expression);
-        return _parserValidator.CheckFunctionNames(tokens, (IFunctionDescriptors)this);
-    }
+    public FunctionNamesCheckResult CheckFunctionNames(string expression) =>
+        CheckFunctionNames(expression, this);
 
     public UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands(string expression)
     {
@@ -756,16 +754,22 @@ public partial class ParserBase : Tokenizer, IParser
             .Distinct()];
     }
 
+    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
+    {
+        var tree = GetExpressionTree(expression);
+        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IFunctionDescriptors)this);
+    }
+
     public EmptyFunctionArgumentsCheckResult CheckEmptyFunctionArguments(string expression)
     {
         var tree = GetExpressionTree(expression);
         return _parserValidator.CheckEmptyFunctionArguments(tree.NodeDictionary);
     }
 
-    public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(string expression)
+    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
     {
         var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckFunctionArgumentsCount(tree.NodeDictionary, (IFunctionDescriptors)this);
+        return _parserValidator.CheckOrphanArgumentSeparators(tree.NodeDictionary);
     }
 
     public InvalidBinaryOperatorsCheckResult CheckBinaryOperatorOperands(string expression)
@@ -780,105 +784,66 @@ public partial class ParserBase : Tokenizer, IParser
         return _parserValidator.CheckUnaryOperatorOperands(tree.NodeDictionary);
     }
 
-    public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(string expression)
-    {
-        var tree = GetExpressionTree(expression);
-        return _parserValidator.CheckOrphanArgumentSeparators(tree.NodeDictionary);
-    }
-
     // Orchestrates two-step validation without doing any tokenization or tree building.
-    // - Always pre-validates parentheses via tokenizer (string-only).
-    // - If matched and inputs are provided, runs parser-level checks against infix and/or node dictionary.
+    // - Always pre-validates parentheses via tokenizer. Tokenizer errors are critical.
+    // - If matched and inputs are provided, runs parser-level checks against node dictionary.
     public ParserValidationReport Validate(
         string expression,
-        VariableNamesOptions variableNamesOptions,
+        VariableNamesOptions nameOptions,
         bool earlyReturnOnErrors = false)
     {
         if (string.IsNullOrWhiteSpace(expression))
-            return new ParserValidationReport { Expression = expression };
+            return new() { Expression = expression };
 
-        var parenthesesResult = _tokenizerValidator.CheckParentheses(expression);
-
-        var report = new ParserValidationReport
-        {
-            Expression = expression,
-            ParenthesesResult = parenthesesResult
-        };
-        if (!parenthesesResult.IsSuccess && earlyReturnOnErrors)
+        var tokenizerReport = base.Validate(expression, nameOptions, functionDescriptors: this, earlyReturnOnErrors);
+        ParserValidationReport report = ParserValidationReport.FromTokenizerReport(tokenizerReport);
+        if (!tokenizerReport.IsSuccess)
+            //always return after tokenizer errors
             return report;
 
-        var infixTokens = GetInfixTokens(expression);
-
-        var variableNamesResult = _tokenizerValidator.CheckVariableNames(infixTokens, variableNamesOptions);
-        report.VariableNamesResult = variableNamesResult;
-        if (!variableNamesResult.IsSuccess)
+        List<Token> infixTokens = report.InfixTokens!;
+        try
         {
-            _logger.LogWarning("Unmatched variable names in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
+            List<Token> postfixTokens;
+            Dictionary<Token, Node<Token>> nodeDictionary;
+            try
+            {
+                postfixTokens = report.PostfixTokens = GetPostfixTokens(infixTokens);
+            }
+            catch (Exception ex)
+            {
+                report.Exception = ParserCompileException.PostfixException(ex);
+                return report; //on exception we cannot continue because something unexpected has happened
+            }
 
-        var functionNamesResult = _parserValidator.CheckFunctionNames(infixTokens, (IFunctionDescriptors)this);
-        report.FunctionNamesResult = functionNamesResult;
-        if (!functionNamesResult.IsSuccess)
+            TokenTree tree;
+            try
+            {
+                tree = report.Tree = GetExpressionTree(postfixTokens!);
+            }
+            catch (Exception ex)
+            {
+                report.Exception = ParserCompileException.TreeBuildException(ex);
+                return report;
+            }
+
+            nodeDictionary = report.NodeDictionary = tree.NodeDictionary;
+            var postfixReport = _parserValidator.ValidateTreePostfixStage(
+                nodeDictionary,
+                this,
+                earlyReturnOnErrors);
+            report.FunctionArgumentsCountResult = postfixReport.FunctionArgumentsCountResult;
+            report.EmptyFunctionArgumentsResult = postfixReport.EmptyFunctionArgumentsResult;
+            report.OrphanArgumentSeparatorsResult = postfixReport.OrphanArgumentSeparatorsResult;
+            report.BinaryOperatorOperandsResult = postfixReport.BinaryOperatorOperandsResult;
+            report.UnaryOperatorOperandsResult = postfixReport.UnaryOperatorOperandsResult;
+            return report;
+        }
+        catch(Exception ex) //unexpected parser error
         {
-            _logger.LogWarning("Unmatched function names in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
+            report.Exception = ParserCompileException.ParserException(ex);
+            return report;
         }
-
-        var unexpectedOperatorOperansResult = _tokenizerValidator.CheckUnexpectedOperatorOperands(infixTokens);
-        report.UnexpectedOperatorOperandsResult = unexpectedOperatorOperansResult;
-        if (!unexpectedOperatorOperansResult.IsSuccess)
-        {
-            _logger.LogWarning("Adjacent operands in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        List<Token> postfixTokens = GetPostfixTokens(infixTokens);
-        TokenTree tree = GetExpressionTree(postfixTokens);
-        Dictionary<Token, Node<Token>> nodeDictionary = tree.NodeDictionary;
-
-        var emptyFunctionArgumentsResult = _parserValidator.CheckEmptyFunctionArguments(nodeDictionary);
-        report.EmptyFunctionArgumentsResult = emptyFunctionArgumentsResult;
-        if (!emptyFunctionArgumentsResult.IsSuccess)
-        {
-            _logger.LogWarning("Empty function arguments in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        var functionArgumentsCountResult = _parserValidator.CheckFunctionArgumentsCount(nodeDictionary, this);
-        report.FunctionArgumentsCountResult = functionArgumentsCountResult;
-        if (!functionArgumentsCountResult.IsSuccess)
-        {
-            _logger.LogWarning("Unmatched function arguments in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        // NEW: unary operator operand check
-        var unaryOperatorOperandsResult = _parserValidator.CheckUnaryOperatorOperands(nodeDictionary);
-        report.UnaryOperatorOperandsResult = unaryOperatorOperandsResult;
-        if (!unaryOperatorOperandsResult.IsSuccess)
-        {
-            _logger.LogWarning("Invalid unary operator operands in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        var binaryOperatorOperandsResult = _parserValidator.CheckBinaryOperatorOperands(nodeDictionary);
-        report.BinaryOperatorOperandsResult = binaryOperatorOperandsResult;
-        if (!binaryOperatorOperandsResult.IsSuccess)
-        {
-            _logger.LogWarning("Invalid operators in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        var orphanArgumentSeparatorsResult = _parserValidator.CheckOrphanArgumentSeparators(nodeDictionary);
-        report.OrphanArgumentSeparatorsResult = orphanArgumentSeparatorsResult;
-        if (!orphanArgumentSeparatorsResult.IsSuccess)
-        {
-            _logger.LogWarning("Invalid argument separators in formula: {expr}", expression);
-            if (earlyReturnOnErrors) return report;
-        }
-
-        return report;
     }
 
     #endregion

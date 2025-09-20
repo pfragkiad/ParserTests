@@ -5,7 +5,7 @@ public enum ParserValidationStage
     None = 0,
 
     // Tokenizer (string/infix)
-    Tokenizer,
+    Tokenizer, //used for unexpected Tokenizer errors
     Parentheses,
     InfixTokenization,
     VariableNames,
@@ -13,6 +13,7 @@ public enum ParserValidationStage
     AdjacentOperands,
 
     // Preparation (postfix/tree)
+    Parser,  //used for unexpected Parser errors
     PostfixTokenization,
     TreeBuild,
 
