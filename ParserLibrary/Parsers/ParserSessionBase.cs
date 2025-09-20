@@ -105,10 +105,8 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #region Validation + Optimization API
 
-    /// <summary>
-    /// Validates (optional) and optimizes (optional) the current expression and updates the session caches.
-    /// Returns the full validation report (success if validation is disabled and no errors).
-    /// </summary>
+
+    [Obsolete]
     public ParserValidationReport ValidateAndOptimize(
         string expression,
         Dictionary<string, object?>? variables = null,
@@ -161,6 +159,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         return report;
     }
 
+    [Obsolete]
     // Optimization only — public API
     public TreeOptimizerResult GetOptimizedTree(
         ExpressionOptimizationMode optimizationMode,
@@ -214,6 +213,8 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
     }
     // Validation + compile + optional optimization in one pass
+
+    [Obsolete]
     public virtual ParserValidationReport ValidateAndCompile(
         VariableNamesOptions variableNamesOptions,
         bool earlyReturnOnErrors = false,
@@ -402,6 +403,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     }
 
     // Centralized compile step (no validation path). Builds and optionally optimizes based on mode.
+    [Obsolete]
     private void Compile(
         ExpressionOptimizationMode optimizationMode,
         Dictionary<string, Type>? variableTypes = null,
