@@ -3,22 +3,13 @@
 public class DoubleParserSession(ILogger<DoubleParser> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
 
-    /// <summary>
-    /// Overriding the Evaluate function is great for adding custom "constant" literals.
-    /// </summary>
-    /// <param name="postfixTokens"></param>
-    /// <param name="variables"></param>
-    /// <returns></returns>
-    protected override object? Evaluate(List<Token> postfixTokens, Dictionary<string, object?>? variables = null)
-    {
-        variables ??= new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-
-        if (!variables.ContainsKey("pi")) variables.Add("pi", Math.PI);
-        if (!variables.ContainsKey("e")) variables.Add("e", Math.E);
-        if (!variables.ContainsKey("phi")) variables.Add("phi", (Math.Sqrt(5.0) + 1.0) / 2.0);
-
-        return base.Evaluate(postfixTokens, variables);
-    }
+    public override Dictionary<string, object?> Constants =>
+        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        {
+            { "pi", Math.PI },
+            { "e", Math.E },
+            { "phi", (Math.Sqrt(5.0) + 1.0) / 2.0 }
+        };
 
     protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);
