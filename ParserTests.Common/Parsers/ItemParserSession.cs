@@ -45,7 +45,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
             dynamic left = leftOperand!, right = rightOperand!;
             return left + right;
         }
-        if (operatorName == "*")
+        else if (operatorName == "*")
         {
             _logger.LogDebug("Multiplying with * operator {Left} and {Right}", leftOperand, rightOperand);
             dynamic left = leftOperand!, right = rightOperand!;
@@ -72,7 +72,14 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
             if (isLeftInt || isRightInt) return typeof(Item); //int + Item or Item + int returns Item
             if (isLeftItem || isRightItem) return typeof(double); //Item + double or double + Item returns double
         }
-        return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
+        else if(operatorName == "*")
+        {
+            if (isLeftInt && isRightInt) return typeof(int);
+            if (isLeftNumeric && isRightNumeric) return typeof(double); //all other numeric combinations return double
+            if ((isLeftItem && isRightInt) || (isLeftInt && isRightItem)) return typeof(Item); //Item * int or int * Item returns Item
+            if ((isLeftItem && isRightNumeric) || (isLeftNumeric && isRightItem)) return typeof(double); //Item * double or double * Item returns double
+        }
+            return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
     }
 
     // Respect case sensitivity for built-in function metadata lookups

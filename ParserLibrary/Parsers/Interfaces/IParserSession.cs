@@ -66,7 +66,7 @@ public interface IParserSession : IParser
     /// <summary>
     /// Parentheses check for current Expression (string-only).
     /// </summary>
-    ParenthesisCheckResult ValidateParentheses();
+    ParenthesisCheckResult CheckParentheses();
 
     /// <summary>
     /// Extracts identifier tokens (variable names) from cached infix.
@@ -126,5 +126,5 @@ public interface IParserSession : IParser
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
     ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
 
-    ParserCompilationResult Compile(bool optimize, bool forceTreeBuild = false);
+    ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false);
 }

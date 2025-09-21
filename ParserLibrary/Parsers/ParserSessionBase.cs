@@ -23,16 +23,16 @@ public class ParserSessionBase : ParserBase, IParserSession
         IParserValidator parserValidator)
         : base(logger, options, tokenizerValidator, parserValidator)
     {
-        Reset();
+        //Reset();
     }
 
     protected internal ParserSessionBase(ILogger logger, ParserServices services)
         : base(logger, services)
     {
-        Reset();
+        //Reset();
     }
 
-    private ParserSessionState _state;
+    private ParserSessionState _state = ParserSessionState.Uninitialized;
     public ParserSessionState State
     {
         get => _state;
@@ -75,6 +75,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         _tree = null;
         LastException = null;
         ValidationReport = null;
+
         LastValidationState = ParserValidationStage.None;
         ForceState(ParserSessionState.Uninitialized);
     }
@@ -539,7 +540,8 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     #region Tokenizer 
 
-    public ParenthesisCheckResult ValidateParentheses() => CheckParentheses(_expression);
+    public ParenthesisCheckResult CheckParentheses() => CheckParentheses(_expression);
+
     public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
 
     public VariableNamesCheckResult CheckVariableNames(
@@ -591,12 +593,11 @@ public class ParserSessionBase : ParserBase, IParserSession
     #endregion
 
     public virtual ParserValidationReport Validate(
-        VariableNamesOptions nameOptions,
+        VariableNamesOptions? nameOptions = null,
         bool earlyReturnOnErrors = false)
     {
-        LastValidationState = ParserValidationStage.None;
-        LastException = null;
-        ValidationReport = null;
+        //validation always FORCES a reset because the status is affected
+        Reset();
 
         if (string.IsNullOrWhiteSpace(_expression))
         {
@@ -605,6 +606,8 @@ public class ParserSessionBase : ParserBase, IParserSession
         }
 
         State = ParserSessionState.Prevalidating;
+
+        nameOptions ??= VariableNamesOptions.Empty;
 
         // Run tokenizer-level validation (single pass over infix), mirror ParserBase.Validate
         TokenizerValidationReport tokenizerReport = ((Tokenizer)this).Validate(
@@ -683,10 +686,13 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     // Simplified, incremental compile. Builds infix/postfix if missing.
     // Builds tree and optimizes only when optimizationMode == ParserInference.
-    public ParserCompilationResult Compile(bool optimize, bool forceTreeBuild = false)
+    // Note that Validate always Resets - so if it is called before Compile then reset should be false in this context.
+    public ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false)
     {
         if (string.IsNullOrWhiteSpace(_expression))
             return new ParserCompilationResult { InfixTokens = [], PostfixTokens = [], Tree = TokenTree.Empty };
+
+        if(reset) Reset();
 
         // occurs after validation only (validation forces the tree build)
         if (!optimize && _tree is not null)
