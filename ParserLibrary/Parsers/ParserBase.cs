@@ -249,12 +249,15 @@ public partial class ParserBase : Tokenizer, IParser
 
 
 
-    public virtual object? Evaluate(string expression, Dictionary<string, object?>? variables = null, bool optimizeTree = false)
+    public virtual object? Evaluate(
+        string expression,
+        Dictionary<string, object?>? variables = null,
+        bool optimizeTree = false)
     {
         if (!optimizeTree)
         {
             var postfixTokens = GetPostfixTokens(expression);
-            return Evaluate(postfixTokens, variables);
+            return Evaluate(postfixTokens, variables, mergeConstants:true);
         }
 
         var variableTypes = variables?
@@ -277,7 +280,10 @@ public partial class ParserBase : Tokenizer, IParser
 
 
     // -------- Tree-based evaluation (object) --------
-    protected virtual object? Evaluate(TokenTree tree, Dictionary<string, object?>? variables = null, bool mergeConstants = true)
+    protected virtual object? Evaluate(
+        TokenTree tree,
+        Dictionary<string, object?>? variables,
+        bool mergeConstants)
     {
         if (mergeConstants)
             variables = MergeVariableConstants(variables);
@@ -330,8 +336,8 @@ public partial class ParserBase : Tokenizer, IParser
     // -------- Tree-based evaluation (type inference) --------
     protected virtual Type EvaluateType(
         TokenTree tree,
-        Dictionary<string, object?>? variables = null,
-        bool mergeConstants = true)
+        Dictionary<string, object?>? variables,
+        bool mergeConstants)
     {
         if (mergeConstants)
             variables = MergeVariableConstants(variables);
@@ -389,12 +395,13 @@ public partial class ParserBase : Tokenizer, IParser
         Dictionary<string, object?>? variables = null)
     {
         var postfixTokens = GetPostfixTokens(expression);
-        return EvaluateType(postfixTokens, variables);
+        return EvaluateType(postfixTokens, variables, mergeConstants:true);
     }
 
     protected virtual Type EvaluateType(
         List<Token> postfixTokens,
-        Dictionary<string, object?>? variables = null)
+        Dictionary<string, object?>? variables,
+        bool mergeConstants)
     {
         _logger.LogDebug("Evaluating (type inference)...");
 
@@ -402,7 +409,7 @@ public partial class ParserBase : Tokenizer, IParser
         Dictionary<Token, Node<Token>> nodeDictionary = [];
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
 
-        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants: true);
+        return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants);
     }
 
     protected Type EvaluateType(
@@ -477,12 +484,13 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected virtual object? Evaluate(
         List<Token> postfixTokens,
-        Dictionary<string, object?>? variables = null)
+        Dictionary<string, object?>? variables,
+        bool mergeConstants)
     {
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
         Dictionary<Node<Token>, object?> nodeValueDictionary = [];
-        return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants: true);
+        return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants);
     }
 
     protected object? Evaluate( //MAIN EVALUATE FUNCTION

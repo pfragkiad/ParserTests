@@ -313,7 +313,8 @@ public class Tokenizer : ITokenizer
     }
 
     private static bool LooksLikeIdentifierStart(char c)
-        => char.IsLetter(c) || c == '_' || c == '$';
+        => char.IsLetter(c) || c == '_' || c == '$'
+        || c =='[' || c=='{'; //IDENTIFIER can be enclosed in [] or {}
 
     private static bool LooksLikeLiteralStart(ReadOnlySpan<char> s, int i)
     {

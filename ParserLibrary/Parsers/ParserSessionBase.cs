@@ -504,7 +504,7 @@ public class ParserSessionBase : ParserBase, IParserSession
 
         var value = (_tree is not null)
             ? Evaluate(_tree, _variables, mergeConstants: false)
-            : Evaluate(_postfixTokens, _variables);
+            : Evaluate(_postfixTokens, _variables, mergeConstants: false);
 
         State = ParserSessionState.Calculated;
         return value;
@@ -524,7 +524,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     {
         var result = _tree is not null
               ? Evaluate(_tree, _variables, mergeConstants: false)
-              : Evaluate(_postfixTokens, _variables);
+              : Evaluate(_postfixTokens, _variables, mergeConstants:false);
         State = ParserSessionState.Calculated;
         return result;
     }
@@ -532,7 +532,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     public Type EvaluateType() =>
         (_tree is not null)
             ? EvaluateType(_tree, _variables, mergeConstants: false)
-            : EvaluateType(_postfixTokens, _variables);
+            : EvaluateType(_postfixTokens, _variables, mergeConstants:false);
 
     #endregion
 
