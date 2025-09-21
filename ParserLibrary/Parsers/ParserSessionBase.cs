@@ -628,7 +628,6 @@ public class ParserSessionBase : ParserBase, IParserSession
             return ValidationReport = report;
         }
 
-
         List<Token> postfixTokens;
 
         // Build postfix and tree (NO optimization here)

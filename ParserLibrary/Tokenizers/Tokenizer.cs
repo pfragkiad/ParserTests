@@ -414,6 +414,8 @@ public class Tokenizer : ITokenizer
     //https://www.youtube.com/watch?v=PAceaOSnxQs
     public List<Token> GetPostfixTokens(List<Token> infixTokens)
     {
+        if (infixTokens.Count == 0) return [];
+
         List<Token> postfixTokens = [];
         Stack<Token> operatorStack = new();
 
