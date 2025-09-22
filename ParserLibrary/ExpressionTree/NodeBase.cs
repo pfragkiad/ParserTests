@@ -4,9 +4,9 @@ public abstract class NodeBase(string text)
 {
     public string Text { get; set; } = text;
 
-    public NodeBase? Left { get; set; } = null; //1
+    public NodeBase? Left { get; set; } //1
 
-    public NodeBase? Right { get; set; } = null; //0
+    public NodeBase? Right { get; set; }  //0
 
     public List<NodeBase>? Other { get; set; } //>=2
 

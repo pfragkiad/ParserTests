@@ -155,6 +155,25 @@ public class Tokenizer : ITokenizer
             }
         }
 
+        // Build literal spans to ignore regex hits inside quotes/literals
+        List<(int Start, int End)> literalSpans = [];
+        if (litMatches.Count > 0)
+        {
+            foreach (Match m in litMatches)
+                literalSpans.Add((m.Index, m.Index + m.Length));
+        }
+
+        static bool IsInsideAnyLiteral(int start, int end, List<(int Start, int End)> spans)
+        {
+            // require the whole match to be contained in a literal
+            for (int i = 0; i < spans.Count; i++)
+            {
+                var s = spans[i];
+                if (start >= s.Start && end <= s.End) return true;
+            }
+            return false;
+        }
+
         // Parentheses & argument separators (single pass over chars)
         for (int i = 0; i < expression.Length; i++)
         {
@@ -167,7 +186,7 @@ public class Tokenizer : ITokenizer
                 tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
 
-        // Unique unary operators (precompiled)
+        // Unique unary operators (precompiled) - skip matches inside literals
         if (_uniqueUnaryOperatorRegexes.Length > 0)
         {
             foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
@@ -175,11 +194,16 @@ public class Tokenizer : ITokenizer
                 var matches = regex.Matches(expression);
                 if (matches.Count == 0) continue;
                 foreach (Match m in matches)
+                {
+                    int start = m.Index;
+                    int end = m.Index + m.Length;
+                    if (IsInsideAnyLiteral(start, end, literalSpans)) continue;
                     tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
+                }
             }
         }
 
-        // Operators (binary or ambiguous)
+        // Operators (binary or ambiguous) - skip matches inside literals
         if (_operatorRegexes.Length > 0)
         {
             foreach (var (op, regex) in _operatorRegexes)
@@ -187,7 +211,12 @@ public class Tokenizer : ITokenizer
                 var matches = regex.Matches(expression);
                 if (matches.Count == 0) continue;
                 foreach (Match m in matches)
+                {
+                    int start = m.Index;
+                    int end = m.Index + m.Length;
+                    if (IsInsideAnyLiteral(start, end, literalSpans)) continue;
                     tokens.Add(Token.FromMatch(m, TokenType.Operator));
+                }
             }
         }
 

@@ -210,7 +210,7 @@ public partial class ParserBase
                 case TokenType.Function:
                     {
                         // Arguments have already been processed (postfix)
-                        var args = node.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator, boxedMap);
+                        var args = node.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator.ToString(), boxedMap);
                         var ft = EvaluateFunctionType(token.Text, args);
                         nodeTypeMap[node] = ft;
                         boxedMap[node] = ft;
