@@ -49,17 +49,35 @@ public sealed class ParserValidator : IParserValidator
                 continue;
             }
 
-            var minVar = metadata.GetMainFunctionMinVariableArgCount(name);
-            if (minVar is not null)
+            var minCount = metadata.GetMainFunctionMinVariableArgCount(name);
+            if (minCount is not null)
             {
                 var r = new FunctionArguments
                 {
                     FunctionName = name,
                     Position = node.Value.Index + 1,
                     ActualArgumentsCount = actual,
-                    MinExpectedArgumentsCount = minVar.Value
+                    MinExpectedArgumentsCount = minCount.Value
                 };
-                if (actual < minVar.Value) invalid.Add(r); else valid.Add(r);
+                if (actual < minCount.Value) invalid.Add(r); else valid.Add(r);
+                continue;
+            }
+
+            var minMaxCount = metadata.GetMainFunctionMinMaxVariableArgCount(name);
+            if (minMaxCount is not null)
+            {
+                var r = new FunctionArguments
+                {
+                    FunctionName = name,
+                    Position = node.Value.Index + 1,
+                    ActualArgumentsCount = actual,
+                    MinExpectedArgumentsCount = minMaxCount.Value.Item1,
+                    MaxExpectedArgumentsCount = minMaxCount.Value.Item2
+                };
+                if (actual < minMaxCount.Value.Item1 || actual > minMaxCount.Value.Item2)
+                    invalid.Add(r);
+                else
+                    valid.Add(r);
                 continue;
             }
 
@@ -264,9 +282,12 @@ public sealed class ParserValidator : IParserValidator
                     //int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
                     int actual = args.Length;
 
-                    var fixedCount =
+                    int? fixedCount =
                         functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
                         functionDescriptors.GetMainFunctionFixedArgCount(name);
+
+                    int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
+                    (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name);
 
                     if (fixedCount is not null)
                     {
@@ -279,45 +300,57 @@ public sealed class ParserValidator : IParserValidator
                         };
                         if (actual != fixedCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
                     }
+                    else if (minCount is not null)
+                    {
+                        var r = new FunctionArguments
+                        {
+                            FunctionName = name,
+                            Position = token.Index + 1,
+                            ActualArgumentsCount = actual,
+                            MinExpectedArgumentsCount = minCount.Value
+                        };
+                        if (actual < minCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+                    }
+                    else if (minMaxCount is not null)
+                    {
+                        var r = new FunctionArguments
+                        {
+                            FunctionName = name,
+                            Position = token.Index + 1,
+                            ActualArgumentsCount = actual,
+                            MinExpectedArgumentsCount = minMaxCount.Value.Item1,
+                            MaxExpectedArgumentsCount = minMaxCount.Value.Item2
+                        };
+                        if (actual < minMaxCount.Value.Item1 || actual > minMaxCount.Value.Item2)
+                            funcCountInvalid.Add(r);
+                        else
+                            funcCountValid.Add(r);
+                    }
                     else
                     {
-                        var minVar = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
-                        if (minVar is not null)
+                        funcCountInvalid.Add(new FunctionArguments
                         {
-                            var r = new FunctionArguments
-                            {
-                                FunctionName = name,
-                                Position = token.Index + 1,
-                                ActualArgumentsCount = actual,
-                                MinExpectedArgumentsCount = minVar.Value
-                            };
-                            if (actual < minVar.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
-                        }
-                        else
-                        {
-                            funcCountInvalid.Add(new FunctionArguments
-                            {
-                                FunctionName = name,
-                                Position = token.Index + 1,
-                                ActualArgumentsCount = actual,
-                                ExpectedArgumentsCount = 0
-                            });
-                        }
-                    }
-
-                    if (earlyReturnOnErrors && funcCountInvalid.Count > 0)
-                    {
-                        return new ParserValidationReport
-                        {
-                            FunctionArgumentsCountResult = new FunctionArgumentsCountCheckResult
-                            {
-                                ValidFunctions = [.. funcCountValid],
-                                InvalidFunctions = [.. funcCountInvalid]
-                            }
-                        };
+                            FunctionName = name,
+                            Position = token.Index + 1,
+                            ActualArgumentsCount = actual,
+                            ExpectedArgumentsCount = 0
+                        });
                     }
                 }
+
+                if (earlyReturnOnErrors && funcCountInvalid.Count > 0)
+                {
+                    return new ParserValidationReport
+                    {
+                        FunctionArgumentsCountResult = new FunctionArgumentsCountCheckResult
+                        {
+                            ValidFunctions = [.. funcCountValid],
+                            InvalidFunctions = [.. funcCountInvalid]
+                        }
+                    };
+                }
             }
+
 
             // Binary operators
             if (token.TokenType == TokenType.Operator)

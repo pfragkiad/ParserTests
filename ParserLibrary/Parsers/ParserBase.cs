@@ -53,6 +53,8 @@ public partial class ParserBase : Tokenizer, IParser
     /// </summary>
     protected virtual Dictionary<string, int> MainFunctionsMinVariableArgumentsCount => [];
 
+    protected virtual Dictionary<string, (int, int)> MainFunctionsMinMaxVariableArgumentsCount => [];
+
     #region Custom functions
 
     public void RegisterFunction(string definition)
@@ -1088,11 +1090,19 @@ public partial class ParserBase : Tokenizer, IParser
         };
     }
 
-    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionname, object?[] args)
+    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
     {
-        return functionname switch
+        return functionName switch
         {
-            _ => UnknownFunctionResult(functionname)
+            _ => UnknownFunctionResult(functionName)
+        };
+    }
+
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
+    {
+        return functionName switch
+        {
+            _ => UnknownFunctionResult(functionName)
         };
     }
 

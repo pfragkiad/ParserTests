@@ -12,6 +12,8 @@ public readonly struct FunctionArguments
 
     public int? MinExpectedArgumentsCount { get; init; }
 
+    public int? MaxExpectedArgumentsCount { get; init; }
+
     public int? ActualArgumentsCount { get; init; }
 }
 

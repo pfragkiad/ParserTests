@@ -20,4 +20,11 @@ public partial class ParserBase : IFunctionDescriptors
     {
         return MainFunctionsMinVariableArgumentsCount.TryGetValue(functionName, out var n) ? n : null;
     }
+
+    (int, int)? IFunctionDescriptors.GetMainFunctionMinMaxVariableArgCount(string functionName)
+    {
+        return MainFunctionsMinMaxVariableArgumentsCount.TryGetValue(functionName, out var n) ? n : null;
+    }
+
+
 }

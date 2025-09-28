@@ -306,7 +306,8 @@ public class TokenizerValidator : ITokenizerValidator
             bool known =
                 functionDescriptors.GetCustomFunctionFixedArgCount(name).HasValue ||
                 functionDescriptors.GetMainFunctionFixedArgCount(name).HasValue ||
-                functionDescriptors.GetMainFunctionMinVariableArgCount(name).HasValue;
+                functionDescriptors.GetMainFunctionMinVariableArgCount(name).HasValue || 
+                functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name).HasValue;
 
             if (known) matched.Add(name);
             else unmatched.Add(name);
@@ -396,7 +397,8 @@ public class TokenizerValidator : ITokenizerValidator
                 bool knownFunc =
                     functionDescriptors.GetCustomFunctionFixedArgCount(fname).HasValue ||
                     functionDescriptors.GetMainFunctionFixedArgCount(fname).HasValue ||
-                    functionDescriptors.GetMainFunctionMinVariableArgCount(fname).HasValue;
+                    functionDescriptors.GetMainFunctionMinVariableArgCount(fname).HasValue ||
+                    functionDescriptors.GetMainFunctionMinMaxVariableArgCount(fname).HasValue;
 
                 if (knownFunc) matchedFuncs.Add(fname);
                 else
