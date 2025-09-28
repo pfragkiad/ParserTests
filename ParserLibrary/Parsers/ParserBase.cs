@@ -1,4 +1,6 @@
-﻿using ParserLibrary.Parsers.Compilation;
+﻿using CustomResultError;
+using FluentValidation.Results;
+using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
@@ -135,6 +137,7 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion  // close "Expression trees" region
 
+
     #region Evaluation methods
 
     public V? Evaluate<V>(
@@ -257,7 +260,7 @@ public partial class ParserBase : Tokenizer, IParser
         if (!optimizeTree)
         {
             var postfixTokens = GetPostfixTokens(expression);
-            return Evaluate(postfixTokens, variables, mergeConstants:true);
+            return Evaluate(postfixTokens, variables, mergeConstants: true);
         }
 
         var variableTypes = variables?
@@ -395,7 +398,7 @@ public partial class ParserBase : Tokenizer, IParser
         Dictionary<string, object?>? variables = null)
     {
         var postfixTokens = GetPostfixTokens(expression);
-        return EvaluateType(postfixTokens, variables, mergeConstants:true);
+        return EvaluateType(postfixTokens, variables, mergeConstants: true);
     }
 
     protected virtual Type EvaluateType(
@@ -521,7 +524,7 @@ public partial class ParserBase : Tokenizer, IParser
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? value = null;
                 if (token.TokenType == TokenType.Literal)
-                    nodeValueDictionary.Add(tokenNode, value = EvaluateLiteral(token.Text, token.CaptureGroup));
+                    nodeValueDictionary.Add(tokenNode, value = tokenNode.Value!.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
                 _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
@@ -892,7 +895,7 @@ public partial class ParserBase : Tokenizer, IParser
             report.UnaryOperatorOperandsResult = postfixReport.UnaryOperatorOperandsResult;
             return report;
         }
-        catch(Exception ex) //unexpected parser error
+        catch (Exception ex) //unexpected parser error
         {
             report.Exception = ParserCompileException.ParserException(ex);
             return report;
@@ -901,5 +904,197 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
+    #region Function validators and type retrieval
 
+
+    protected static readonly ValidationResult _successResult = new();
+
+    protected static ValidationResult UnknownFunctionResult(string functionName) =>
+        new([new ValidationFailure("function", $"Function '{functionName}' is not supported.")]);
+
+    // NEW: Single helper for all fixed-arity cases (any N).
+    // - Enforces exact argument count
+    // - Validates nulls (not allowed)
+    // - Validates types per position (if provided) and/or a global set for all positions
+    protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
+        string functionName,
+        object?[] args,
+        int fixedCount,
+        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
+        HashSet<Type>? allowedTypesForAll = null)
+    {
+        List<ValidationFailure> failures = [];
+
+        // Count
+        if (args.Length != fixedCount)
+        {
+            failures.Add(new ValidationFailure("arguments", $"{functionName} requires exactly {fixedCount} argument{(fixedCount == 1 ? "" : "s")}."));
+            return new ValidationResult(failures);
+        }
+
+        // Nulls
+        if (args.Any(a => a is null))
+        {
+            failures.Add(new ValidationFailure("arguments", $"{functionName} does not accept null arguments."));
+            return new ValidationResult(failures);
+        }
+
+        // Types
+        var resolved = new Type[fixedCount];
+        for (int i = 0; i < fixedCount; i++)
+        {
+            var t = args[i]!.GetType();
+            resolved[i] = t;
+
+            HashSet<Type>? allowed =
+                (allowedTypesPerPosition is not null && i < allowedTypesPerPosition.Count)
+                    ? allowedTypesPerPosition[i]
+                    : allowedTypesForAll;
+
+            if (allowed is null)
+                continue; // no constraints for this position
+
+            if (!allowed.Contains(t))
+            {
+                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
+                string posText = i switch { 0 => "first", 1 => "second", 2 => "third", _ => $"{i + 1}th" };
+                failures.Add(new ValidationFailure(
+                    "arguments",
+                    $"{functionName} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}."
+                ));
+                return new ValidationResult(failures);
+            }
+        }
+
+        return resolved;
+    }
+
+
+    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
+    //    string functionName,
+    //    object?[] args,
+    //    HashSet<Type> allowedArgTypes)
+    //{
+    //    return GetFunctionArgumentTypes(
+    //        functionName,
+    //        args,
+    //        fixedCount: 1,
+    //        allowedTypesPerPosition: new[] { allowedArgTypes });
+    //}
+
+    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
+    //    string functionName,
+    //    object?[] args,
+    //    HashSet<Type> allowedFirstArgTypes,
+    //    HashSet<Type> allowedSecondArgTypes)
+    //{
+    //    return GetFunctionArgumentTypes(
+    //        functionName,
+    //        args,
+    //        fixedCount: 2,
+    //        allowedTypesPerPosition: new[] { allowedFirstArgTypes, allowedSecondArgTypes });
+    //}
+
+    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
+    //    string functionName,
+    //    object?[] args,
+    //    HashSet<Type> allowedFirstArgTypes,
+    //    HashSet<Type> allowedSecondArgTypes,
+    //    HashSet<Type> allowedThirdArgTypes)
+    //{
+    //    return GetFunctionArgumentTypes(
+    //        functionName,
+    //        args,
+    //        fixedCount: 3,
+    //        allowedTypesPerPosition: new[] { allowedFirstArgTypes, allowedSecondArgTypes, allowedThirdArgTypes });
+    //}
+
+
+    // Variant: min/max arity helper (e.g., Round(x) or Round(x, 2))
+    // - Enforces count within [minCount, maxCount]
+    // - Disallows nulls
+    // - Validates types per position (preferred) or a global set for remaining/variadic args
+   
+    
+    protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
+        string functionName,
+        object?[] args,
+        int minCount,
+        int maxCount,
+        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
+        HashSet<Type>? allowedTypesForAll = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(minCount);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, minCount);
+
+        List<ValidationFailure> failures = [];
+
+        // Count validation
+        if (args.Length < minCount || args.Length > maxCount)
+        {
+            if (minCount == maxCount)
+                return new ValidationResult(failures: [new("arguments", $"{functionName} requires exactly {minCount} argument{(minCount == 1 ? "" : "s")}.")]);
+
+            return new ValidationResult(failures: [new("arguments", $"{functionName} requires between {minCount} and {maxCount} arguments.")]);
+        }
+
+        // Nulls not allowed
+        if (args.Any(a => a is null))
+            return new ValidationResult(failures: [new("arguments", $"{functionName} does not accept null arguments.")]);
+
+        // Type validation
+        var resolvedTypes = new Type[args.Length];
+        for (int i = 0; i < args.Length; i++)
+        {
+            var t = args[i]!.GetType();
+            resolvedTypes[i] = t;
+
+            HashSet<Type>? allowed =
+                (allowedTypesPerPosition is not null && i < allowedTypesPerPosition.Count)
+                    ? allowedTypesPerPosition[i]
+                    : allowedTypesForAll;
+
+            if (allowed is null) continue;
+
+            if (!allowed.Contains(t))
+            {
+                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
+                string posText = ToOrdinal(i + 1);
+                return new ValidationResult(failures: [new("arguments", $"{functionName} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")]);
+            }
+        }
+
+        return resolvedTypes;
+
+        static string ToOrdinal(int n)
+        {
+            int rem100 = n % 100;
+            if (rem100 is >= 11 and <= 13) return $"{n}th";
+            return (n % 10) switch
+            {
+                1 => $"{n}st",
+                2 => $"{n}nd",
+                3 => $"{n}rd",
+                _ => $"{n}th"
+            };
+        }
+    }
+
+    public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
+    {
+        return functionName switch
+        {
+            _ => UnknownFunctionResult(functionName)
+        };
+    }
+
+    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionname, object?[] args)
+    {
+        return functionname switch
+        {
+            _ => UnknownFunctionResult(functionname)
+        };
+    }
+
+    #endregion
 }
