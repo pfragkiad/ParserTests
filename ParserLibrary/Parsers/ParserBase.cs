@@ -1136,6 +1136,17 @@ public partial class ParserBase : Tokenizer, IParser
         return UnknownOperatorResult(operatorName);
     }
 
+    public virtual Result<(Type,Type), ValidationResult> GetBinaryOperatorOperandTypes(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    public virtual Result<Type, ValidationResult> GetUnaryOperatorOperandType(string operatorName, object? arg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
     {
         return UnknownOperatorResult(operatorName);
