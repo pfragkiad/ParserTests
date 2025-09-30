@@ -8,14 +8,14 @@
     <Company>Pavlos Fragkiadoulakis</Company>
     <Description>Parser Library that can be customized for multiple data types (double, complex, vector, matrices, chords or whatever you want). Functions can be defined with multiple arguments, postfix and prefix multiple operators etc.
 Documentation and examples are being added currently. See README.</Description>
-    <Version>3.5.2</Version>
+    <Version>3.5.3</Version>
     <Authors>Pavlos Fragkiadoulakis</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>(c) 2022-2025 Paulus Stuff</Copyright>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageTags>expression builder; binary tree; complex; vector3d; vector</PackageTags>
-    <AssemblyVersion>3.5.2</AssemblyVersion>
-    <FileVersion>3.5.2</FileVersion>
+    <AssemblyVersion>3.5.3</AssemblyVersion>
+    <FileVersion>3.5.3</FileVersion>
   </PropertyGroup>
 
 	<ItemGroup>

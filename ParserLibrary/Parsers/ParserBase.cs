@@ -1131,7 +1131,7 @@ public partial class ParserBase : Tokenizer, IParser
         return UnknownOperatorResult(operatorName);
     }
 
-    public virtual ValidationResult ValidateUnaryOperator(string operatorName, object? leftArg, object? rightArg)
+    public virtual ValidationResult ValidateUnaryOperator(string operatorName, object? arg)
     {
         return UnknownOperatorResult(operatorName);
     }
@@ -1161,7 +1161,7 @@ public partial class ParserBase : Tokenizer, IParser
     {
         return UnknownOperatorResult(operatorName);
     }
-    public virtual Result<Type, ValidationResult> ResolveUnaryOperatorType(string operatorName, object? leftArg, object? rightArg)
+    public virtual Result<Type, ValidationResult> ResolveUnaryOperatorType(string operatorName, object? arg)
     {
         return UnknownOperatorResult(operatorName);
     }
