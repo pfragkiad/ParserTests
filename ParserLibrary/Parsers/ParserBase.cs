@@ -906,15 +906,16 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
-    #region Function validators and type retrieval
-
+    #region Function/operator validators and strict type retrieval
 
     protected static readonly ValidationResult _successResult = new();
+
+    #region Functions
 
     protected static ValidationResult UnknownFunctionResult(string functionName) =>
         new([new ValidationFailure("function", $"Function '{functionName}' is not supported.")]);
 
-    // NEW: Single helper for all fixed-arity cases (any N).
+    // Single helper for all fixed-arity cases (any N).
     // - Enforces exact argument count
     // - Validates nulls (not allowed)
     // - Validates types per position (if provided) and/or a global set for all positions
@@ -975,53 +976,10 @@ public partial class ParserBase : Tokenizer, IParser
         return resolved;
     }
 
-
-    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
-    //    string functionName,
-    //    object?[] args,
-    //    HashSet<Type> allowedArgTypes)
-    //{
-    //    return GetFunctionArgumentTypes(
-    //        functionName,
-    //        args,
-    //        fixedCount: 1,
-    //        allowedTypesPerPosition: new[] { allowedArgTypes });
-    //}
-
-    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
-    //    string functionName,
-    //    object?[] args,
-    //    HashSet<Type> allowedFirstArgTypes,
-    //    HashSet<Type> allowedSecondArgTypes)
-    //{
-    //    return GetFunctionArgumentTypes(
-    //        functionName,
-    //        args,
-    //        fixedCount: 2,
-    //        allowedTypesPerPosition: new[] { allowedFirstArgTypes, allowedSecondArgTypes });
-    //}
-
-    //public Result<Type[], ValidationResult> GetFunctionArgumentTypes(
-    //    string functionName,
-    //    object?[] args,
-    //    HashSet<Type> allowedFirstArgTypes,
-    //    HashSet<Type> allowedSecondArgTypes,
-    //    HashSet<Type> allowedThirdArgTypes)
-    //{
-    //    return GetFunctionArgumentTypes(
-    //        functionName,
-    //        args,
-    //        fixedCount: 3,
-    //        allowedTypesPerPosition: new[] { allowedFirstArgTypes, allowedSecondArgTypes, allowedThirdArgTypes });
-    //}
-
-
     // Variant: min/max arity helper (e.g., Round(x) or Round(x, 2))
     // - Enforces count within [minCount, maxCount]
     // - Disallows nulls
     // - Validates types per position (preferred) or a global set for remaining/variadic args
-   
-    
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
         string functionName,
         object?[] args,
@@ -1093,35 +1051,111 @@ public partial class ParserBase : Tokenizer, IParser
 
     public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
     {
-        return functionName switch
-        {
-            _ => UnknownFunctionResult(functionName)
-        };
+        return UnknownFunctionResult(functionName);
     }
 
     public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
     {
-        return functionName switch
-        {
-            _ => UnknownFunctionResult(functionName)
-        };
+        return UnknownFunctionResult(functionName);
     }
 
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
     {
-        return functionName switch
-        {
-            _ => UnknownFunctionResult(functionName)
-        };
+        return UnknownFunctionResult(functionName);
     }
 
     public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
-        return functionName switch
-        {
-            _ => UnknownFunctionResult(functionName)
-        };
+        return UnknownFunctionResult(functionName);
     }
+
+    #endregion
+
+    #region Operators
+
+    protected static ValidationResult UnknownOperatorResult(string operatorName) =>
+        new([new ValidationFailure("operator", $"Operator '{operatorName}' is not supported.")]);
+
+
+    protected Result<(Type, Type), ValidationResult> GetBinaryOperatorArgumentTypes(
+        string operatorName,
+        object? leftArg,
+        object? rightArg,
+        HashSet<(Type, Type)> allowedOperandTypes)
+    {
+        // Nulls not allowed
+        if (leftArg is null || rightArg is null)
+            return new ValidationResult(failures: [
+                new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
+            ]);
+
+        // Resolve operand types (support passing Type directly)
+        Type leftType = leftArg is Type lt ? lt : leftArg.GetType();
+        Type rightType = rightArg is Type rt ? rt : rightArg.GetType();
+
+        // If no constraints provided, accept any types
+        if (allowedOperandTypes is null || allowedOperandTypes.Count == 0)
+            return (leftType, rightType);
+
+        // Validate allowed combinations (exact type matches)
+        if (allowedOperandTypes.Contains((leftType, rightType)))
+            return (leftType, rightType);
+
+        // Build helpful error message
+        string allowedStr = string.Join(", ", allowedOperandTypes.Select(p => $"({p.Item1.Name}, {p.Item2.Name})"));
+        return new ValidationResult(failures: [
+            new ValidationFailure(
+            "operands",
+            $"{operatorName} operator allowed operand type pairs are [{allowedStr}], got ({leftType.Name}, {rightType.Name}).")
+        ]);
+    }
+
+    protected Result<Type, ValidationResult> GetUnaryOperatorArgumentType(
+      string operatorName,
+      object? arg,
+      HashSet<Type> allowedOperandType)
+    {
+        var result = GetFunctionArgumentTypes(
+            operatorName,
+            [arg],
+            fixedCount: 1,
+            allowedTypesPerPosition: [allowedOperandType]
+        );
+        if (result.IsSuccess)
+            return result.Value![0];
+        return result.Error!;
+    }
+
+    public virtual ValidationResult ValidateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    public virtual ValidationResult ValidateUnaryOperator(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateUnaryOperator(string operatorName, object? arg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    public virtual Result<Type, ValidationResult> ResolveBinaryOperatorType(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+    public virtual Result<Type, ValidationResult> ResolveUnaryOperatorType(string operatorName, object? leftArg, object? rightArg)
+    {
+        return UnknownOperatorResult(operatorName);
+    }
+
+    #endregion
 
     #endregion
 }
