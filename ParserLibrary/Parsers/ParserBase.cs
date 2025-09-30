@@ -945,8 +945,11 @@ public partial class ParserBase : Tokenizer, IParser
         var resolved = new Type[fixedCount];
         for (int i = 0; i < fixedCount; i++)
         {
-            var t = args[i]!.GetType();
-            resolved[i] = t;
+            Type t;
+            if (args[i] is Type providedType)
+                t = providedType;
+            else
+                t = args[i]!.GetType();
 
             HashSet<Type>? allowed =
                 (allowedTypesPerPosition is not null && i < allowedTypesPerPosition.Count)
@@ -966,6 +969,7 @@ public partial class ParserBase : Tokenizer, IParser
                 ));
                 return new ValidationResult(failures);
             }
+            resolved[i] = t;
         }
 
         return resolved;
@@ -1048,8 +1052,11 @@ public partial class ParserBase : Tokenizer, IParser
         var resolvedTypes = new Type[args.Length];
         for (int i = 0; i < args.Length; i++)
         {
-            var t = args[i]!.GetType();
-            resolvedTypes[i] = t;
+            Type t;
+            if (args[i] is Type providedType)
+                t = providedType;
+            else
+                t = args[i]!.GetType();
 
             HashSet<Type>? allowed =
                 (allowedTypesPerPosition is not null && i < allowedTypesPerPosition.Count)
@@ -1064,6 +1071,8 @@ public partial class ParserBase : Tokenizer, IParser
                 string posText = ToOrdinal(i + 1);
                 return new ValidationResult(failures: [new("arguments", $"{functionName} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")]);
             }
+
+            resolvedTypes[i] = t;
         }
 
         return resolvedTypes;
@@ -1099,6 +1108,14 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
+    {
+        return functionName switch
+        {
+            _ => UnknownFunctionResult(functionName)
+        };
+    }
+
+    public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
         return functionName switch
         {
