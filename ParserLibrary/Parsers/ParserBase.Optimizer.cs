@@ -190,7 +190,7 @@ public partial class ParserBase
             {
                 case TokenType.Literal:
                     {
-                        var t = EvaluateLiteralType(token.Text, token.CaptureGroup);
+                        var t =  token.IsNull ? null : EvaluateLiteralType(token.Text, token.CaptureGroup);
                         nodeTypeMap[node] = t;
                         boxedMap[node] = t;
                         break;

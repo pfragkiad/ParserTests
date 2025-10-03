@@ -119,32 +119,7 @@ public class Tokenizer : ITokenizer
         List<Token> tokens = [];
         HashSet<int> functionParenthesisPositions = [];
 
-        // IDENTIFIERS (+ possible functions) - uses cached regex
-        MatchCollection idMatches = _identifierRegex.Matches(expression);
-        if (idMatches.Count > 0)
-        {
-            foreach (Match m in idMatches)
-            {
-                string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
-
-                int i = m.Index + m.Length;
-                // Skip optional whitespace between identifier and '('
-                while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
-
-                if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
-                {
-                    // Function: add function token and remember '(' position to avoid re-adding it
-                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
-                    functionParenthesisPositions.Add(i);
-                    continue;
-                }
-
-                // Plain identifier
-                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
-            }
-        }
-
-        // LITERALS - cached regex
+        // 1) LITERALS FIRST - collect literal tokens and spans
         MatchCollection litMatches = _literalRegex.Matches(expression);
         if (litMatches.Count > 0)
         {
@@ -174,7 +149,36 @@ public class Tokenizer : ITokenizer
             return false;
         }
 
-        // Parentheses & argument separators (single pass over chars)
+        // 2) IDENTIFIERS (+ possible functions) - skip matches inside literal spans
+        MatchCollection idMatches = _identifierRegex.Matches(expression);
+        if (idMatches.Count > 0)
+        {
+            foreach (Match m in idMatches)
+            {
+                // Do not add identifiers/functions that are already part of a literal
+                if (IsInsideAnyLiteral(m.Index, m.Index + m.Length, literalSpans))
+                    continue;
+
+                string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
+
+                int i = m.Index + m.Length;
+                // Skip optional whitespace between identifier and '('
+                while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
+
+                if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
+                {
+                    // Function: add function token and remember '(' position to avoid re-adding it
+                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
+                    functionParenthesisPositions.Add(i);
+                    continue;
+                }
+
+                // Plain identifier
+                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
+            }
+        }
+
+        // 3) Parentheses & argument separators (single pass over chars)
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
@@ -186,7 +190,7 @@ public class Tokenizer : ITokenizer
                 tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
 
-        // Unique unary operators (precompiled) - skip matches inside literals
+        // 4) Unique unary operators (precompiled) - skip matches inside literals
         if (_uniqueUnaryOperatorRegexes.Length > 0)
         {
             foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
@@ -203,7 +207,7 @@ public class Tokenizer : ITokenizer
             }
         }
 
-        // Operators (binary or ambiguous) - skip matches inside literals
+        // 5) Operators (binary or ambiguous) - skip matches inside literals
         if (_operatorRegexes.Length > 0)
         {
             foreach (var (op, regex) in _operatorRegexes)
@@ -282,6 +286,19 @@ public class Tokenizer : ITokenizer
                 }
             }
 
+            // Literal via regex at current index only (DO THIS BEFORE IDENTIFIER)
+            if (LooksLikeLiteralStart(span, i))
+            {
+                var m = _literalRegex.Match(expression, i);
+                if (m.Success && m.Index == i)
+                {
+                    string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
+                    tokens.Add(new Token(TokenType.Literal, m.Value, i, group));
+                    i += m.Length;
+                    continue;
+                }
+            }
+
             // Identifier (+function) via regex at current index only.
             if (LooksLikeIdentifierStart(c))
             {
@@ -303,21 +320,7 @@ public class Tokenizer : ITokenizer
                 }
             }
 
-            // Literal via regex at current index only (only try if it "looks like" one).
-            if (LooksLikeLiteralStart(span, i))
-            {
-                var m = _literalRegex.Match(expression, i);
-                if (m.Success && m.Index == i)
-                {
-                    string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
-                    tokens.Add(new Token(TokenType.Literal, m.Value, i, group));
-                    i += m.Length;
-                    continue;
-                }
-            }
-
-            // Fallback: if nothing matched, try operator matching again (handles cases where
-            // the start-char filter was too strict for some operator).
+            // Fallback: if nothing matched, try operator matching again.
             if (TryMatchOperator(span, i, _uniqueUnaryNamesByLenDesc, out int ulen2))
             {
                 tokens.Add(new Token(TokenType.OperatorUnary, expression.Substring(i, ulen2), i));

@@ -46,14 +46,14 @@ public partial class ParserBase : Tokenizer, IParser
     /// <summary>
     /// The dictionary stores the main functions with their names and the exact number of arguments.
     /// </summary>
-    protected virtual Dictionary<string, int> MainFunctionsArgumentsCount => [];
+    protected virtual Dictionary<string, byte> MainFunctionsArgumentsCount => [];
 
     /// <summary>
     /// The dictionary stores the minimum number of arguments for each main function.
     /// </summary>
-    protected virtual Dictionary<string, int> MainFunctionsMinVariableArgumentsCount => [];
+    protected virtual Dictionary<string, byte> MainFunctionsMinVariableArgumentsCount => [];
 
-    protected virtual Dictionary<string, (int, int)> MainFunctionsMinMaxVariableArgumentsCount => [];
+    protected virtual Dictionary<string, (byte, byte)> MainFunctionsMinMaxVariableArgumentsCount => [];
 
     #region Custom functions
 
@@ -922,7 +922,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
         string functionName,
         object?[] args,
-        int fixedCount,
+        byte fixedCount,
         IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
         HashSet<Type>? allowedTypesForAll = null)
     {
@@ -983,8 +983,8 @@ public partial class ParserBase : Tokenizer, IParser
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
         string functionName,
         object?[] args,
-        int minCount,
-        int maxCount,
+        byte minCount,
+        byte maxCount,
         IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
         HashSet<Type>? allowedTypesForAll = null)
     {
@@ -1047,6 +1047,24 @@ public partial class ParserBase : Tokenizer, IParser
                 _ => $"{n}th"
             };
         }
+    }
+
+    public ValidationResult ValidateFunctionStringParameters(
+        string functionName,
+        object?[] args,
+        byte position,
+        HashSet<string> allowedStrings
+        )
+    {
+        // Position is 0-based internally, but 1-based in messages
+        object? arg = position < args.Length ? args[position] : null;
+        if (arg is not string strArg)
+            return new ValidationResult(failures: [new("arguments", $"{functionName} requires a string parameter at position {position + 1}.")]);
+
+        if (!allowedStrings.Contains(strArg, StringComparer.OrdinalIgnoreCase))
+            return new ValidationResult(failures: [new("arguments", $"{functionName} does not allow the string '{strArg}'. Allowed values are: {string.Join(", ", allowedStrings)}.")]);
+
+        return _successResult;
     }
 
     public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
