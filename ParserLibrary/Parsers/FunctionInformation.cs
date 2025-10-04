@@ -94,6 +94,6 @@ public readonly struct FunctionInformation
 
 public readonly struct FunctionSyntaxExample
 {
-    public string Example { get; init; }
+    public string Syntax { get; init; }
     public string? Description { get; init; }
 }

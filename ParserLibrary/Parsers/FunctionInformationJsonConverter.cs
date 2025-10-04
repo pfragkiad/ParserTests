@@ -37,7 +37,7 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
             foreach (var ex in value.Examples)
             {
                 writer.WriteStartObject();
-                Write(writer, options, nameof(FunctionSyntaxExample.Example), ex.Example);
+                Write(writer, options, nameof(FunctionSyntaxExample.Syntax), ex.Syntax);
                 if (!string.IsNullOrEmpty(ex.Description))
                     Write(writer, options, nameof(FunctionSyntaxExample.Description), ex.Description);
                 writer.WriteEndObject();
