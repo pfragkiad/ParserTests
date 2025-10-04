@@ -29,6 +29,22 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         if (value.FixedArgumentsCount.HasValue)
             Write(writer, options, nameof(FunctionInformation.FixedArgumentsCount), value.FixedArgumentsCount.Value);
 
+        // --- Add Examples if present and non-empty ---
+        if (value.Examples is { Count: > 0 })
+        {
+            WritePropName(writer, options, nameof(FunctionInformation.Examples));
+            writer.WriteStartArray();
+            foreach (var ex in value.Examples)
+            {
+                writer.WriteStartObject();
+                Write(writer, options, nameof(FunctionSyntaxExample.Example), ex.Example);
+                if (!string.IsNullOrEmpty(ex.Description))
+                    Write(writer, options, nameof(FunctionSyntaxExample.Description), ex.Description);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
         // -------- type projections (names instead of types) --------
         if (value.AllowedTypesPerPosition is { Count: > 0 })
         {

@@ -11,6 +11,8 @@ public readonly struct FunctionInformation
     public byte? MaxArgumentsCount { get; init; }
     public byte? FixedArgumentsCount { get; init; }
 
+    public IList<FunctionSyntaxExample>? Examples { get; init; }
+
     // Types: ignored in JSON to avoid reflection graphs and schema collisions
     [JsonIgnore] public IReadOnlyList<HashSet<Type>>? AllowedTypesPerPosition { get; init; }
     [JsonIgnore] public HashSet<Type>? AllowedTypesForAll { get; init; }
