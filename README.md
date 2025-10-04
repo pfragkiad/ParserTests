@@ -654,9 +654,9 @@ public class IntParserSession(ILogger<IntParserSession> logger, ParserServices p
 }
 ```
 
-### Initializing a stateful parser
+### Initializing a parser session
 
-There are many ways to create a statefule parser in a similar manner to the (stateless) `Parser` variants.
+There are many ways to create a stateful parser in a similar manner to the (stateless) `Parser` variants.
 
 ```cs
 //v1 (implicitly create host too) 

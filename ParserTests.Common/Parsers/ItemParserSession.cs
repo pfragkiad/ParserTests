@@ -83,7 +83,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
     }
 
     // Respect case sensitivity for built-in function metadata lookups
-    protected override Dictionary<string, int> MainFunctionsArgumentsCount =>
+    protected override Dictionary<string, byte> MainFunctionsWithFixedArgumentsCount =>
         new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             ["add"] = 2,

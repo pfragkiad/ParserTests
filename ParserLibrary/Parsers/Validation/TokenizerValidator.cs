@@ -1,7 +1,7 @@
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation.CheckResults;
-using ParserLibrary.Tokenizers.Interfaces;
 using ParserLibrary.Parsers.Validation.Reports; // ADDED
+using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers.Validation;
 
@@ -294,7 +294,7 @@ public class TokenizerValidator : ITokenizerValidator
     #endregion
 
 
-    // NEW: Function names check moved to TokenizerValidator
+    // Function names check moved to TokenizerValidator
     public FunctionNamesCheckResult CheckFunctionNames(List<Token> infixTokens, IFunctionDescriptors functionDescriptors)
     {
         HashSet<string> matched = [];
@@ -306,8 +306,11 @@ public class TokenizerValidator : ITokenizerValidator
             bool known =
                 functionDescriptors.GetCustomFunctionFixedArgCount(name).HasValue ||
                 functionDescriptors.GetMainFunctionFixedArgCount(name).HasValue ||
-                functionDescriptors.GetMainFunctionMinVariableArgCount(name).HasValue || 
-                functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name).HasValue;
+                functionDescriptors.GetMainFunctionMinVariableArgCount(name).HasValue ||
+                functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name).HasValue ||
+
+                //alternative metadata implementation
+                functionDescriptors.IsKnownFunction(name);
 
             if (known) matched.Add(name);
             else unmatched.Add(name);
@@ -398,7 +401,10 @@ public class TokenizerValidator : ITokenizerValidator
                     functionDescriptors.GetCustomFunctionFixedArgCount(fname).HasValue ||
                     functionDescriptors.GetMainFunctionFixedArgCount(fname).HasValue ||
                     functionDescriptors.GetMainFunctionMinVariableArgCount(fname).HasValue ||
-                    functionDescriptors.GetMainFunctionMinMaxVariableArgCount(fname).HasValue;
+                    functionDescriptors.GetMainFunctionMinMaxVariableArgCount(fname).HasValue ||
+
+                    //alternative metadata implementation
+                    functionDescriptors.IsKnownFunction(fname); 
 
                 if (knownFunc) matchedFuncs.Add(fname);
                 else

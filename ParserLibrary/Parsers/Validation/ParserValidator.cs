@@ -17,7 +17,6 @@ public sealed class ParserValidator : IParserValidator
         _patterns = patterns;
     }
 
-
     public FunctionArgumentsCountCheckResult CheckFunctionArgumentsCount(
         Dictionary<Token, Node<Token>> nodeDictionary,
         IFunctionDescriptors metadata)
@@ -34,7 +33,9 @@ public sealed class ParserValidator : IParserValidator
             int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
 
             var fixedCount = metadata.GetCustomFunctionFixedArgCount(name) ??
-                             metadata.GetMainFunctionFixedArgCount(name);
+                             metadata.GetMainFunctionFixedArgCount(name) ??
+                             //new interface method to get fixed count when functioninformation data is available
+                             metadata.GetFunctionFixedArgCount(name);
 
             if (fixedCount is not null)
             {
@@ -63,7 +64,9 @@ public sealed class ParserValidator : IParserValidator
                 continue;
             }
 
-            var minMaxCount = metadata.GetMainFunctionMinMaxVariableArgCount(name);
+            var minMaxCount = metadata.GetMainFunctionMinMaxVariableArgCount(name)
+                //new implementation to get min-max count when functioninformation data is available
+                ?? metadata.GetFunctionMinMaxVariableArgCount(name);
             if (minMaxCount is not null)
             {
                 var r = new FunctionArguments
@@ -284,7 +287,9 @@ public sealed class ParserValidator : IParserValidator
 
                     int? fixedCount =
                         functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
-                        functionDescriptors.GetMainFunctionFixedArgCount(name);
+                        functionDescriptors.GetMainFunctionFixedArgCount(name) ??
+                        //new interface method to get fixed count when functioninformation data is available
+                        functionDescriptors.GetFunctionFixedArgCount(name);
 
                     int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
                     (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name);
