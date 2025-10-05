@@ -367,6 +367,12 @@ public class Tokenizer : ITokenizer
         char c = s[i];
         if (char.IsDigit(c) || c == '"' || c == '\'') return true;
         if (c == '.' && i + 1 < s.Length && char.IsDigit(s[i + 1])) return true;
+
+        //SOS: check for preceding dot for properties like .Property (which should be considered a 'literal' )
+        int prev = i - 1;
+        while (prev >= 0 && char.IsWhiteSpace(s[prev])) prev--;
+        if (prev >= 0 && s[prev] == '.') return true;
+
         return false;
     }
 
