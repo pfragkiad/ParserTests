@@ -1,10 +1,106 @@
-﻿namespace ParserLibrary.Tokenizers;
+﻿using System.Text.Json.Serialization;
+
+namespace ParserLibrary.Tokenizers;
+
+
+public readonly struct SinglePattern
+{
+    //        { "name": "timeseries", "value": "\\[(?<timeseries>.*?)\\]" },
+    public string Name { get; init; }
+    public string Value { get; init; }
+}
 
 public class TokenPatterns //NOT records here!
 {
+    public bool CaseSensitive { get; set; } = false;
+
+
+    #region Identifiers
+
     public string? Identifier { get; set; }
 
+    private List<SinglePattern> _identifiers = [];
+
+    public List<SinglePattern> NamedIdentifiers
+    {
+        get => _identifiers;
+        set
+        {
+            //order implies priority
+            _identifiers = value ?? [];
+            //_identifierDictionary = _identifiers.ToDictionary(id => id.Name, id => id);
+        }
+    }
+    //private Dictionary<string, SinglePattern> _identifierDictionary = [];
+    //public Dictionary<string, SinglePattern> IdentifierDictionary { get => _identifierDictionary; }
+
+    public string GetIdentifierPattern()
+    {
+
+        if (!string.IsNullOrWhiteSpace(Identifier)) return Identifier;
+        return string.Join("|", _identifiers.Select(id => id.Value));
+    }
+
+    public string[] IdentifierNames => [.. _identifiers.Select(id => id.Name)];
+
+    public bool HasNamedIdentifiers => _identifiers.Count > 0;
+
+
+
+    public string? FirstSuccessfulNamedIdentifier(Match m)
+    {
+        foreach (var id in _identifiers)
+        {
+            var group = m.Groups[id.Name];
+            if (group.Success) return group.Value;
+        }
+        return null;
+    }
+
+
+    #endregion
+
+    #region Literal
+
     public string? Literal { get; set; }
+
+    private List<SinglePattern> _literals = [];
+
+    public List<SinglePattern> NamedLiterals
+    {
+        get => _literals;
+        set
+        {
+            //order implies priority
+            _literals = value ?? [];
+            //_literalDictionary = _literals.ToDictionary(lit => lit.Name, lit => lit);
+        }
+    }
+
+    //private Dictionary<string, SinglePattern> _literalDictionary = [];
+    //public Dictionary<string, SinglePattern> LiteralDictionary => _literalDictionary;
+
+    public string GetLiteralPattern()
+    {
+        if (!string.IsNullOrWhiteSpace(Literal)) return Literal;
+        return string.Join("|", _literals.Select(id => id.Value));
+    }
+
+    public string[] LiteralNames => [.. _literals.Select(lit => lit.Name)];
+
+    public bool HasNamedLiterals => _literals.Count > 0;
+
+    public string? FirstSuccessfulNamedLiteral(Match m)
+    {
+        foreach (var lit in _literals)
+        {
+            var group = m.Groups[lit.Name];
+            if (group.Success) return group.Value;
+        }
+        return null;
+    }
+
+    #endregion
 
     //Only these 3 are required to be single characters.
     public char OpenParenthesis { get; set; } = '(';

@@ -5,7 +5,7 @@ namespace ParserLibrary.Parsers.Common;
 public class Vector3ParserSession(ILogger<Vector3Parser> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
     public override Dictionary<string, object?> Constants =>
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "pi", DoubleToVector3((float)Math.PI) },
             { "e", DoubleToVector3((float)Math.E) },

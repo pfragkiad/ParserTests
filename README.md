@@ -227,7 +227,7 @@ namespace ParserLibrary.Parsers;
 public class ComplexParser(ILogger<ComplexParser> logger, ParserServices ps) : ParserBase(logger, ps)
 {
  public override Dictionary<string, object?> Constants => 
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "i", Complex.ImaginaryOne },
             { "j", Complex.ImaginaryOne },
@@ -362,7 +362,7 @@ public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : P
 {
 
    public override Dictionary<string, object?> Constants =>
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "pi", DoubleToVector3((float)Math.PI) },
             { "e", DoubleToVector3((float)Math.E) },
@@ -643,7 +643,7 @@ public class IntParserSession(ILogger<IntParserSession> logger, ParserServices p
 
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
-        string actualFunctionName = _options.CaseSensitive ? functionName : functionName.ToLower();
+        string actualFunctionName = _patterns.CaseSensitive ? functionName : functionName.ToLower();
         
         return actualFunctionName switch
         {

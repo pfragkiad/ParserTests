@@ -490,7 +490,7 @@ public class ParserSessionBase : ParserBase, IParserSession
                 {
                     KnownIdentifierNames = new HashSet<string>(
                         _variables.Keys,
-                        _options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+                        _patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
                 },
                 earlyReturnOnErrors: false);
             if (!ValidationReport.IsSuccess)

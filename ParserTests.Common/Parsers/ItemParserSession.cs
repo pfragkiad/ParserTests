@@ -84,7 +84,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
 
     // Respect case sensitivity for built-in function metadata lookups
     protected override Dictionary<string, byte> MainFunctionsWithFixedArgumentsCount =>
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             ["add"] = 2,
             ["tre"] = 0
@@ -93,7 +93,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
     protected override object? EvaluateFunction(string functionName, object?[] args)
     {
         // Normalize function name according to current case-sensitivity rules
-        var name = _options.CaseSensitive ? functionName : functionName.ToLowerInvariant();
+        var name = _patterns.CaseSensitive ? functionName : functionName.ToLowerInvariant();
 
         //if (args.Length < 2 || args[0] is not Item || args[1] is not int)
         //{
@@ -113,7 +113,7 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
     protected override Type EvaluateFunctionType(string functionName, object?[] args)
     {
         // Normalize function name according to current case-sensitivity rules
-        var name = _options.CaseSensitive ? functionName : functionName.ToLowerInvariant();
+        var name = _patterns.CaseSensitive ? functionName : functionName.ToLowerInvariant();
 
         return name switch
         {

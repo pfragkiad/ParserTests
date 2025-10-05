@@ -9,7 +9,6 @@ public class TokenizerOptions
 
     public string? Version { get; set; }
 
-    public bool CaseSensitive { get; set; } = false;
 
 #nullable disable
     public TokenPatterns TokenPatterns { get; set; }
@@ -23,9 +22,9 @@ public class TokenizerOptions
         new()
         {
             Version = "1.0",
-            CaseSensitive = false,
             TokenPatterns = new TokenPatterns
             {
+                CaseSensitive = false,
                 Identifier = "[A-Za-z_]\\w*",
                 Literal = "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
                 OpenParenthesis = '(',

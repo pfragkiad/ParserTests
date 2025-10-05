@@ -22,14 +22,14 @@ public partial class ParserBase : Tokenizer, IParser
         : base(logger, options, tokenizerValidator)
     {
         _parserValidator = parserValidator;
-        CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
     protected internal ParserBase(ILogger logger, ParserServices services)
       : base(logger, services.Options, services.TokenizerValidator)
     {
         _parserValidator = services.ParserValidator;
-        CustomFunctions = new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
     public virtual Dictionary<string, object?> Constants => [];
 
@@ -668,20 +668,20 @@ public partial class ParserBase : Tokenizer, IParser
     protected object? EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         return EvaluateOperator(operatorName, LeftOperand, RightOperand);
     }
 
     protected Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
-        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
     }
 
     protected object? EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         var operand = operatorNode.GetUnaryArgument(
             _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
             nodeValueDictionary);
@@ -690,7 +690,7 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected Type EvaluateUnaryOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string operatorName = _options.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
         var operand = operatorNode.GetUnaryArgument(
             _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
             nodeValueDictionary);
@@ -699,7 +699,7 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected object? EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
+        string functionName = _patterns.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
         object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
@@ -707,7 +707,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
-            var localVars = new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            var localVars = new Dictionary<string, object?>(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 
@@ -719,7 +719,7 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        string functionName = _options.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
+        string functionName = _patterns.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
         object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
@@ -727,7 +727,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
-            var localVars = new Dictionary<string, object?>(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            var localVars = new Dictionary<string, object?>(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 

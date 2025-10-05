@@ -30,23 +30,37 @@ public class Tokenizer : ITokenizer
         _tokenizerValidator = tokenizerValidator ?? throw new ArgumentNullException(nameof(tokenizerValidator));
 
         // ---- Cached regex initialization (singleton-friendly) ----
-        if (_patterns.Identifier is null) throw new InvalidOperationException("Identifier pattern cannot be null.");
-        if (_patterns.Literal is null) throw new InvalidOperationException("Literal pattern cannot be null.");
+        if (_patterns.Identifier is null && !_patterns.HasNamedIdentifiers)
+            throw new InvalidOperationException("Identifier pattern cannot be null.");
 
-        var identifierOptions = _options.CaseSensitive ? RegexOptions.Compiled : RegexOptions.Compiled | RegexOptions.IgnoreCase;
+        if (_patterns.Literal is null && !_patterns.HasNamedLiterals)
+            throw new InvalidOperationException("Literal pattern cannot be null.");
+
+        var identifierOptions = _patterns.CaseSensitive ? RegexOptions.Compiled : RegexOptions.Compiled | RegexOptions.IgnoreCase;
         var literalOptions = identifierOptions; // case sensitivity rule is shared
 
-        _identifierRegex = new Regex(_patterns.Identifier, identifierOptions);
-        _identifierGroupNames = [.. _identifierRegex
+        _identifierRegex = new Regex(_patterns.GetIdentifierPattern(), identifierOptions);
+        _identifierGroupNames = _patterns.IdentifierNames;
+        _identifierHasNamedGroups = _patterns.HasNamedIdentifiers;
+        if (!_identifierHasNamedGroups) //attempt to get from regex if not explicitly set
+        {
+            _identifierGroupNames = [.. _identifierRegex
             .GetGroupNames()
             .Where(n => !int.TryParse(n, out _))];
-        _identifierHasNamedGroups = _identifierGroupNames.Length > 0;
+            _identifierHasNamedGroups = _identifierGroupNames.Length > 0;
+        }
 
-        _literalRegex = new Regex(_patterns.Literal, literalOptions);
-        _literalGroupNames = [.. _literalRegex
+        _literalRegex = new Regex(_patterns.GetLiteralPattern(), literalOptions);
+        _literalGroupNames = _patterns.LiteralNames;
+        _literalHasNamedGroups = _literalGroupNames.Length > 0;
+        if (!_literalHasNamedGroups) //attempt to get from regex if not explicitly set
+        {
+            _literalGroupNames = [.. _literalRegex
             .GetGroupNames()
             .Where(n => !int.TryParse(n, out _))];
-        _literalHasNamedGroups = _literalGroupNames.Length > 0;
+
+            _literalHasNamedGroups = _literalGroupNames.Length > 0;
+        }
 
         // Precompile per-operator regexes (binary & same-name unary/binary). Keep behavior: case-sensitive.
         _operatorRegexes = [.. (_patterns.Operators ?? []).Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), RegexOptions.Compiled)))];
@@ -346,7 +360,7 @@ public class Tokenizer : ITokenizer
 
     private static bool LooksLikeIdentifierStart(char c)
         => char.IsLetter(c) || c == '_' || c == '$'
-        || c =='[' || c=='{'; //IDENTIFIER can be enclosed in [] or {}
+        || c == '[' || c == '{'; //IDENTIFIER can be enclosed in [] or {}
 
     private static bool LooksLikeLiteralStart(ReadOnlySpan<char> s, int i)
     {

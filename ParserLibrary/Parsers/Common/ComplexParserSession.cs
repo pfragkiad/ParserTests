@@ -5,7 +5,7 @@ namespace ParserLibrary.Parsers.Common;
 public class ComplexParserSession(ILogger<ComplexParser> logger, ParserServices ps) : ParserSessionBase(logger, ps)
 {
     public override Dictionary<string, object?> Constants =>
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "i", Complex.ImaginaryOne },
             { "j", Complex.ImaginaryOne },

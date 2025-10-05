@@ -4,7 +4,7 @@ public class DoubleParserSession(ILogger<DoubleParser> logger, ParserServices ps
 {
 
     public override Dictionary<string, object?> Constants =>
-        new(_options.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
+        new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "pi", Math.PI },
             { "e", Math.E },

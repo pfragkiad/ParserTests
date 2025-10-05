@@ -17,7 +17,6 @@ public static class ParserApp
     private static void CopyFrom(this TokenizerOptions target, TokenizerOptions source)
     {
         target.Version = source.Version;
-        target.CaseSensitive = source.CaseSensitive;
         target.TokenPatterns = source.TokenPatterns; // shallow copy; deep clone if you mutate later
     }
 
