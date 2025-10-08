@@ -291,8 +291,11 @@ public sealed class ParserValidator : IParserValidator
                         //new interface method to get fixed count when functioninformation data is available
                         functionDescriptors.GetFunctionFixedArgCount(name);
 
-                    int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
-                    (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name);
+                    int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name); //no interface method
+                    (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
+                        //new interface method
+                        functionDescriptors.GetFunctionMinMaxVariableArgCount(name)
+                        ;
 
                     if (fixedCount is not null)
                     {
