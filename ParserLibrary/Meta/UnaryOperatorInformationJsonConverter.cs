@@ -5,14 +5,6 @@ namespace ParserLibrary.Meta;
 
 public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryOperatorInformation>
 {
-    private readonly TypeNameDisplay _typeNames;
-
-    // DI-friendly constructor
-    public UnaryOperatorInformationJsonConverter(TypeNameDisplay typeNames) => _typeNames = typeNames;
-
-    // Fallback for contexts without DI (uses shared default)
-    public UnaryOperatorInformationJsonConverter() : this(TypeNameDisplay.Shared) { }
-
     public override UnaryOperatorInformation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => throw new NotSupportedException("Deserialization for UnaryOperatorInformation is not supported.");
 
@@ -47,7 +39,7 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
             WritePropName(writer, options, nameof(UnaryOperatorInformation.AllowedOperandTypes));
             writer.WriteStartArray();
             foreach (var t in value.AllowedOperandTypes)
-                writer.WriteStringValue(_typeNames.GetDisplayTypeName(t));
+                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
             writer.WriteEndArray();
         }
 

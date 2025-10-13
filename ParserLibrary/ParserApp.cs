@@ -1,14 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ParserLibrary.Meta;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.Interfaces;
 using System.Numerics;
-using ParserLibrary.Parsers.Validation;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using ParserLibrary.Meta;
-
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ParserLibrary;
 
@@ -278,13 +278,6 @@ public static class ParserApp
 
     #region Parser dependencies (common for Parser and ParserSession)
 
-    // Ensure TypeNameDisplay is available to all consumers (converters, etc.)
-    private static IServiceCollection AddTypeNameDisplay(this IServiceCollection services)
-    {
-        services.TryAddSingleton<TypeNameDisplay>(); // idempotent
-        return services;
-    }
-
     public static IServiceCollection AddParserDependencies(
         this IServiceCollection services,
         HostBuilderContext context,
@@ -292,7 +285,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSectionPath)
-            .AddTypeNameDisplay()
             .AddParserValidators();
     }
 
@@ -302,7 +294,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(options)
-            .AddTypeNameDisplay()
             .AddParserValidators();
     }
 
@@ -315,7 +306,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
-            .AddTypeNameDisplay()
             .AddParserValidators(key);
     }
 
@@ -327,7 +317,6 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
-            .AddTypeNameDisplay()
             .AddParserValidators(key);
     }
 
@@ -716,6 +705,21 @@ public static class ParserApp
     #endregion
 
 
+    #region JSON converters
+    public static void AddParserConverters(this JsonSerializerOptions options)
+    {
+        AddConverterOnce(options, new FunctionInformationJsonConverter());
+        AddConverterOnce(options, new BinaryOperatorInformationJsonConverter());
+        AddConverterOnce(options, new UnaryOperatorInformationJsonConverter());
+    }
+
+    private static void AddConverterOnce(JsonSerializerOptions options, JsonConverter converter)
+    {
+        if (!options.Converters.Any(c => c.GetType() == converter.GetType()))
+            options.Converters.Add(converter);
+    }
+
+    #endregion
 }
 
 

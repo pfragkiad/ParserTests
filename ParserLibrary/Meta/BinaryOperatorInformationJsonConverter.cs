@@ -5,14 +5,6 @@ namespace ParserLibrary.Meta;
 
 public sealed class BinaryOperatorInformationJsonConverter : JsonConverter<BinaryOperatorInformation>
 {
-    private readonly TypeNameDisplay _typeNames;
-
-    // DI-friendly constructor
-    public BinaryOperatorInformationJsonConverter(TypeNameDisplay typeNames) => _typeNames = typeNames;
-
-    // Fallback for contexts without DI (uses shared default)
-    public BinaryOperatorInformationJsonConverter() : this(TypeNameDisplay.Shared) { }
-
     public override BinaryOperatorInformation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => throw new NotSupportedException("Deserialization for BinaryOperatorInformation is not supported.");
 
@@ -47,8 +39,8 @@ public sealed class BinaryOperatorInformationJsonConverter : JsonConverter<Binar
             foreach (var (left, right) in value.AllowedTypePairs)
             {
                 writer.WriteStartArray();
-                writer.WriteStringValue(_typeNames.GetDisplayTypeName(left));
-                writer.WriteStringValue(_typeNames.GetDisplayTypeName(right));
+                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(left));
+                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(right));
                 writer.WriteEndArray();
             }
             writer.WriteEndArray();

@@ -1,18 +1,12 @@
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ParserLibrary.Parsers;
 
 namespace ParserLibrary.Meta;
 
 public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInformation>
 {
-    private readonly TypeNameDisplay _typeNames;
-
-    // DI-friendly constructor
-    public FunctionInformationJsonConverter(TypeNameDisplay typeNames) => _typeNames = typeNames;
-
-    // Fallback for contexts without DI (uses shared default)
-    public FunctionInformationJsonConverter() : this(TypeNameDisplay.Shared) { }
-
     public override FunctionInformation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => throw new NotSupportedException("Deserialization for FunctionInformation is not supported.");
 
@@ -62,7 +56,7 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                 var set = value.AllowedTypesPerPosition[idx];
                 if (set is null || set.Count == 0) continue;
 
-                var names = new HashSet<string>(set.Select(_typeNames.GetDisplayTypeName));
+                var names = new HashSet<string>(set.Select(TypeNameDisplay.GetDisplayTypeName));
                 writer.WriteStartObject();
                 Write(writer, options, "Position", idx + 1); // 1-based
                 WritePropName(writer, options, "Types");
@@ -75,13 +69,13 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         if (value.AllowedTypesForAll is { Count: > 0 })
         {
             WritePropName(writer, options, "AllowedTypesForAll");
-            WriteStringArray(writer, value.AllowedTypesForAll.Select(_typeNames.GetDisplayTypeName));
+            WriteStringArray(writer, value.AllowedTypesForAll.Select(TypeNameDisplay.GetDisplayTypeName));
         }
 
         if (value.AllowedTypeForLast is { Count: > 0 })
         {
             WritePropName(writer, options, "AllowedTypesForLast");
-            WriteStringArray(writer, value.AllowedTypeForLast.Select(_typeNames.GetDisplayTypeName));
+            WriteStringArray(writer, value.AllowedTypeForLast.Select(TypeNameDisplay.GetDisplayTypeName));
         }
 
         // String values per position
