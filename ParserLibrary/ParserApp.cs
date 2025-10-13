@@ -6,6 +6,8 @@ using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.Interfaces;
 using System.Numerics;
 using ParserLibrary.Parsers.Validation;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using ParserLibrary.Meta;
 
 
 namespace ParserLibrary;
@@ -276,6 +278,13 @@ public static class ParserApp
 
     #region Parser dependencies (common for Parser and ParserSession)
 
+    // Ensure TypeNameDisplay is available to all consumers (converters, etc.)
+    private static IServiceCollection AddTypeNameDisplay(this IServiceCollection services)
+    {
+        services.TryAddSingleton<TypeNameDisplay>(); // idempotent
+        return services;
+    }
+
     public static IServiceCollection AddParserDependencies(
         this IServiceCollection services,
         HostBuilderContext context,
@@ -283,6 +292,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSectionPath)
+            .AddTypeNameDisplay()
             .AddParserValidators();
     }
 
@@ -292,6 +302,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(options)
+            .AddTypeNameDisplay()
             .AddParserValidators();
     }
 
@@ -304,6 +315,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
+            .AddTypeNameDisplay()
             .AddParserValidators(key);
     }
 
@@ -315,6 +327,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
+            .AddTypeNameDisplay()
             .AddParserValidators(key);
     }
 
@@ -340,7 +353,6 @@ public static class ParserApp
     }
 
     // Non-keyed: AddParserSession — add IParserValidator so DI can resolve constructor
-
     public static IServiceCollection AddParserSession<TParserSession>(
         this IServiceCollection services,
         HostBuilderContext context,
@@ -518,7 +530,6 @@ public static class ParserApp
         CreateCommonsHostIfNeeded();
         return _commonParsersHost!.Services.GetParserSession("Double");
     }
-
 
     public static IParser GetVector3Parser()
     {

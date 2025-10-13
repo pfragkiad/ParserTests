@@ -1,5 +1,6 @@
 ﻿using CustomResultError;
 using FluentValidation.Results;
+using ParserLibrary.Meta;
 using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
@@ -294,6 +295,8 @@ public partial class ParserBase : Tokenizer, IParser
             variables = MergeVariableConstants(variables);
 
         var nodeValueDictionary = new Dictionary<Node<Token>, object?>();
+
+        //var postNodes = tree.Root.PostOrderNodes();
 
         foreach (var nb in tree.Root.PostOrderNodes())
         {
