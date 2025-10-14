@@ -32,6 +32,7 @@ public partial class ParserBase : Tokenizer, IParser
         _parserValidator = services.ParserValidator;
         CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
+
     public virtual Dictionary<string, object?> Constants => [];
 
     protected Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
@@ -41,6 +42,15 @@ public partial class ParserBase : Tokenizer, IParser
             if (!variables.ContainsKey(entry.Key)) variables.Add(entry.Key, entry.Value);
         return variables;
     }
+
+    public List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames = true)
+    {
+        var tokens = GetIdentifiers(expression, captureGroup);
+        if (!excludeConstantNames) return tokens;
+
+        return [.. tokens.Where(t => !Constants.ContainsKey(t.Text))];
+    }
+
 
     protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 

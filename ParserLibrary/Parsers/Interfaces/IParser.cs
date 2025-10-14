@@ -179,4 +179,5 @@ public interface IParser : ITokenizer
         Dictionary<string, Type>? variableTypes = null,
         Dictionary<string, Type>? functionReturnTypes = null,
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
+    List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames = true);
 }

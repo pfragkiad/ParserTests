@@ -127,4 +127,5 @@ public interface IParserSession : IParser
     ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
 
     ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false);
+    List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true);
 }

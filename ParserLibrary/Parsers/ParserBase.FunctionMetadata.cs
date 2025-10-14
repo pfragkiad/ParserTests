@@ -39,6 +39,7 @@ public partial class ParserBase : IFunctionDescriptors
         var f = GetFunctionInformation(functionName);
         if(f is null) return null;
         if(f.Value.FixedArgumentsCount > 0) return null; //not a variable args function 
+        if(f.Value.MinArgumentsCount is null || f.Value.MaxArgumentsCount is null) return null;
         return (f.Value.MinArgumentsCount!.Value, f.Value.MaxArgumentsCount!.Value);
     }
 

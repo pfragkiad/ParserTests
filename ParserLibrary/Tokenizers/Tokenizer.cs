@@ -114,7 +114,25 @@ public class Tokenizer : ITokenizer
     private readonly HashSet<char> _operatorStartChars;
     private readonly bool _enableSinglePass;
 
-    private static string? FirstSuccessfulNamedGroup(Match m, string[] groupNames)
+    public List<Token> GetIdentifiers(string expression, string captureGroup)
+    {
+        MatchCollection litMatches = _literalRegex.Matches(expression);
+        if (litMatches.Count == 0) return [];
+
+        List<Token> tokens = [];
+        foreach (Match m in litMatches)
+        {
+            string? group = FirstSuccessfulNamedGroup(m, _literalGroupNames);
+            if (group is null) continue;
+
+
+            if (group.Equals(captureGroup, StringComparison.OrdinalIgnoreCase))
+                tokens.Add(Token.FromMatch(m, TokenType.Literal, group));
+        }
+        return tokens;
+    }
+
+    protected static string? FirstSuccessfulNamedGroup(Match m, string[] groupNames)
     {
         foreach (var g in groupNames)
             if (m.Groups[g].Success) return g;

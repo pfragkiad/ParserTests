@@ -96,4 +96,5 @@ public interface ITokenizer
         bool earlyReturnOnErrors = false);
     UnexpectedOperatorOperandsCheckResult CheckUnexpectedOperatorOperands(string expression);
     FunctionNamesCheckResult CheckFunctionNames(string expression, IFunctionDescriptors functionDescriptors);
+    List<Token> GetIdentifiers(string expression, string captureGroup);
 }

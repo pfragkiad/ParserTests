@@ -30,6 +30,18 @@ public class ParserSessionBase : ParserBase, IParserSession
         //Reset();
     }
 
+    public List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true)
+    {
+        var tokens = _infixTokens
+            .Where(t => t.TokenType == TokenType.Identifier && captureGroup.Equals(t.CaptureGroup, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(t => t.Text)
+            .ToList();
+
+        if (!excludeConstantNames) return [.. tokens.Select(t=>t.Text)];
+
+        return [.. tokens.Where(t => !Constants.ContainsKey(t.Text)).Select(t => t.Text)];
+    }
+
     private ParserSessionState _state = ParserSessionState.Uninitialized;
     public ParserSessionState State
     {
@@ -522,7 +534,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     {
         var result = _tree is not null
               ? Evaluate(_tree, _variables, mergeConstants: false)
-              : Evaluate(_postfixTokens, _variables, mergeConstants:false);
+              : Evaluate(_postfixTokens, _variables, mergeConstants: false);
         State = ParserSessionState.Calculated;
         return result;
     }
@@ -530,7 +542,7 @@ public class ParserSessionBase : ParserBase, IParserSession
     public Type EvaluateType() =>
         (_tree is not null)
             ? EvaluateType(_tree, _variables, mergeConstants: false)
-            : EvaluateType(_postfixTokens, _variables, mergeConstants:false);
+            : EvaluateType(_postfixTokens, _variables, mergeConstants: false);
 
     #endregion
 
@@ -689,7 +701,7 @@ public class ParserSessionBase : ParserBase, IParserSession
         if (string.IsNullOrWhiteSpace(_expression))
             return new ParserCompilationResult { InfixTokens = [], PostfixTokens = [], Tree = TokenTree.Empty };
 
-        if(reset) Reset();
+        if (reset) Reset();
 
         // occurs after validation only (validation forces the tree build)
         if (!optimize && _tree is not null)
@@ -756,7 +768,7 @@ public class ParserSessionBase : ParserBase, IParserSession
             }
         }
 
-        if(!optimize)
+        if (!optimize)
             return new ParserCompilationResult() { InfixTokens = _infixTokens, PostfixTokens = _postfixTokens, Tree = _tree };
 
         // Optimize here using parser inference only in this context
