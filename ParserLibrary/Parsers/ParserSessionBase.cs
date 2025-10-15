@@ -552,6 +552,12 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     public ParenthesisCheckResult CheckParentheses() => CheckParentheses(_expression);
 
+    public List<string> GetIdentifierNames() =>
+        [.. _infixTokens
+            .Where(t => t.TokenType == TokenType.Identifier)
+            .DistinctBy(t => t.Text)
+            .Select(t => t.Text)];
+
     public List<string> GetVariableNames() => GetVariableNames(_infixTokens);
 
     public VariableNamesCheckResult CheckVariableNames(

@@ -43,9 +43,9 @@ public partial class ParserBase : Tokenizer, IParser
         return variables;
     }
 
-    public List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames = true)
+    public List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames)
     {
-        var tokens = GetIdentifiers(expression, captureGroup);
+        var tokens = base.GetIdentifiers(expression, captureGroup);
         if (!excludeConstantNames) return tokens;
 
         return [.. tokens.Where(t => !Constants.ContainsKey(t.Text))];

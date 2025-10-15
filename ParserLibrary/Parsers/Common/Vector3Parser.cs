@@ -2,8 +2,12 @@
 
 namespace ParserLibrary.Parsers.Common;
 
-public class Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : ParserBase(logger, ps)
+public class Vector3Parser : ParserBase
 {
+    public Vector3Parser(ILogger<Vector3Parser> logger, ParserServices ps) : base(logger, ps) { }
+
+    protected Vector3Parser(ILogger logger, ParserServices ps) : base(logger, ps) { }
+
     public override Dictionary<string, object?> Constants =>
         new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {

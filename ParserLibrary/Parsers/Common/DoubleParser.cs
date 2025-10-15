@@ -1,15 +1,19 @@
 ﻿namespace ParserLibrary.Parsers.Common;
 
-public class DoubleParser(ILogger<DoubleParser> logger, ParserServices ps) : ParserBase(logger, ps)
+public class DoubleParser : ParserBase
 {
+    public DoubleParser(ILogger<DoubleParser> logger, ParserServices ps) : base(logger, ps) { }
 
-    public override Dictionary<string, object?> Constants => 
+    protected DoubleParser(ILogger logger, ParserServices ps) : base(logger, ps) { }
+
+    public override Dictionary<string, object?> Constants =>
         new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
             { "pi", Math.PI },
             { "e", Math.E },
             { "phi", (Math.Sqrt(5.0) + 1.0) / 2.0 }
         };
+
 
     protected override object EvaluateLiteral(string s, string? group) =>
         double.Parse(s, CultureInfo.InvariantCulture);

@@ -2,8 +2,12 @@
 
 namespace ParserLibrary.Parsers.Common;
 
-public class ComplexParserSession(ILogger<ComplexParser> logger, ParserServices ps) : ParserSessionBase(logger, ps)
+public class ComplexParserSession : ParserSessionBase
 {
+    public ComplexParserSession(ILogger<ComplexParser> logger, ParserServices ps) : base(logger, ps) { }
+
+    protected ComplexParserSession(ILogger logger, ParserServices ps) : base(logger, ps) { }
+
     public override Dictionary<string, object?> Constants =>
         new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)
         {
