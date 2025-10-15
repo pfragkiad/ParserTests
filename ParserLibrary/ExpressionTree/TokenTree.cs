@@ -53,5 +53,21 @@ public partial class TokenTree : Tree<Token>
             NodeDictionary = tree.NodeDictionary
         };
     #endregion
+
+
+    #region Get node helpers
+
+
+    public IEnumerable<Node<Token>> GetFunctionNodes() =>
+        base.NodeDictionary.Values.Where(n =>
+        {
+            if (n.Value is null) return false;
+            Token t = n.Value;
+            if (t.IsNull) return false;
+            return t.TokenType == TokenType.Function;
+        });
+
+    #endregion
+
 }
 

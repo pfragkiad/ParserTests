@@ -129,4 +129,5 @@ public interface IParserSession : IParser
     ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false);
     List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true);
     List<string> GetIdentifierNames();
+    List<string> GetFunctionNames();
 }

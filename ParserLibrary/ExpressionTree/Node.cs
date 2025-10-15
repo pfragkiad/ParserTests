@@ -301,4 +301,3 @@ public class Node<T> : NodeBase
     }
 }
 
-

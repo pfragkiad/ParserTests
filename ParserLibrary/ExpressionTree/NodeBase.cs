@@ -10,6 +10,8 @@ public abstract class NodeBase(string text)
 
     public List<NodeBase>? Other { get; set; } //>=2
 
+    public bool IsLeaf => Left is null && Right is null && (Other?.Count ?? 0) == 0;
+
     public override string ToString() => Text;
 
     public int GetHeight()

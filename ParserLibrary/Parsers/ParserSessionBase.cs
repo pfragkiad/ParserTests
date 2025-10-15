@@ -32,15 +32,19 @@ public class ParserSessionBase : ParserBase, IParserSession
 
     public List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true)
     {
-        var tokens = _infixTokens
+        List<Token> tokens = [.. _infixTokens
             .Where(t => t.TokenType == TokenType.Identifier && captureGroup.Equals(t.CaptureGroup, StringComparison.OrdinalIgnoreCase))
-            .DistinctBy(t => t.Text)
-            .ToList();
+            .DistinctBy(t => t.Text)];
 
         if (!excludeConstantNames) return [.. tokens.Select(t=>t.Text)];
 
         return [.. tokens.Where(t => !Constants.ContainsKey(t.Text)).Select(t => t.Text)];
     }
+
+    public List<string> GetFunctionNames() => [.. _infixTokens
+            .Where(t => t.TokenType == TokenType.Function)
+            .DistinctBy(t => t.Text)
+            .Select(t => t.Text)];
 
     private ParserSessionState _state = ParserSessionState.Uninitialized;
     public ParserSessionState State
@@ -803,6 +807,30 @@ public class ParserSessionBase : ParserBase, IParserSession
             throw;
         }
     }
+    public void LoadFrom(ParserCompilationResult result, string? expressionOverride = null)
+    {
+        _infixTokens = result.InfixTokens ?? [];
+        _postfixTokens = result.PostfixTokens ?? [];
+        _tree = result.Tree;
+        _nodeDictionary = _tree?.NodeDictionary ?? [];
 
+        // Preserve/override expression if available
+        if (!string.IsNullOrWhiteSpace(expressionOverride))
+            _expression = expressionOverride!;
+        else if (!string.IsNullOrWhiteSpace(result.Expression))
+            _expression = result.Expression!;
 
+        LastException = null;
+        ValidationReport = null;
+        LastValidationState = ParserValidationStage.None;
+
+        if (_tree is not null)
+            ForceState(result.IsOptimized ? ParserSessionState.Optimized : ParserSessionState.TreeBuilt);
+        else if (_postfixTokens.Count > 0)
+            ForceState(ParserSessionState.TokenizedPostfix);
+        else if (_infixTokens.Count > 0)
+            ForceState(ParserSessionState.TokenizedInfix);
+        else
+            ForceState(ParserSessionState.Uninitialized);
+    }
 }

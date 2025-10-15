@@ -711,6 +711,12 @@ public static class ParserApp
         AddConverterOnce(options, new FunctionInformationJsonConverter());
         AddConverterOnce(options, new BinaryOperatorInformationJsonConverter());
         AddConverterOnce(options, new UnaryOperatorInformationJsonConverter());
+
+        // Existing: Node<Token> binary-only converter
+        AddConverterOnce(options, new NodeTokenBinaryJsonConverter());
+
+        // NEW: TokenTree binary-only converter (uses Node<Token> converter above)
+        AddConverterOnce(options, new TokenTreeBinaryJsonConverter());
     }
 
     private static void AddConverterOnce(JsonSerializerOptions options, JsonConverter converter)
@@ -721,6 +727,11 @@ public static class ParserApp
 
     #endregion
 }
+
+
+
+
+
 
 
 

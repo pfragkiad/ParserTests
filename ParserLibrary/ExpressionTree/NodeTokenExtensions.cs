@@ -45,4 +45,15 @@ public static class NodeTokenExtensions
         int count = node.GetFunctionArgumentsCount();
         return node.GetFunctionArguments(count, nodeValueDictionary);
     }
+
+    public static bool IsNullNode(this Node<Token>? node) =>
+        node is null || node.Value is not null && node.Value.IsNull;
+
+    public static bool IsNullNodeToken(this NodeBase? node)
+    {
+        if (node is null) return true;
+        if (node is not Node<Token> tNode) return true;
+        if(tNode.Value is null) return true;
+        return tNode.Value!.IsNull;
+    }
 }
