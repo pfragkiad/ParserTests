@@ -124,7 +124,7 @@ public interface IParserSession : IParser
     /// Checks for adjacent operands without an operator in between (e.g. "2 3" or "a (b + c)").
     /// </summary>
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
-    ParserValidationReport Validate(VariableNamesOptions nameOptions, bool earlyReturnOnErrors = false);
+    ParserValidationReport Validate(VariableNamesOptions? nameOptions = null, bool earlyReturnOnErrors = false);
 
     ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false);
     List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true);

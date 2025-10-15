@@ -471,14 +471,20 @@ public class TokenizerValidator : ITokenizerValidator
 
         }
 
-        var variableNamesResult = new VariableNamesCheckResult
-        {
-            MatchedNames = [.. matchedVars],
-            UnmatchedNames = [.. unmatchedVars],
-            IgnoredNames = [.. ignoredVars]
-        };
+        var variableNamesResult =
+            options.IgnoreVariables.HasValue && options.IgnoreVariables.Value
+            ? new VariableNamesCheckResult() :
+            new VariableNamesCheckResult
+            {
+                MatchedNames = [.. matchedVars],
+                UnmatchedNames = [.. unmatchedVars],
+                IgnoredNames = [.. ignoredVars]
+            };
 
-        var functionNamesResult = new FunctionNamesCheckResult
+        var functionNamesResult =
+            options.IgnoreFunctions.HasValue && options.IgnoreFunctions.Value
+            ? new FunctionNamesCheckResult() :
+            new FunctionNamesCheckResult
         {
             MatchedNames = [.. matchedFuncs],
             UnmatchedNames = [.. unmatchedFuncs]

@@ -10,6 +10,11 @@ public sealed class VariableNamesOptions
     public HashSet<string>? IgnorePrefixes { get; init; }
     public HashSet<string>? IgnorePostfixes { get; init; }
 
+    //master overrides
+    public bool? IgnoreVariables { get; init; } = false;//this overrides 
+    public bool? IgnoreFunctions { get; init; } = false;//this overrides 
+
+
     public IgnoreMode IgnoreMode =>
         IgnoreCaptureGroups is not null ? IgnoreMode.CaptureGroups
         : IgnoreIdentifierPattern is not null ? IgnoreMode.Pattern
@@ -23,7 +28,11 @@ public sealed class VariableNamesOptions
         IgnoreCaptureGroups = null,
         IgnoreIdentifierPattern = null,
         IgnorePrefixes = null,
-        IgnorePostfixes = null
+        IgnorePostfixes = null,
+
+
+        IgnoreVariables = true,
+        IgnoreFunctions = true
     };
 
     public static VariableNamesOptions FromKnownNames(IEnumerable<string> knownNames) => new()
@@ -35,5 +44,9 @@ public sealed class VariableNamesOptions
         IgnorePostfixes = null
     };
 
-    public bool IsEmpty => KnownIdentifierNames.Count == 0;
+    public bool IsEmpty => KnownIdentifierNames.Count == 0
+        && IgnoreCaptureGroups is null
+        && IgnoreIdentifierPattern is null
+        && IgnorePrefixes is null
+        && IgnorePostfixes is null;
 }
