@@ -62,13 +62,17 @@ public class Tokenizer : ITokenizer
             _literalHasNamedGroups = _literalGroupNames.Length > 0;
         }
 
-        // Precompile per-operator regexes (binary & same-name unary/binary). Keep behavior: case-sensitive.
-        _operatorRegexes = [.. (_patterns.Operators ?? []).Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), RegexOptions.Compiled)))];
+        // Precompile per-operator regexes (binary & same-name unary/binary). Process longer names first.
+        _operatorRegexes = [.. (_patterns.Operators ?? [])
+            .OrderByDescending(o => o.Name.Length)
+            .Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), RegexOptions.Compiled)))];
 
-        // Precompile unique unary operator regexes (those not sharing name with binary operators)
+        // Precompile unique unary operator regexes (those not sharing name with binary operators) — longer first too
         _uniqueUnaryOperatorRegexes = _patterns.UniqueUnaryOperators is { Count: > 0 }
-            ? [.. _patterns.UniqueUnaryOperators.Select(u => (op: u, regex: new Regex(Regex.Escape(u.Name), RegexOptions.Compiled)))] : [];
-
+                ? [.. _patterns.UniqueUnaryOperators
+            .OrderByDescending(u => u.Name.Length)
+            .Select(u => (op: u, regex: new Regex(Regex.Escape(u.Name), RegexOptions.Compiled)))]
+                : [];
         // ---- Lightweight single-pass precomputations (non-regex operator matching) ----
         _operatorNamesByLenDesc = [.. (_patterns.Operators ?? [])
             .Select(o => o.Name)
@@ -170,9 +174,8 @@ public class Tokenizer : ITokenizer
                 literalSpans.Add((m.Index, m.Index + m.Length));
         }
 
-        static bool IsInsideAnyLiteral(int start, int end, List<(int Start, int End)> spans)
+        static bool IsInsideAnySpan(int start, int end, List<(int Start, int End)> spans)
         {
-            // require the whole match to be contained in a literal
             for (int i = 0; i < spans.Count; i++)
             {
                 var s = spans[i];
@@ -183,12 +186,13 @@ public class Tokenizer : ITokenizer
 
         // 2) IDENTIFIERS (+ possible functions) - skip matches inside literal spans
         MatchCollection idMatches = _identifierRegex.Matches(expression);
+        List<(int Start, int End)> identifierSpans = [];
         if (idMatches.Count > 0)
         {
             foreach (Match m in idMatches)
             {
                 // Do not add identifiers/functions that are already part of a literal
-                if (IsInsideAnyLiteral(m.Index, m.Index + m.Length, literalSpans))
+                if (IsInsideAnySpan(m.Index, m.Index + m.Length, literalSpans))
                     continue;
 
                 string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
@@ -202,11 +206,13 @@ public class Tokenizer : ITokenizer
                     // Function: add function token and remember '(' position to avoid re-adding it
                     tokens.Add(Token.FromMatch(m, TokenType.Function, group));
                     functionParenthesisPositions.Add(i);
+                    identifierSpans.Add((m.Index, m.Index + m.Length));
                     continue;
                 }
 
                 // Plain identifier
                 tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
+                identifierSpans.Add((m.Index, m.Index + m.Length));
             }
         }
 
@@ -222,9 +228,14 @@ public class Tokenizer : ITokenizer
                 tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
         }
 
-        // 4) Unique unary operators (precompiled) - skip matches inside literals
+        // Track already-claimed operator spans so shorter ops inside a longer one are skipped.
+        List<(int Start, int End)> operatorSpans = [];
+
+        // 4) Unique unary operators (precompiled) - skip matches inside literals/identifiers/operators
+        //    longest operator names first; ensure earliest-longest wins at the same start.
         if (_uniqueUnaryOperatorRegexes.Length > 0)
         {
+            var unaryStarts = new HashSet<int>();
             foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
             {
                 var matches = regex.Matches(expression);
@@ -233,15 +244,24 @@ public class Tokenizer : ITokenizer
                 {
                     int start = m.Index;
                     int end = m.Index + m.Length;
-                    if (IsInsideAnyLiteral(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
+                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
+
+                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
+                    if (!unaryStarts.Add(start)) continue;
+
                     tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
+                    operatorSpans.Add((start, end));
                 }
             }
         }
 
-        // 5) Operators (binary or ambiguous) - skip matches inside literals
+        // 5) Operators (binary or ambiguous) - skip matches inside literals/identifiers/operators
+        //    longest operator names first; ensure earliest-longest wins at the same start.
         if (_operatorRegexes.Length > 0)
         {
+            var opStarts = new HashSet<int>();
             foreach (var (op, regex) in _operatorRegexes)
             {
                 var matches = regex.Matches(expression);
@@ -250,8 +270,15 @@ public class Tokenizer : ITokenizer
                 {
                     int start = m.Index;
                     int end = m.Index + m.Length;
-                    if (IsInsideAnyLiteral(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
+                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
+
+                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
+                    if (!opStarts.Add(start)) continue;
+
                     tokens.Add(Token.FromMatch(m, TokenType.Operator));
+                    operatorSpans.Add((start, end));
                 }
             }
         }

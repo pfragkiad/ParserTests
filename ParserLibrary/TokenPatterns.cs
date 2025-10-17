@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace ParserLibrary.Tokenizers;
+namespace ParserLibrary;
 
 
 public readonly struct SinglePattern
