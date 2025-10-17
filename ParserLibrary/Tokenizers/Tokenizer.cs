@@ -155,6 +155,8 @@ public class Tokenizer : ITokenizer
         List<Token> tokens = [];
         HashSet<int> functionParenthesisPositions = [];
 
+
+
         // 1) LITERALS FIRST - collect literal tokens and spans
         MatchCollection litMatches = _literalRegex.Matches(expression);
         if (litMatches.Count > 0)
@@ -184,6 +186,61 @@ public class Tokenizer : ITokenizer
             return false;
         }
 
+        // Track already-claimed operator spans so shorter ops inside a longer one are skipped.
+        List<(int Start, int End)> operatorSpans = [];
+
+        // 4) Unique unary operators (precompiled) - skip matches inside literals/identifiers/operators
+        //    longest operator names first; ensure earliest-longest wins at the same start.
+        if (_uniqueUnaryOperatorRegexes.Length > 0)
+        {
+            var unaryStarts = new HashSet<int>();
+            foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
+            {
+                var matches = regex.Matches(expression);
+                if (matches.Count == 0) continue;
+                foreach (Match m in matches)
+                {
+                    int start = m.Index;
+                    int end = m.Index + m.Length;
+                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
+
+                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
+                    if (!unaryStarts.Add(start)) continue;
+
+                    tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
+                    operatorSpans.Add((start, end));
+                }
+            }
+        }
+
+        // 5) Operators (binary or ambiguous) - skip matches inside literals/identifiers/operators
+        //    longest operator names first; ensure earliest-longest wins at the same start.
+        if (_operatorRegexes.Length > 0)
+        {
+            var opStarts = new HashSet<int>();
+            foreach (var (op, regex) in _operatorRegexes)
+            {
+                var matches = regex.Matches(expression);
+                if (matches.Count == 0) continue;
+                foreach (Match m in matches)
+                {
+                    int start = m.Index;
+                    int end = m.Index + m.Length;
+                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
+
+                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
+                    if (!opStarts.Add(start)) continue;
+
+                    tokens.Add(Token.FromMatch(m, TokenType.Operator));
+                    operatorSpans.Add((start, end));
+                }
+            }
+        }
+
+
+
         // 2) IDENTIFIERS (+ possible functions) - skip matches inside literal spans
         MatchCollection idMatches = _identifierRegex.Matches(expression);
         List<(int Start, int End)> identifierSpans = [];
@@ -191,9 +248,11 @@ public class Tokenizer : ITokenizer
         {
             foreach (Match m in idMatches)
             {
+                int start = m.Index;
+                int end = m.Index + m.Length;
                 // Do not add identifiers/functions that are already part of a literal
-                if (IsInsideAnySpan(m.Index, m.Index + m.Length, literalSpans))
-                    continue;
+                if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                if (IsInsideAnySpan(start, end, operatorSpans)) continue;
 
                 string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
 
@@ -226,61 +285,6 @@ public class Tokenizer : ITokenizer
                 tokens.Add(new Token(TokenType.ClosedParenthesis, c, i));
             else if (c == _patterns.ArgumentSeparator)
                 tokens.Add(new Token(TokenType.ArgumentSeparator, c, i));
-        }
-
-        // Track already-claimed operator spans so shorter ops inside a longer one are skipped.
-        List<(int Start, int End)> operatorSpans = [];
-
-        // 4) Unique unary operators (precompiled) - skip matches inside literals/identifiers/operators
-        //    longest operator names first; ensure earliest-longest wins at the same start.
-        if (_uniqueUnaryOperatorRegexes.Length > 0)
-        {
-            var unaryStarts = new HashSet<int>();
-            foreach (var (op, regex) in _uniqueUnaryOperatorRegexes)
-            {
-                var matches = regex.Matches(expression);
-                if (matches.Count == 0) continue;
-                foreach (Match m in matches)
-                {
-                    int start = m.Index;
-                    int end = m.Index + m.Length;
-                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
-                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
-                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
-
-                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
-                    if (!unaryStarts.Add(start)) continue;
-
-                    tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
-                    operatorSpans.Add((start, end));
-                }
-            }
-        }
-
-        // 5) Operators (binary or ambiguous) - skip matches inside literals/identifiers/operators
-        //    longest operator names first; ensure earliest-longest wins at the same start.
-        if (_operatorRegexes.Length > 0)
-        {
-            var opStarts = new HashSet<int>();
-            foreach (var (op, regex) in _operatorRegexes)
-            {
-                var matches = regex.Matches(expression);
-                if (matches.Count == 0) continue;
-                foreach (Match m in matches)
-                {
-                    int start = m.Index;
-                    int end = m.Index + m.Length;
-                    if (IsInsideAnySpan(start, end, literalSpans)) continue;
-                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
-                    if (IsInsideAnySpan(start, end, operatorSpans)) continue;
-
-                    // longest-first guarantees correct choice; skip if a longer match already claimed this start
-                    if (!opStarts.Add(start)) continue;
-
-                    tokens.Add(Token.FromMatch(m, TokenType.Operator));
-                    operatorSpans.Add((start, end));
-                }
-            }
         }
 
         // sort by index (infix ordering)
