@@ -10,6 +10,8 @@ public sealed class VariableNamesOptions
     public HashSet<string>? IgnorePrefixes { get; init; }
     public HashSet<string>? IgnorePostfixes { get; init; }
 
+    public HashSet<string>? IgnoreFunctionNames { get; init; }
+
     //master overrides
     public bool? IgnoreVariables { get; init; } = false;//this overrides 
     public bool? IgnoreFunctions { get; init; } = false;//this overrides 
@@ -29,7 +31,7 @@ public sealed class VariableNamesOptions
         IgnoreIdentifierPattern = null,
         IgnorePrefixes = null,
         IgnorePostfixes = null,
-
+        IgnoreFunctionNames = [],
 
         IgnoreVariables = true,
         IgnoreFunctions = true
@@ -49,4 +51,5 @@ public sealed class VariableNamesOptions
         && IgnoreIdentifierPattern is null
         && IgnorePrefixes is null
         && IgnorePostfixes is null;
+
 }

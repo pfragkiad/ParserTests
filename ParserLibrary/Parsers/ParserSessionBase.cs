@@ -7,7 +7,7 @@ using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
-public class ParserSessionBase : ParserBase, IParserSession
+public partial class ParserSessionBase : ParserBase, IParserSession
 {
     protected List<Token> _infixTokens = [];
     protected List<Token> _postfixTokens = [];

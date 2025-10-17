@@ -344,8 +344,13 @@ public class TokenizerValidator : ITokenizerValidator
         var ignorePattern = options.IgnoreIdentifierPattern;
         var ignorePrefixes = options.IgnorePrefixes is { Count: > 0 } ? options.IgnorePrefixes : [];
         var ignorePostfixes = options.IgnorePostfixes is { Count: > 0 } ? options.IgnorePostfixes : [];
+        HashSet<string> ignoreFunctionNames = options.IgnoreFunctionNames is { Count:>0} ? options.IgnoreFunctionNames : [];
+
         HashSet<string> matchedFuncs = [];
         HashSet<string> unmatchedFuncs = [];
+        HashSet<string> ignoredFuncs = [];
+
+        bool ignoreFunctions = options.IgnoreFunctions.HasValue && options.IgnoreFunctions.Value;
 
         // Unexpected operands
         List<AdjacentOperandsViolation> violations = [];
@@ -394,7 +399,7 @@ public class TokenizerValidator : ITokenizerValidator
             #endregion
 
             #region Function names
-            if (functionDescriptors is not null && t.TokenType == TokenType.Function)
+            if (functionDescriptors is not null && t.TokenType == TokenType.Function  && !ignoreFunctions)
             {
                 string fname = t.Text;
                 bool knownFunc =
@@ -404,9 +409,11 @@ public class TokenizerValidator : ITokenizerValidator
                     functionDescriptors.GetMainFunctionMinMaxVariableArgCount(fname).HasValue ||
 
                     //alternative metadata implementation
-                    functionDescriptors.IsKnownFunction(fname); 
+                    functionDescriptors.IsKnownFunction(fname);
 
                 if (knownFunc) matchedFuncs.Add(fname);
+                else if (ignoreFunctionNames.Contains(fname))
+                    ignoredFuncs.Add(fname);
                 else
                 {
                     unmatchedFuncs.Add(fname);
@@ -416,7 +423,8 @@ public class TokenizerValidator : ITokenizerValidator
                             FunctionNamesResult = new FunctionNamesCheckResult
                             {
                                 MatchedNames = [.. matchedFuncs],
-                                UnmatchedNames = [.. unmatchedFuncs]
+                                UnmatchedNames = [.. unmatchedFuncs],
+                                IgnoredNames = [.. ignoredFuncs]
                             }
                         };
                 }
@@ -482,12 +490,13 @@ public class TokenizerValidator : ITokenizerValidator
             };
 
         var functionNamesResult =
-            options.IgnoreFunctions.HasValue && options.IgnoreFunctions.Value
+            options.IgnoreFunctions.HasValue && !options.IgnoreFunctions.Value
             ? new FunctionNamesCheckResult() :
             new FunctionNamesCheckResult
         {
             MatchedNames = [.. matchedFuncs],
-            UnmatchedNames = [.. unmatchedFuncs]
+            UnmatchedNames = [.. unmatchedFuncs],
+            IgnoredNames = [.. ignoredFuncs]
         };
 
         var unexpectedResult = new UnexpectedOperatorOperandsCheckResult { Violations = violations };

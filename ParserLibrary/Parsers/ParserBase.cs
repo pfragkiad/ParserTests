@@ -33,6 +33,11 @@ public partial class ParserBase : Tokenizer, IParser
         CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
+    public FunctionCatalog? FunctionCatalog { get; set; } //optional catalog for function metadata
+
+
+
+
     public virtual Dictionary<string, object?> Constants => [];
 
     protected Dictionary<string, object?> MergeVariableConstants(Dictionary<string, object?>? variables)
@@ -52,7 +57,7 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
 
-    protected Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
+    public Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
     /// <summary>
     /// The dictionary stores the main functions with their names and the exact number of arguments.

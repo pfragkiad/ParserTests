@@ -21,5 +21,8 @@ public interface IFunctionDescriptors
 
     bool IsKnownFunction(string functionName);
 
+    bool IsUnknownFunction(string functionName);
+
+
     //--------------------------------
 }

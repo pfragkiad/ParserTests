@@ -1,11 +1,12 @@
 using ParserLibrary.Parsers.Interfaces;
+using System.Reflection.Metadata.Ecma335;
 
 namespace ParserLibrary.Parsers;
 
 public partial class ParserBase : IFunctionDescriptors
 {
     //useful for validation purposes 
-    byte?  IFunctionDescriptors.GetCustomFunctionFixedArgCount(string functionName)
+    byte? IFunctionDescriptors.GetCustomFunctionFixedArgCount(string functionName)
     {
         if (CustomFunctions.TryGetValue(functionName, out var def)) return (byte)def.Parameters.Length;
         return null;
@@ -19,6 +20,7 @@ public partial class ParserBase : IFunctionDescriptors
 
     (byte, byte)? IFunctionDescriptors.GetMainFunctionMinMaxVariableArgCount(string functionName) =>
         MainFunctionsWithVariableArgumentsCount.TryGetValue(functionName, out var n) ? n : null;
+
 
 
     #region FunctionInformation metadata
@@ -37,14 +39,27 @@ public partial class ParserBase : IFunctionDescriptors
     (byte, byte)? IFunctionDescriptors.GetFunctionMinMaxVariableArgCount(string functionName)
     {
         var f = GetFunctionInformation(functionName);
-        if(f is null) return null;
-        if(f.Value.FixedArgumentsCount > 0) return null; //not a variable args function 
-        if(f.Value.MinArgumentsCount is null || f.Value.MaxArgumentsCount is null) return null;
+        if (f is null) return null;
+        if (f.Value.FixedArgumentsCount > 0) return null; //not a variable args function 
+        if (f.Value.MinArgumentsCount is null || f.Value.MaxArgumentsCount is null) return null;
         return (f.Value.MinArgumentsCount!.Value, f.Value.MaxArgumentsCount!.Value);
     }
 
-    bool IFunctionDescriptors.IsKnownFunction(string functionName) =>
-        GetFunctionInformation(functionName) is not null;
+    bool IFunctionDescriptors.IsKnownFunction(string functionName)
+    {
+        var commonFunction = GetFunctionInformation(functionName);
+        return commonFunction is not null;
+    }
+    bool IFunctionDescriptors.IsUnknownFunction(string functionName)
+    {
+        if (CustomFunctions.ContainsKey(functionName)) return false;
+        if (FunctionCatalog is null) return false;
+        var commonFunction = GetFunctionInformation(functionName);
+        return commonFunction is null;
+    }
+
 
     #endregion
+
+
 }
