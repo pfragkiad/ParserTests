@@ -9,7 +9,7 @@ public abstract class MetadataCatalogBase<TInfo> where TInfo : struct
 {
     protected List<TInfo>? _allItemsCache;
 
-    protected List<TInfo> GetAllCore()
+    protected virtual List<TInfo> GetAllCore()
     {
         if (_allItemsCache is not null)
             return _allItemsCache;
