@@ -16,7 +16,7 @@ public partial class ParserBase
     public string GetExpandedExpressionString(string expression, bool spacesAroundOperators = true, int maxDepth = 10)
     {
         var tree = GetExpressionTree(expression);
-        var expanded = ExpandCustomFunctions(tree, maxDepth);
+        var expanded = ExpandCustomFunctions(tree, maxDepth-1);
         return expanded.GetExpressionString(_options.TokenPatterns, spacesAroundOperators);
     }
 
@@ -25,7 +25,7 @@ public partial class ParserBase
     /// </summary>
     public string GetExpandedExpressionString(TokenTree tree, bool spacesAroundOperators = true, int maxDepth = 10)
     {
-        var expanded = ExpandCustomFunctions(tree, maxDepth);
+        var expanded = ExpandCustomFunctions(tree, maxDepth-1);
         return expanded.GetExpressionString(_options.TokenPatterns, spacesAroundOperators);
     }
 

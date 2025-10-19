@@ -121,6 +121,17 @@ public class Token : IComparable<Token>
     /// <returns>A new Token instance with the same properties</returns>
     public Token Clone()
     {
+        // If this token is effectively a single-char token, prefer the char ctor
+        // to preserve shape and keep Text in sync with SingleChar.
+        if (_singleChar != '\0' && _text.Length == 1 && _text[0] == _singleChar)
+        {
+            var clonedCharToken = new Token(TokenType, _singleChar, _index)
+            {
+                CaptureGroup = CaptureGroup
+            };
+            return clonedCharToken;
+        }
+
         var cloned = new Token(TokenType, _text, _index, CaptureGroup)
         {
             SingleChar = _singleChar,

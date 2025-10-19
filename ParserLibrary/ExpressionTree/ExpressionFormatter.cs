@@ -1,9 +1,11 @@
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ParserLibrary.ExpressionTree;
 
 public sealed record ExpressionFormatterOptions(
-    bool SpacesAroundBinaryOperators = false
+    bool SpacesAroundBinaryOperators = false,
+    bool SpaceAfterSeparator = false
 );
 
 public static class ExpressionFormatter
@@ -39,18 +41,16 @@ public static class ExpressionFormatter
 
     private static string FormatFunction(Node<Token> node, Token token, TokenPatterns patterns, ExpressionFormatterOptions fmt)
     {
-        var args = new List<string>();
-        if (node.Other is { Count: > 0 })
-        {
-            foreach (var a in node.Other.OfType<Node<Token>>())
-                args.Add(FormatNode(a, null, false, patterns, fmt));
-        }
-        else
-        {
-            if (node.Left is Node<Token> l) args.Add(FormatNode(l, null, false, patterns, fmt));
-            if (node.Right is Node<Token> r) args.Add(FormatNode(r, null, false, patterns, fmt));
-        }
-        return $"{token.Text}{patterns.OpenParenthesis}{string.Join(patterns.ArgumentSeparator, args)}{patterns.CloseParenthesis}";
+        // Build argument list from the right-leaning separator chain
+        var argNodes = node.GetFunctionArgumentNodes(patterns.ArgumentSeparatorOperator.Name);
+        var args = argNodes.Select(a => FormatNode(a, null, false, patterns, fmt));
+
+        // Apply optional space after the separator
+        string sep = fmt.SpaceAfterSeparator
+            ? $"{patterns.ArgumentSeparator} "
+            : patterns.ArgumentSeparator.ToString();
+
+        return $"{token.Text}{patterns.OpenParenthesis}{string.Join(sep, args)}{patterns.CloseParenthesis}";
     }
 
     private static string FormatOperator(
@@ -90,11 +90,11 @@ public static class ExpressionFormatter
 
             bool needSelfParens = parentOp != null && NeedsParentParens(bop, parentOp, isRightChild);
 
-            string sep = fmt.SpacesAroundBinaryOperators ? " " : "";
-            var combined = $"{leftExpr}{sep}{bop.Name}{sep}{rightExpr}";
+            //we prevent spaces if the operator is the period independent of the user selection
+            string opSep = fmt.SpacesAroundBinaryOperators && bop.Name != "." ? " " : "";
+            var combined = $"{leftExpr}{opSep}{bop.Name}{opSep}{rightExpr}";
             return needSelfParens ? $"({combined})" : combined;
         }
-
         // Fallbacks: keep legacy behavior (no spacing)
         if (hasLeft && !hasRight) return $"{FormatNode((Node<Token>)node.Left!, null, false, patterns, fmt)}{token.Text}";
         if (!hasLeft && hasRight) return $"{token.Text}{FormatNode((Node<Token>)node.Right!, null, false, patterns, fmt)}";

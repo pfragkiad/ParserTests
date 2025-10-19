@@ -35,11 +35,13 @@ public partial class TokenTree : Tree<Token>
 
     public string GetExpressionString(TokenPatterns patterns, bool spacesAroundOperators = true)
     {
+       // return Root.ToParenthesizedString();
+
         // Defensive: if root token missing just fall back to parenthesized textual form.
         if (Root.Value is not Token)
             return Root.ToParenthesizedString();
 
-        var fmtOptions = new ExpressionFormatterOptions(SpacesAroundBinaryOperators: spacesAroundOperators);
+        var fmtOptions = new ExpressionFormatterOptions(SpacesAroundBinaryOperators: spacesAroundOperators, SpaceAfterSeparator: spacesAroundOperators);
         return ExpressionFormatter.Format(this, patterns, fmtOptions);
     }
     #endregion
