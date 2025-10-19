@@ -443,71 +443,159 @@ public class Tokenizer : ITokenizer
 
     private void FixUnaryOperators(List<Token> tokens)
     {
-        var unaryDictionary = _patterns.UnaryOperatorDictionary;
+        if (tokens.Count == 0) return;
 
+        var unaryDictionary = _patterns.UnaryOperatorDictionary;
+        var operatorDictionary = _patterns.OperatorDictionary;
+
+        static bool IsOpLike(Token t) => t.TokenType == TokenType.Operator || t.TokenType == TokenType.OperatorUnary;
+
+        /*
+         Unary/Binary precedence and partial-match handling
+
+         Goal:
+         - Prefer the longest known binary operator when a unary token is only a partial match of a larger operator.
+           Example: '!' + '=' => '!=' should be one binary operator.
+
+         Examples:
+         - "a!=b"           -> merge OperatorUnary("!") + Operator("=") into Operator("!=").
+         - "!!a"            -> keep as two unary operators; no merge (no "!!" operator defined).
+         - "!=="            -> if "!==" exists => merge three pieces ("!", "==") to Operator("!==").
+                               else => merge to "!=" and leave "=" as its own token (Operator("=") or whatever applies).
+         - "! =" (with space)-> no merge; only contiguous operator-like tokens are considered.
+         - "a! =b"          -> same as above; spaces break contiguity, so no merge.
+         - "--a"            -> if "--" is not a defined operator, stays as two unary "-" if context allows.
+         - "- -a"           -> spaces break contiguity; no merge attempt here. Context disambiguation will still handle unary/binary "-".
+         - "a*),"           -> postfix-unary detection still handled by the context logic below.
+
+         Notes:
+         - Only contiguous operator-like tokens (same index continuity, no gaps) are merged.
+         - We attempt the longest match greedily while the prefix is known to start any operator.
+         - After merging, we still run the context-based same-name unary/binary resolution for cases like "-" or "+".
+        */
+
+        // Step 0: Prefer longer binary operators when a unary was partially matched.
+        // Merge contiguous operator-like tokens into the longest known operator (e.g., '!' + '=' => '!=').
+        for (int i = 0; i < tokens.Count - 1; i++)
+        {
+            if (!IsOpLike(tokens[i])) continue;
+
+            int startIndex = tokens[i].Index;
+            string candidate = tokens[i].Text;
+            int expectedNextIndex = startIndex + candidate.Length;
+
+            int j = i + 1;
+            int lastFullMatchIndex = -1;
+            string? lastFullMatchText = null;
+
+            bool AnyOperatorStartsWith(string prefix)
+            {
+                foreach (var key in operatorDictionary.Keys)
+                    if (key.StartsWith(prefix, StringComparison.Ordinal))
+                        return true;
+                return false;
+            }
+
+            // Try to extend with adjacent operator-like tokens (must be contiguous, no gaps).
+            while (j < tokens.Count && IsOpLike(tokens[j]) && tokens[j].Index == expectedNextIndex)
+            {
+                candidate += tokens[j].Text;
+                expectedNextIndex += tokens[j].Text.Length;
+
+                if (operatorDictionary.ContainsKey(candidate))
+                {
+                    lastFullMatchIndex = j;
+                    lastFullMatchText = candidate;
+                }
+
+                if (!AnyOperatorStartsWith(candidate))
+                    break;
+
+                j++;
+            }
+
+            // If we found a longer valid operator, replace the sequence with a single binary operator token
+            if (lastFullMatchIndex >= 0 && lastFullMatchText is not null && lastFullMatchText.Length > tokens[i].Text.Length)
+            {
+                tokens[i] = new Token(TokenType.Operator, lastFullMatchText, startIndex);
+                int removeCount = lastFullMatchIndex - i;
+                tokens.RemoveRange(i + 1, removeCount);
+
+                // Re-evaluate from previous position, in case more merges are possible
+                i = Math.Max(-1, i - 1);
+                continue;
+            }
+        }
+
+        // Step 1: Original same-name unary/binary disambiguation (context-based)
         for (int i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
             if (token.TokenType != TokenType.Operator) continue;
 
-            // Only process operators that could be unary
+            // Only process operators that could also be unary (same-name)
             bool foundSameUnary = _patterns.SameNameUnaryAndBinaryOperators.Contains(token.Text);
             if (!foundSameUnary) continue;
 
             var matchedUnaryOp = unaryDictionary[token.Text];
-
             UnaryOperator unary = matchedUnaryOp!;
+
+            // Edge positions: prefix at start or postfix at end become unary
             if (i == 0 && unary.Prefix || i == tokens.Count - 1 && !unary.Prefix)
             {
-                token.TokenType = TokenType.OperatorUnary; continue;
+                token.TokenType = TokenType.OperatorUnary;
+                continue;
             }
 
-            if (i == 0 && !unary.Prefix) continue; //stay as binary
+            if (i == 0 && !unary.Prefix) continue; // stay as binary
 
             Token previousToken = tokens[i - 1];
-            TokenType previousTokenType = previousToken!.TokenType;
+            TokenType previousTokenType = previousToken.TokenType;
 
             if (unary.Prefix)
             {
+                // If previous is a value, current is binary; otherwise, it can be unary prefix.
                 if (previousTokenType == TokenType.Literal || previousTokenType == TokenType.Identifier)
                     continue; // previous is value => this is binary
 
                 if (previousTokenType == TokenType.Operator ||                 // + -2
                     previousTokenType == TokenType.ArgumentSeparator ||        // , -2
-                    previousTokenType == TokenType.OperatorUnary &&            // ---2
-                        unaryDictionary[previousToken.Text].Prefix ||
+                    (previousTokenType == TokenType.OperatorUnary &&           // ---2
+                        unaryDictionary[previousToken.Text].Prefix) ||
                     previousTokenType == TokenType.OpenParenthesis ||          //  (-2
                     previousTokenType == TokenType.Function)                   // func(-2
+                
                 {
                     token.TokenType = TokenType.OperatorUnary;
                 }
                 continue;
             }
 
-            //unary.postfix case from now on (assuming in comments that '*' is also a unary postfix operator)
+            // unary.postfix case from now on (assuming in examples that '*' could also be a unary postfix operator)
             bool canBePostfix =
-                previousTokenType == TokenType.Literal ||    //5*
-                previousTokenType == TokenType.Identifier || //a*
-                (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); //previous is postfix: %*, *+            if (!canBePostfix) continue; //stay as binary
-            if (!canBePostfix) continue; //stay as binary
+                previousTokenType == TokenType.Literal ||    // 5*
+                previousTokenType == TokenType.Identifier || // a*
+                (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); // prev is postfix: %*, *+
+
+            if (!canBePostfix) continue; // stay as binary
 
             Token nextToken = tokens[i + 1];
             TokenType nextTokenType = nextToken.TokenType;
 
-            //the next is a variable/literal or function or open parenthesis so this is binary
+            // the next is a variable/literal or function or open parenthesis so this is binary
             if (nextTokenType == TokenType.Literal ||       // *2
-                nextTokenType == TokenType.Identifier ||    //*a
-                nextTokenType == TokenType.Function ||      //*func(
-                nextTokenType == TokenType.OpenParenthesis) //*(
-                continue; //stay as binary
+                nextTokenType == TokenType.Identifier ||    // *a
+                nextTokenType == TokenType.Function ||      // *func(
+                nextTokenType == TokenType.OpenParenthesis) // *(
+                continue; // stay as binary
 
-            if (nextTokenType == TokenType.ClosedParenthesis || //a*)
-                nextTokenType == TokenType.ArgumentSeparator || //a*,
+            if (nextTokenType == TokenType.ClosedParenthesis || // a*)
+                nextTokenType == TokenType.ArgumentSeparator ||  // a*,
                 nextTokenType == TokenType.Operator)
             {
-                token.TokenType = TokenType.OperatorUnary; continue;
-            } //assume unary
-
+                token.TokenType = TokenType.OperatorUnary; // assume unary
+                continue;
+            }
         }
     }
 

@@ -34,7 +34,7 @@ public sealed class VariableNamesOptions
         IgnoreFunctionNames = [],
 
         IgnoreVariables = true,
-        IgnoreFunctions = true
+        IgnoreFunctions = false
     };
 
     public static VariableNamesOptions FromKnownNames(IEnumerable<string> knownNames) => new()

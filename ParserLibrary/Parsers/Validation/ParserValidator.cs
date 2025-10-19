@@ -211,7 +211,8 @@ public sealed class ParserValidator : IParserValidator
     // NEW: Unified single-pass validator for the Postfix/Tree stage
     public ParserValidationReport ValidateTreePostfixStage(
         Dictionary<Token, Node<Token>> nodeDictionary,
-        IFunctionDescriptors? functionDescriptors = null,
+         VariableNamesOptions options,
+       IFunctionDescriptors? functionDescriptors = null,
         bool earlyReturnOnErrors = false)
     {
         // Function argument count
@@ -234,6 +235,8 @@ public sealed class ParserValidator : IParserValidator
         var separatorNodes = new HashSet<Node<Token>>();
         var separatorsWithValidParents = new HashSet<Node<Token>>();
         var allSeparators = new List<(Node<Token> Node, Token Tok)>();
+
+        bool ignoreFunctions = options.IgnoreFunctions.HasValue && options.IgnoreFunctions.Value;
 
         foreach (var entry in nodeDictionary)
         {
@@ -266,7 +269,7 @@ public sealed class ParserValidator : IParserValidator
                 var res = new FunctionArguments { FunctionName = token.Text, Position = token.Index + 1 };
                 if (args.Any(n => n.Value!.IsNull)) emptyArgsInvalid.Add(res); else emptyArgsValid.Add(res);
 
-                if (earlyReturnOnErrors && emptyArgsInvalid.Count > 0)
+                if (earlyReturnOnErrors && emptyArgsInvalid.Count > 0 && !ignoreFunctions)
                 {
                     return new ParserValidationReport
                     {
@@ -346,7 +349,7 @@ public sealed class ParserValidator : IParserValidator
                     }
                 }
 
-                if (earlyReturnOnErrors && funcCountInvalid.Count > 0)
+                if (earlyReturnOnErrors && funcCountInvalid.Count > 0 && !ignoreFunctions)
                 {
                     return new ParserValidationReport
                     {
@@ -431,14 +434,16 @@ public sealed class ParserValidator : IParserValidator
 
         // Build all results
         FunctionArgumentsCountCheckResult? funcCountResult =
-            functionDescriptors is null ? null :
+            functionDescriptors is null || ignoreFunctions ? new FunctionArgumentsCountCheckResult() :
             new FunctionArgumentsCountCheckResult
             {
                 ValidFunctions = [.. funcCountValid],
                 InvalidFunctions = [.. funcCountInvalid]
             };
 
-        var emptyArgsResult = new EmptyFunctionArgumentsCheckResult
+        var emptyArgsResult =
+            ignoreFunctions ? new EmptyFunctionArgumentsCheckResult() :
+            new EmptyFunctionArgumentsCheckResult
         {
             ValidFunctions = [.. emptyArgsValid],
             InvalidFunctions = [.. emptyArgsInvalid]

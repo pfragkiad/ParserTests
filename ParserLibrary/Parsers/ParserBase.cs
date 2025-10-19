@@ -906,6 +906,7 @@ public partial class ParserBase : Tokenizer, IParser
             nodeDictionary = report.NodeDictionary = tree.NodeDictionary;
             var postfixReport = _parserValidator.ValidateTreePostfixStage(
                 nodeDictionary,
+                nameOptions,
                 this,
                 earlyReturnOnErrors);
             report.FunctionArgumentsCountResult = postfixReport.FunctionArgumentsCountResult;

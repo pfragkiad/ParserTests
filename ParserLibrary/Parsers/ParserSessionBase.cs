@@ -689,6 +689,7 @@ public partial class ParserSessionBase : ParserBase, IParserSession
         State = ParserSessionState.Postvalidating;
         var postfixReport = _parserValidator.ValidateTreePostfixStage(
             _nodeDictionary,
+            nameOptions,
             this,
             earlyReturnOnErrors);
 

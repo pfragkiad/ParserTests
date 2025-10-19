@@ -1,3 +1,4 @@
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
 
@@ -16,5 +17,9 @@ public interface IParserValidator
     InvalidUnaryOperatorsCheckResult CheckUnaryOperatorOperands(Dictionary<Token, Node<Token>> nodeDictionary);
 
     InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(Dictionary<Token, Node<Token>> nodeDictionary);
-    ParserValidationReport ValidateTreePostfixStage(Dictionary<Token, Node<Token>> nodeDictionary, IFunctionDescriptors? functionDescriptors = null, bool earlyReturnOnErrors = false);
+    ParserValidationReport ValidateTreePostfixStage(
+        Dictionary<Token, Node<Token>> nodeDictionary,
+        VariableNamesOptions variableNamesOptions,
+        IFunctionDescriptors? functionDescriptors = null,
+        bool earlyReturnOnErrors = false);
 }

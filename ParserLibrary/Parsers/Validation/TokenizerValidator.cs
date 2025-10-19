@@ -344,7 +344,7 @@ public class TokenizerValidator : ITokenizerValidator
         var ignorePattern = options.IgnoreIdentifierPattern;
         var ignorePrefixes = options.IgnorePrefixes is { Count: > 0 } ? options.IgnorePrefixes : [];
         var ignorePostfixes = options.IgnorePostfixes is { Count: > 0 } ? options.IgnorePostfixes : [];
-        HashSet<string> ignoreFunctionNames = options.IgnoreFunctionNames is { Count:>0} ? options.IgnoreFunctionNames : [];
+        HashSet<string> ignoreFunctionNames = options.IgnoreFunctionNames is { Count: > 0 } ? options.IgnoreFunctionNames : [];
 
         HashSet<string> matchedFuncs = [];
         HashSet<string> unmatchedFuncs = [];
@@ -399,7 +399,7 @@ public class TokenizerValidator : ITokenizerValidator
             #endregion
 
             #region Function names
-            if (functionDescriptors is not null && t.TokenType == TokenType.Function  && !ignoreFunctions)
+            if (functionDescriptors is not null && t.TokenType == TokenType.Function)
             {
                 string fname = t.Text;
                 bool knownFunc =
@@ -417,7 +417,7 @@ public class TokenizerValidator : ITokenizerValidator
                 else
                 {
                     unmatchedFuncs.Add(fname);
-                    if (earlyReturnOnErrors) //we will not return other errors since we are exiting early
+                    if (earlyReturnOnErrors && !ignoreFunctions) //we will not return other errors since we are exiting early
                         return new TokenizerValidationReport
                         {
                             FunctionNamesResult = new FunctionNamesCheckResult
@@ -465,7 +465,7 @@ public class TokenizerValidator : ITokenizerValidator
                     RightPosition = right.Index + 1
                 });
 
-                if(earlyReturnOnErrors) //we will not return other errors since we are exiting early
+                if (earlyReturnOnErrors) //we will not return other errors since we are exiting early
                     return new TokenizerValidationReport
                     {
                         UnexpectedOperatorOperandsResult = new UnexpectedOperatorOperandsCheckResult
@@ -490,14 +490,13 @@ public class TokenizerValidator : ITokenizerValidator
             };
 
         var functionNamesResult =
-            options.IgnoreFunctions.HasValue && !options.IgnoreFunctions.Value
-            ? new FunctionNamesCheckResult() :
+            ignoreFunctions ? new FunctionNamesCheckResult() :
             new FunctionNamesCheckResult
-        {
-            MatchedNames = [.. matchedFuncs],
-            UnmatchedNames = [.. unmatchedFuncs],
-            IgnoredNames = [.. ignoredFuncs]
-        };
+            {
+                MatchedNames = [.. matchedFuncs],
+                UnmatchedNames = [.. unmatchedFuncs],
+                IgnoredNames = [.. ignoredFuncs]
+            };
 
         var unexpectedResult = new UnexpectedOperatorOperandsCheckResult { Violations = violations };
 
