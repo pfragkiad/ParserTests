@@ -24,6 +24,10 @@ public partial class ParserBase
         bool cloneTree = false)
     {
         var expandedTree = ExpandCustomFunctions(tree, maxDepth: int.MaxValue);
+
+        // IMPORTANT: expansion may create new nodes/tokens; ensure dictionary is consistent.
+        expandedTree.RebuildNodeDictionaryFromStructure();
+
         tree = expandedTree;
 
         var typeMap = InferNodeTypes(tree, variables);
@@ -34,10 +38,19 @@ public partial class ParserBase
         {
             var cloned = (TokenTree)tree.DeepClone();
             OptimizeNode(cloned.Root, typeMap);
-            //change local reference to cloned tree
+
+            // After in-place rewiring, rebuild dictionary to match new structure.
+            cloned.RebuildNodeDictionaryFromStructure();
+
             tree = cloned;
         }
-        else OptimizeNode(tree.Root, typeMap);
+        else
+        {
+            OptimizeNode(tree.Root, typeMap);
+
+            // After in-place rewiring, rebuild dictionary to match new structure.
+            tree.RebuildNodeDictionaryFromStructure();
+        }
 
         var newTypeMap = InferNodeTypes(tree, variables);
         int after = CountMixed(tree.Root, newTypeMap);
@@ -69,7 +82,6 @@ public partial class ParserBase
     {
         var opText = ((Token)root.Value!).Text;
 
-        // 1) Collect operands (left-to-right)
         var operands = new List<Node<Token>>();
         void CollectOperands(Node<Token>? n)
         {
@@ -91,12 +103,10 @@ public partial class ParserBase
         bool anyNon = operands.Any(o => !IsNumeric(o, typeMap));
         if (!(anyNumeric && anyNon)) return;
 
-        // 2) Order operands (numeric first)
         var ordered = operands
             .OrderBy(o => IsNumeric(o, typeMap) ? 0 : 1)
             .ToList();
 
-        // 3) Collect operator nodes of the chain (post-order so the last is the root)
         var opNodes = new List<Node<Token>>();
         void CollectOpsPost(Node<Token>? n)
         {
@@ -110,10 +120,8 @@ public partial class ParserBase
         }
         CollectOpsPost(root);
 
-        // Sanity: operators should be operands.Count - 1
         if (opNodes.Count != ordered.Count - 1) return;
 
-        // 4) Rewire in-place so the root of the chain remains 'root'
         var acc = ordered[0];
         for (int i = 0; i < opNodes.Count; i++)
         {

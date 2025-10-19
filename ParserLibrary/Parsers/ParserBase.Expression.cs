@@ -75,12 +75,12 @@ public partial class ParserBase
                 for (int i = 0; i < def.Parameters.Length; i++)
                 {
                     string paramName = def.Parameters[i];
-                    // Factory to provide a fresh clone per substitution occurrence
+                    // IMPORTANT: produce a fresh clone with unique Token instances for every occurrence
                     Node<Token> ReplacementFactory() => CloneSubtree(argNodes[i]);
                     bodyRoot = ReplaceAllIdentifiers(bodyRoot, paramName, ReplacementFactory, patterns.CaseSensitive);
                 }
 
-                // 4) Recursively expand any other custom functions within the (now substituted) body
+                // 4) Recursively expand nested custom functions in the substituted body
                 bodyRoot = ExpandNode(bodyRoot, depth + 1, patterns, maxDepth);
 
                 return bodyRoot;
@@ -137,11 +137,14 @@ public partial class ParserBase
     }
 
     /// <summary>
-    /// Deep clone a subtree of Node&lt;Token&gt;. Tokens are reused (by reference), nodes are copied.
+    /// Deep clone a subtree of Node&lt;Token&gt;.
+    /// Tokens are ALSO cloned to guarantee unique Token instances per node.
+    /// This keeps the Token->Node dictionary consistent after expansion.
     /// </summary>
     private static Node<Token> CloneSubtree(Node<Token> node)
     {
-        var cloned = new Node<Token>(node.Value);
+        var clonedToken = ((Token)node.Value!).Clone(); // deep clone token to avoid shared references
+        var cloned = new Node<Token>(clonedToken);
         if (node.Left is Node<Token> l) cloned.Left = CloneSubtree(l);
         if (node.Right is Node<Token> r) cloned.Right = CloneSubtree(r);
         return cloned;
