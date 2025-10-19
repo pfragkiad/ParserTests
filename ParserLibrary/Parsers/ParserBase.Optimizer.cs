@@ -23,6 +23,9 @@ public partial class ParserBase
         Dictionary<string, object?>? variables = null,
         bool cloneTree = false)
     {
+        var expandedTree = ExpandCustomFunctions(tree, maxDepth: int.MaxValue);
+        tree = expandedTree;
+
         var typeMap = InferNodeTypes(tree, variables);
 
         int before = CountMixed(tree.Root, typeMap);
