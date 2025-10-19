@@ -56,14 +56,31 @@ public partial class ParserBase
         if (node.Left is Node<Token> l) OptimizeNode(l, typeMap);
         if (node.Right is Node<Token> r) OptimizeNode(r, typeMap);
 
-        if (IsCommutative(node))
+        if (node.Value is not Token t || t.TokenType != TokenType.Operator) return;
+
+        // '+' stays purely commutative
+        if (t.Text == "+")
+        {
             ReorderInPlace(node, typeMap);
+            return;
+        }
+
+        // Normalize multiplicative chains: handle '*' and '/' together
+        if (t.Text == "*" || t.Text == "/")
+        {
+            ReorderMulDivChainInPlace(node, typeMap);
+        }
     }
 
     private static bool IsCommutative(Node<Token> node) =>
         node.Value is Token t &&
         t.TokenType == TokenType.Operator &&
         (t.Text == "+" || t.Text == "*");
+
+    private static bool IsMulDiv(Node<Token> node) =>
+        node.Value is Token tt &&
+        tt.TokenType == TokenType.Operator &&
+        (tt.Text == "*" || tt.Text == "/");
 
     private static void ReorderInPlace(Node<Token> root, Dictionary<Node<Token>, Type?> typeMap)
     {
@@ -89,11 +106,22 @@ public partial class ParserBase
 
         bool anyNumeric = operands.Any(o => IsNumeric(o, typeMap));
         bool anyNon = operands.Any(o => !IsNumeric(o, typeMap));
-        if (!(anyNumeric && anyNon)) return;
+        bool hasNumericLiteral = operands.Any(o => IsNumericLiteral(o, typeMap));
 
-        // 2) Order operands (numeric first)
+        // Proceed if:
+        // - previous heuristic (mix of numeric and non-numeric), or
+        // - there is at least one numeric literal (to prioritize constants even when all are numeric)
+        if (!(hasNumericLiteral || (anyNumeric && anyNon))) return;
+
+        // 2) Order operands: numeric literals first, then other numeric, then non-numeric.
+        // Within the same group, preserve original relative order (OrderBy is stable).
+        static int Rank(Node<Token> n, Dictionary<Node<Token>, Type?> tm)
+            => IsNumericLiteral(n, tm) ? 0
+             : IsNumeric(n, tm)        ? 1
+             :                           2;
+
         var ordered = operands
-            .OrderBy(o => IsNumeric(o, typeMap) ? 0 : 1)
+            .OrderBy(o => Rank(o, typeMap))
             .ToList();
 
         // 3) Collect operator nodes of the chain (post-order so the last is the root)
@@ -124,10 +152,105 @@ public partial class ParserBase
         }
     }
 
+    // NEW: handle multiplicative chains with '*' and '/' together.
+    private static void ReorderMulDivChainInPlace(Node<Token> root, Dictionary<Node<Token>, Type?> typeMap)
+    {
+        if (!IsMulDiv(root)) return;
+
+        // Collect numerator and denominator operands across the whole chain
+        var numerators = new List<Node<Token>>();
+        var denominators = new List<Node<Token>>();
+
+        void Collect(Node<Token>? n, int sign)
+        {
+            if (n is null) return;
+            if (n.Value is Token t && t.TokenType == TokenType.Operator)
+            {
+                if (t.Text == "*")
+                {
+                    Collect(n.Left as Node<Token>, sign);
+                    Collect(n.Right as Node<Token>, sign);
+                    return;
+                }
+                if (t.Text == "/")
+                {
+                    Collect(n.Left as Node<Token>, sign);
+                    Collect(n.Right as Node<Token>, -sign);
+                    return;
+                }
+            }
+            if (sign >= 0) numerators.Add(n);
+            else denominators.Add(n);
+        }
+
+        Collect(root, +1);
+
+        if (numerators.Count + denominators.Count <= 2) return; // nothing to normalize
+
+        // Decide if we should reorder: prioritize when there is at least one numeric literal
+        // in the numerator (or a mix numeric/non-numeric in numerator).
+        bool hasNumLit = numerators.Any(n => IsNumericLiteral(n, typeMap));
+        bool mixNumNon = numerators.Any(n => IsNumeric(n, typeMap)) && numerators.Any(n => !IsNumeric(n, typeMap));
+        if (!(hasNumLit || mixNumNon)) return;
+
+        // Rank: numeric literals first, then numeric, then non-numeric. Stable within groups.
+        static int Rank(Node<Token> n, Dictionary<Node<Token>, Type?> tm)
+            => IsNumericLiteral(n, tm) ? 0
+             : IsNumeric(n, tm)        ? 1
+             :                           2;
+
+        var orderedNumerators = numerators.OrderBy(n => Rank(n, typeMap)).ToList();
+
+        // Combine back: all numerators first, then denominators (kept in original order)
+        var orderedAll = new List<Node<Token>>(orderedNumerators.Count + denominators.Count);
+        orderedAll.AddRange(orderedNumerators);
+        orderedAll.AddRange(denominators);
+
+        // Collect all '*' and '/' operator nodes across the chain (post-order)
+        var opNodes = new List<Node<Token>>();
+        void CollectOps(Node<Token>? n)
+        {
+            if (n is null) return;
+            if (n.Value is Token t && t.TokenType == TokenType.Operator && (t.Text == "*" || t.Text == "/"))
+            {
+                CollectOps(n.Left as Node<Token>);
+                CollectOps(n.Right as Node<Token>);
+                opNodes.Add(n);
+            }
+        }
+        CollectOps(root);
+
+        if (opNodes.Count != orderedAll.Count - 1) return;
+
+        // Rewire in place. First (numerators.Count - 1) ops become '*', the rest become '/'
+        var acc = orderedAll[0];
+        for (int i = 0; i < opNodes.Count; i++)
+        {
+            var opNode = opNodes[i];
+            var token = (Token)opNode.Value!;
+            var isMultiplyPhase = i < (orderedNumerators.Count - 1);
+
+            token.Text = isMultiplyPhase ? "*" : "/"; // adjust operator kind
+            opNode.Left = acc;
+            opNode.Right = orderedAll[i + 1];
+            acc = opNode;
+        }
+    }
+
     private static bool IsNumeric(Node<Token> node, Dictionary<Node<Token>, Type?> typeMap)
     {
         if (!typeMap.TryGetValue(node, out var t) || t is null) return false;
         return IsNumericType(t);
+    }
+
+    private static bool IsNumericLiteral(Node<Token> node, Dictionary<Node<Token>, Type?> typeMap)
+    {
+        if (node.Value is Token t && t.TokenType == TokenType.Literal)
+        {
+            // Confirm it's a numeric literal via inferred type
+            return IsNumeric(node, typeMap);
+        }
+        return false;
     }
 
     private static bool IsNumericType(Type t) =>
@@ -212,7 +335,6 @@ public partial class ParserBase
                     }
                 case TokenType.Function:
                     {
-                        // Arguments have already been processed (postfix)
                         var args = node.GetFunctionArguments(_options.TokenPatterns.ArgumentSeparator.ToString(), boxedMap);
                         var ft = EvaluateFunctionType(token.Text, args);
                         nodeTypeMap[node] = ft;
