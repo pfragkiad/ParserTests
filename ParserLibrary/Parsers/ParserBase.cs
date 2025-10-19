@@ -933,6 +933,14 @@ public partial class ParserBase : Tokenizer, IParser
     protected static ValidationResult UnknownFunctionResult(string functionName) =>
         new([new ValidationFailure("function", $"Function '{functionName}' is not supported.")]);
 
+    public bool IsValidationFailureFunctionNotSupported (ValidationResult result)
+    {
+        return result.Errors.Count == 1 &&
+               result.Errors[0].PropertyName == "function" &&
+               result.Errors[0].ErrorMessage.Contains("is not supported.") &&
+               result.Errors[0].ErrorMessage.StartsWith("Function ");
+    }
+
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes
         (FunctionInformation funcInfo, object?[] args) =>
         funcInfo.FixedArgumentsCount.HasValue

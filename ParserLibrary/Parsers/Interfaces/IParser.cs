@@ -5,6 +5,7 @@ using ParserLibrary.ExpressionTree;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;
 using ParserLibrary.Parsers.Compilation;
+using FluentValidation.Results;
 
 namespace ParserLibrary.Parsers.Interfaces;
 
@@ -181,4 +182,5 @@ public interface IParser : ITokenizer
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
     List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames = true);
     string GetExpandedExpressionString(string expression, bool spacesAroundOperators = true, int maxDepth = 10);
+    bool IsValidationFailureFunctionNotSupported(ValidationResult result);
 }
