@@ -440,7 +440,6 @@ public class Tokenizer : ITokenizer
         matchedLength = 0;
         return false;
     }
-
     private void FixUnaryOperators(List<Token> tokens)
     {
         if (tokens.Count == 0) return;
@@ -450,23 +449,59 @@ public class Tokenizer : ITokenizer
 
         static bool IsOpLike(Token t) => t.TokenType == TokenType.Operator || t.TokenType == TokenType.OperatorUnary;
 
+        // Step -1: Resolve same-start overlaps by preferring the longest known binary operator.
+        // Example: OperatorUnary("not") @ i and Operator("notlike") @ i  => keep "notlike", drop "not".
+        for (int i = 0; i < tokens.Count - 1; i++)
+        {
+            if (!IsOpLike(tokens[i])) continue;
+
+            int start = tokens[i].Index;
+            int j = i + 1;
+
+            // Collect all operator-like tokens that start at the same index.
+            if (tokens[j].Index != start || !IsOpLike(tokens[j])) continue;
+
+            int bestK = i;
+            string bestText = tokens[i].Text;
+            bool bestIsBinary = tokens[i].TokenType == TokenType.Operator && operatorDictionary.ContainsKey(bestText);
+
+            while (j < tokens.Count && tokens[j].Index == start && IsOpLike(tokens[j]))
+            {
+                string text = tokens[j].Text;
+                bool isBinary = tokens[j].TokenType == TokenType.Operator && operatorDictionary.ContainsKey(text);
+
+                // Prefer binary over unary when competing at the same start, and pick the longest.
+                if (isBinary && (!bestIsBinary || text.Length > bestText.Length)
+                    || (!isBinary && !bestIsBinary && text.Length > bestText.Length))
+                {
+                    bestK = j;
+                    bestText = text;
+                    bestIsBinary = isBinary;
+                }
+
+                j++;
+            }
+
+            // If there were multiple op-like tokens at the same start, remove all except the best.
+            if (bestK != i || j - i > 1)
+            {
+                for (int k = j - 1; k >= i; k--)
+                {
+                    if (k == bestK) continue;
+                    tokens.RemoveAt(k);
+                }
+                // Rewind to re-evaluate from previous token (since indices shifted).
+                i = Math.Max(i - 1, -1);
+                continue;
+            }
+        }
+
         /*
          Unary/Binary precedence and partial-match handling
 
          Goal:
          - Prefer the longest known binary operator when a unary token is only a partial match of a larger operator.
            Example: '!' + '=' => '!=' should be one binary operator.
-
-         Examples:
-         - "a!=b"           -> merge OperatorUnary("!") + Operator("=") into Operator("!=").
-         - "!!a"            -> keep as two unary operators; no merge (no "!!" operator defined).
-         - "!=="            -> if "!==" exists => merge three pieces ("!", "==") to Operator("!==").
-                               else => merge to "!=" and leave "=" as its own token (Operator("=") or whatever applies).
-         - "! =" (with space)-> no merge; only contiguous operator-like tokens are considered.
-         - "a! =b"          -> same as above; spaces break contiguity, so no merge.
-         - "--a"            -> if "--" is not a defined operator, stays as two unary "-" if context allows.
-         - "- -a"           -> spaces break contiguity; no merge attempt here. Context disambiguation will still handle unary/binary "-".
-         - "a*),"           -> postfix-unary detection still handled by the context logic below.
 
          Notes:
          - Only contiguous operator-like tokens (same index continuity, no gaps) are merged.
@@ -566,21 +601,21 @@ public class Tokenizer : ITokenizer
                     previousTokenType == TokenType.Function)                   // func(-2
                 
                 {
-                    token.TokenType = TokenType.OperatorUnary;
-                }
-                continue;
-            }
+            token.TokenType = TokenType.OperatorUnary;
+        }
+        continue;
+    }
 
-            // unary.postfix case from now on (assuming in examples that '*' could also be a unary postfix operator)
-            bool canBePostfix =
-                previousTokenType == TokenType.Literal ||    // 5*
-                previousTokenType == TokenType.Identifier || // a*
-                (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); // prev is postfix: %*, *+
+    // unary.postfix case from now on (assuming in examples that '*' could also be a unary postfix operator)
+    bool canBePostfix =
+        previousTokenType == TokenType.Literal ||    // 5*
+        previousTokenType == TokenType.Identifier || // a*
+        (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); // prev is postfix: %*, *+
 
             if (!canBePostfix) continue; // stay as binary
 
             Token nextToken = tokens[i + 1];
-            TokenType nextTokenType = nextToken.TokenType;
+    TokenType nextTokenType = nextToken.TokenType;
 
             // the next is a variable/literal or function or open parenthesis so this is binary
             if (nextTokenType == TokenType.Literal ||       // *2
@@ -598,8 +633,6 @@ public class Tokenizer : ITokenizer
             }
         }
     }
-
-
     //Infix to postfix (example)
     //https://www.youtube.com/watch?v=PAceaOSnxQs
     public List<Token> GetPostfixTokens(List<Token> infixTokens)
