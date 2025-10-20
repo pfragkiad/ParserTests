@@ -133,5 +133,221 @@ public static class ExpressionFormatter
     }
 
     private static bool IsAssociative(string opName) =>
-        opName is "+" or "*" or "&&" or "||";
+        opName is "+" or "*" or "&&" or "||" or "&" or "|" or "^";
+    public static string Format(List<Token> infixTokens, TokenPatterns patterns, ExpressionFormatterOptions? options)
+    {
+        if (infixTokens is null || infixTokens.Count == 0) return string.Empty;
+
+        var fmt = options ?? DefaultOptions;
+        var sb = new StringBuilder(infixTokens.Count * 2);
+
+        var opDict = patterns.OperatorDictionary;
+        var unaryDict = patterns.UnaryOperatorDictionary;
+        var prefixUnary = patterns.PrefixUnaryNames;
+        var postfixUnary = patterns.PostfixUnaryNames;
+
+        static bool IsSingleChar(Token t, char c) => t.Text.Length == 1 && t.Text[0] == c;
+
+        bool IsOpenParen(Token t) => IsSingleChar(t, patterns.OpenParenthesis);
+        bool IsCloseParen(Token t) => IsSingleChar(t, patterns.CloseParenthesis);
+        bool IsSeparator(Token t) => IsSingleChar(t, patterns.ArgumentSeparator);
+
+        static Token? PrevNonNull(IReadOnlyList<Token> list, int i)
+        {
+            for (int p = i - 1; p >= 0; p--)
+            {
+                if (!list[p].IsNull) return list[p];
+            }
+            return null;
+        }
+
+        static Token? NextNonNull(IReadOnlyList<Token> list, int i)
+        {
+            for (int n = i + 1; n < list.Count; n++)
+            {
+                if (!list[n].IsNull) return list[n];
+            }
+            return null;
+        }
+
+        static bool IsOperandish(Token? t, Func<Token, bool> isCloseParen)
+        {
+            if (t is null) return false;
+            if (isCloseParen(t)) return true;
+            return t.TokenType is TokenType.Identifier or TokenType.Literal or TokenType.Function;
+        }
+
+        static bool IsOperatorish(Token? t, Func<Token, bool> isOpenParen, Func<Token, bool> isSeparator)
+        {
+            if (t is null) return true;
+            if (isOpenParen(t) || isSeparator(t)) return true;
+            return t.TokenType == TokenType.Operator;
+        }
+
+        void TrimEndSpace()
+        {
+            if (sb.Length > 0 && sb[^1] == ' ') sb.Length--;
+        }
+
+        for (int i = 0; i < infixTokens.Count; i++)
+        {
+            var tok = infixTokens[i];
+            if (tok.IsNull) continue;
+
+            string text = tok.Text;
+
+            bool openParen = IsOpenParen(tok);
+            bool closeParen = IsCloseParen(tok);
+            bool separator = IsSeparator(tok);
+
+            bool isOperatorToken = tok.TokenType == TokenType.Operator && !openParen && !closeParen && !separator;
+
+            if (separator)
+            {
+                TrimEndSpace();
+                sb.Append(patterns.ArgumentSeparator);
+                if (fmt.SpaceAfterSeparator) sb.Append(' ');
+                continue;
+            }
+
+            if (openParen)
+            {
+                TrimEndSpace();
+                sb.Append(patterns.OpenParenthesis);
+                continue;
+            }
+
+            if (closeParen)
+            {
+                TrimEndSpace();
+                sb.Append(patterns.CloseParenthesis);
+                continue;
+            }
+
+            if (isOperatorToken)
+            {
+                var prev = PrevNonNull(infixTokens, i);
+                var next = NextNonNull(infixTokens, i);
+
+                bool nameInUnary = unaryDict.ContainsKey(text);
+                bool nameInBinary = opDict.ContainsKey(text);
+
+                bool prefix = false;
+                bool postfix = false;
+                bool binary = false;
+
+                if (nameInUnary && !nameInBinary)
+                {
+                    // purely unary, use defined orientation
+                    prefix = unaryDict[text].Prefix;
+                    postfix = !prefix;
+                }
+                else if (!nameInUnary && nameInBinary)
+                {
+                    // purely binary
+                    binary = true;
+                }
+                else
+                {
+                    // ambiguous or unknown: decide by context with TokenPatterns hints
+                    bool prevIsOperand = IsOperandish(prev, IsCloseParen);
+                    bool prevIsOperator = IsOperatorish(prev, IsOpenParen, IsSeparator);
+                    bool nextIsOperand = IsOperandish(next, IsCloseParen);
+
+                    if (!prevIsOperand && prefixUnary.Contains(text))
+                    {
+                        prefix = true;
+                    }
+                    else if (prevIsOperand && postfixUnary.Contains(text))
+                    {
+                        postfix = true;
+                    }
+                    else
+                    {
+                        // fallback heuristic: start or after operator/open/separator => prefix; otherwise binary
+                        if (!prevIsOperand || prevIsOperator)
+                        {
+                            prefix = nameInUnary && unaryDict[text].Prefix;
+                            if (!prefix && !nameInUnary) binary = true; // if not known unary, treat as binary
+                        }
+                        else
+                        {
+                            // after an operand
+                            if (postfixUnary.Contains(text))
+                            {
+                                postfix = true;
+                            }
+                            else
+                            {
+                                binary = true;
+                            }
+                        }
+                    }
+                }
+
+                // Special-case dot/member access: never add spaces
+                bool isDot = text == ".";
+                if (isDot)
+                {
+                    TrimEndSpace();
+                    sb.Append('.');
+                    continue;
+                }
+
+                if (prefix || postfix)
+                {
+                    // No spaces for unary (both prefix and postfix)
+                    TrimEndSpace();
+                    sb.Append(text);
+                    continue;
+                }
+
+                // Binary formatting
+                if (binary || nameInBinary)
+                {
+                    if (fmt.SpacesAroundBinaryOperators)
+                    {
+                        TrimEndSpace();
+                        if (sb.Length > 0 && sb[^1] != ' ') sb.Append(' ');
+                        sb.Append(text);
+                        sb.Append(' ');
+                    }
+                    else
+                    {
+                        TrimEndSpace();
+                        sb.Append(text);
+                    }
+                    continue;
+                }
+
+                // Unknown operator: be conservative, no extra spaces
+                TrimEndSpace();
+                sb.Append(text);
+                continue;
+            }
+
+            // Function names: emit as-is; '(' will follow and we don't add a space before it.
+            if (tok.TokenType == TokenType.Function)
+            {
+                bool needSpaceBefore = sb.Length > 0 && (char.IsLetterOrDigit(sb[^1]) || sb[^1] == patterns.CloseParenthesis);
+                if (needSpaceBefore) sb.Append(' ');
+                sb.Append(text);
+                continue;
+            }
+
+            // Identifiers and Literals
+            if (tok.TokenType is TokenType.Identifier or TokenType.Literal)
+            {
+                bool needSpaceBefore = sb.Length > 0 && (char.IsLetterOrDigit(sb[^1]) || sb[^1] == patterns.CloseParenthesis);
+                if (needSpaceBefore) sb.Append(' ');
+                sb.Append(text);
+                continue;
+            }
+
+            // Fallback: append raw text
+            sb.Append(text);
+        }
+
+        return sb.ToString();
+    }
 }

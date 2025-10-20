@@ -5,7 +5,13 @@ namespace ParserLibrary.Meta;
 
 public readonly struct FunctionInformation
 {
+    public int? Id { get; init; }
+
     public string Name { get; init; }
+
+    public override string ToString()  => Id.HasValue ?
+        $"{Name} (ID: {Id})" :  Name;
+
     public string? Description { get; init; }
     public byte? MinArgumentsCount { get; init; }
     public byte? MaxArgumentsCount { get; init; }

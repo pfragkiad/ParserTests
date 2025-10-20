@@ -4,7 +4,7 @@ public enum IgnoreMode { None, CaptureGroups, Pattern, PrefixPostfix }
 
 public sealed class VariableNamesOptions
 {
-    public required HashSet<string> KnownIdentifierNames { get; init; }
+    public HashSet<string>? KnownIdentifierNames { get; init; }
     public HashSet<string>? IgnoreCaptureGroups { get; init; }
     public Regex? IgnoreIdentifierPattern { get; init; }
     public HashSet<string>? IgnorePrefixes { get; init; }
@@ -46,7 +46,7 @@ public sealed class VariableNamesOptions
         IgnorePostfixes = null
     };
 
-    public bool IsEmpty => KnownIdentifierNames.Count == 0
+    public bool IsEmpty => (KnownIdentifierNames?.Count ?? 0) ==0 
         && IgnoreCaptureGroups is null
         && IgnoreIdentifierPattern is null
         && IgnorePrefixes is null

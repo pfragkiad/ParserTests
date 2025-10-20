@@ -155,8 +155,6 @@ public class Tokenizer : ITokenizer
         List<Token> tokens = [];
         HashSet<int> functionParenthesisPositions = [];
 
-
-
         // 1) LITERALS FIRST - collect literal tokens and spans
         MatchCollection litMatches = _literalRegex.Matches(expression);
         if (litMatches.Count > 0)
@@ -186,6 +184,46 @@ public class Tokenizer : ITokenizer
             return false;
         }
 
+        // IMPORTANT: Track identifier spans early so operators won't match inside identifiers/functions
+        MatchCollection idMatches = _identifierRegex.Matches(expression);
+        List<(int Start, int End)> identifierSpans = [];
+        if (idMatches.Count > 0)
+        {
+            foreach (Match m in idMatches)
+            {
+                int start = m.Index;
+                int end = m.Index + m.Length;
+
+                // Do not add identifiers/functions that are already part of a literal
+                if (IsInsideAnySpan(start, end, literalSpans)) continue;
+
+                string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
+                var text = m.Value;
+
+                // If the matched identifier text is exactly an operator name, don't treat it as identifier/function.
+                // Leave it for the operator matching phase (and allow '(' to be a normal OpenParenthesis).
+                if (IsOperatorName(text))
+                    continue;
+
+                int i = m.Index + m.Length;
+                // Skip optional whitespace between identifier and '('
+                while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
+
+                if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
+                {
+                    // Function: add function token and remember '(' position to avoid re-adding it
+                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
+                    functionParenthesisPositions.Add(i);
+                    identifierSpans.Add((start, end));
+                    continue;
+                }
+
+                // Plain identifier
+                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
+                identifierSpans.Add((start, end));
+            }
+        }
+
         // Track already-claimed operator spans so shorter ops inside a longer one are skipped.
         List<(int Start, int End)> operatorSpans = [];
 
@@ -203,6 +241,7 @@ public class Tokenizer : ITokenizer
                     int start = m.Index;
                     int end = m.Index + m.Length;
                     if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
                     if (IsInsideAnySpan(start, end, operatorSpans)) continue;
 
                     // longest-first guarantees correct choice; skip if a longer match already claimed this start
@@ -223,12 +262,21 @@ public class Tokenizer : ITokenizer
             {
                 var matches = regex.Matches(expression);
                 if (matches.Count == 0) continue;
+
+                bool needsWordBoundaries = OperatorNeedsWordBoundaries(op.Name);
+
                 foreach (Match m in matches)
                 {
                     int start = m.Index;
                     int end = m.Index + m.Length;
+
+                    // Never match inside literals, identifiers/functions, or already claimed operators
                     if (IsInsideAnySpan(start, end, literalSpans)) continue;
+                    if (IsInsideAnySpan(start, end, identifierSpans)) continue;
                     if (IsInsideAnySpan(start, end, operatorSpans)) continue;
+
+                    // For textual operators, enforce identifier-like boundaries (avoid matching inside names)
+                    if (needsWordBoundaries && !HasIdentifierBoundaries(expression, start, end)) continue;
 
                     // longest-first guarantees correct choice; skip if a longer match already claimed this start
                     if (!opStarts.Add(start)) continue;
@@ -236,42 +284,6 @@ public class Tokenizer : ITokenizer
                     tokens.Add(Token.FromMatch(m, TokenType.Operator));
                     operatorSpans.Add((start, end));
                 }
-            }
-        }
-
-
-
-        // 2) IDENTIFIERS (+ possible functions) - skip matches inside literal spans
-        MatchCollection idMatches = _identifierRegex.Matches(expression);
-        List<(int Start, int End)> identifierSpans = [];
-        if (idMatches.Count > 0)
-        {
-            foreach (Match m in idMatches)
-            {
-                int start = m.Index;
-                int end = m.Index + m.Length;
-                // Do not add identifiers/functions that are already part of a literal
-                if (IsInsideAnySpan(start, end, literalSpans)) continue;
-                if (IsInsideAnySpan(start, end, operatorSpans)) continue;
-
-                string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
-
-                int i = m.Index + m.Length;
-                // Skip optional whitespace between identifier and '('
-                while (i < expression.Length && char.IsWhiteSpace(expression[i])) i++;
-
-                if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
-                {
-                    // Function: add function token and remember '(' position to avoid re-adding it
-                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
-                    functionParenthesisPositions.Add(i);
-                    identifierSpans.Add((m.Index, m.Index + m.Length));
-                    continue;
-                }
-
-                // Plain identifier
-                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
-                identifierSpans.Add((m.Index, m.Index + m.Length));
             }
         }
 
@@ -293,6 +305,19 @@ public class Tokenizer : ITokenizer
         FixUnaryOperators(tokens);
 
         return tokens;
+    }
+
+    // Identifier-boundary helpers to prevent textual operators from matching inside identifiers/functions
+    private static bool IsIdentifierChar(char ch) => char.IsLetterOrDigit(ch) || ch == '_' || ch == '$';
+
+    private static bool OperatorNeedsWordBoundaries(string op) => op.Any(char.IsLetterOrDigit);
+
+    // end is exclusive
+    private static bool HasIdentifierBoundaries(string expression, int start, int end)
+    {
+        bool leftOk = start == 0 || !IsIdentifierChar(expression[start - 1]);
+        bool rightOk = end >= expression.Length || !IsIdentifierChar(expression[end]);
+        return leftOk && rightOk;
     }
 
     // Lightweight single-pass tokenizer (minimizes regex usage; operators matched without regex)
@@ -599,23 +624,23 @@ public class Tokenizer : ITokenizer
                         unaryDictionary[previousToken.Text].Prefix) ||
                     previousTokenType == TokenType.OpenParenthesis ||          //  (-2
                     previousTokenType == TokenType.Function)                   // func(-2
-                
-                {
-            token.TokenType = TokenType.OperatorUnary;
-        }
-        continue;
-    }
 
-    // unary.postfix case from now on (assuming in examples that '*' could also be a unary postfix operator)
-    bool canBePostfix =
-        previousTokenType == TokenType.Literal ||    // 5*
-        previousTokenType == TokenType.Identifier || // a*
-        (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); // prev is postfix: %*, *+
+                {
+                    token.TokenType = TokenType.OperatorUnary;
+                }
+                continue;
+            }
+
+            // unary.postfix case from now on (assuming in examples that '*' could also be a unary postfix operator)
+            bool canBePostfix =
+                previousTokenType == TokenType.Literal ||    // 5*
+                previousTokenType == TokenType.Identifier || // a*
+                (previousTokenType == TokenType.OperatorUnary && !unaryDictionary[previousToken.Text].Prefix); // prev is postfix: %*, *+
 
             if (!canBePostfix) continue; // stay as binary
 
             Token nextToken = tokens[i + 1];
-    TokenType nextTokenType = nextToken.TokenType;
+            TokenType nextTokenType = nextToken.TokenType;
 
             // the next is a variable/literal or function or open parenthesis so this is binary
             if (nextTokenType == TokenType.Literal ||       // *2
@@ -934,4 +959,25 @@ public class Tokenizer : ITokenizer
     }
     #endregion
 
+    // Helper: is text exactly an operator (binary or unary) name? Honors tokenizer case-sensitivity.
+    private bool IsOperatorName(string text)
+    {
+        var ops = _patterns.OperatorDictionary;
+        if (ops.ContainsKey(text)) return true;
+
+        var uops = _patterns.UnaryOperatorDictionary;
+        if (uops.ContainsKey(text)) return true;
+
+        if (!_patterns.CaseSensitive)
+        {
+            foreach (var k in ops.Keys)
+                if (string.Equals(k, text, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            foreach (var k in uops.Keys)
+                if (string.Equals(k, text, StringComparison.OrdinalIgnoreCase))
+                    return true;
+        }
+
+        return false;
+    }
 }

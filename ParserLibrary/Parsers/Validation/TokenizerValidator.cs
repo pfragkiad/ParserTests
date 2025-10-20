@@ -195,21 +195,21 @@ public class TokenizerValidator : ITokenizerValidator
     public VariableNamesCheckResult CheckVariableNames(List<Token> infixTokens, VariableNamesOptions options)
     {
         if (options.IgnoreCaptureGroups is { Count: > 0 })
-            return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreCaptureGroups);
+            return CheckVariableNames(infixTokens, options.KnownIdentifierNames ??[], options.IgnoreCaptureGroups);
 
         if (options.IgnoreIdentifierPattern is not null)
-            return CheckVariableNames(infixTokens, options.KnownIdentifierNames, options.IgnoreIdentifierPattern);
+            return CheckVariableNames(infixTokens, options.KnownIdentifierNames ?? [], options.IgnoreIdentifierPattern);
 
         if ((options.IgnorePrefixes is not null && options.IgnorePrefixes.Count > 0) ||
             (options.IgnorePostfixes is not null && options.IgnorePostfixes.Count > 0))
             return CheckVariableNames(
                 infixTokens,
-                options.KnownIdentifierNames,
+                options.KnownIdentifierNames ?? [],
                 options.IgnorePrefixes ?? [],
                 options.IgnorePostfixes ?? []);
 
         // No ignore rules: strict matching (no ignores)
-        return CheckVariableNames(infixTokens, options.KnownIdentifierNames, []);
+        return CheckVariableNames(infixTokens, options.KnownIdentifierNames ?? [], []);
     }
 
     #endregion
@@ -333,7 +333,7 @@ public class TokenizerValidator : ITokenizerValidator
         bool earlyReturnOnErrors = false)
     {
         // Variable names accumulation
-        var known = options.KnownIdentifierNames;
+        HashSet<string> known = options.KnownIdentifierNames ?? [];
         HashSet<string> matchedVars = [];
         HashSet<string> unmatchedVars = [];
         HashSet<string> ignoredVars = [];
