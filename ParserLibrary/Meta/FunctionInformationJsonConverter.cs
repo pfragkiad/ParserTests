@@ -151,6 +151,9 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                 if (syn.Scenario.HasValue)
                     Write(writer, options, nameof(FunctionSyntax.Scenario), syn.Scenario.Value);
 
+                if (!string.IsNullOrWhiteSpace(syn.Expression))
+                    Write(writer, options, nameof(FunctionSyntax.Expression), syn.Expression!);
+
                 // InputsFixed: array of { position, type }
                 if (syn.InputsFixed is { Count: > 0 })
                 {
@@ -169,42 +172,60 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                     writer.WriteEndArray();
                 }
 
-                // InputsDynamic: { firstInputType?, lastInputType?, types? }
-                var hasFirst = syn.FirstInputType is not null;
-                var hasLast = syn.LastInputType is not null;
-                var hasTypes = syn.MiddleInputTypes is { Count: > 0 };
-
-                if (hasFirst || hasLast || hasTypes)
+                // InputsDynamic: { firstInputType?, lastInputType?, types?, minVariableArgumentsCount? }
+                if (syn.InputsDynamic.HasValue)
                 {
-                    WritePropName(writer, options, nameof(FunctionSyntax.MiddleInputTypes));
-                    writer.WriteStartObject();
+                    var dyn = syn.InputsDynamic.Value;
+                    var hasFirst = dyn.FirstInputType is not null;
+                    var hasLast = dyn.LastInputType is not null;
+                    var hasTypes = dyn.MiddleInputTypes is { Count: > 0 };
+                    var minVar = dyn.MinVariableArgumentsCount;
 
-                    if (hasFirst)
+                    if (hasFirst || hasLast || hasTypes || minVar > 0)
                     {
-                        WritePropName(writer, options, nameof(FunctionSyntax.FirstInputType));
-                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.FirstInputType!));
-                    }
+                        WritePropName(writer, options, nameof(FunctionSyntax.InputsDynamic));
+                        writer.WriteStartObject();
 
-                    if (hasLast)
-                    {
-                        WritePropName(writer, options, nameof(FunctionSyntax.LastInputType));
-                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.LastInputType!));
-                    }
-
-                    if (hasTypes)
-                    {
-                        WritePropName(writer, options, "Types");
-                        writer.WriteStartArray();
-                        foreach (var t in syn.MiddleInputTypes!)
+                        if (hasFirst)
                         {
-                            if (t is null) continue;
-                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+                            WritePropName(writer, options, "FirstInputType");
+                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(dyn.FirstInputType!));
                         }
-                        writer.WriteEndArray();
-                    }
 
-                    writer.WriteEndObject();
+                        if (hasLast)
+                        {
+                            WritePropName(writer, options, "LastInputType");
+                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(dyn.LastInputType!));
+                        }
+
+                        if (hasTypes)
+                        {
+                            WritePropName(writer, options, "Types");
+                            writer.WriteStartArray();
+                            foreach (var t in dyn.MiddleInputTypes!)
+                            {
+                                if (t is null) continue;
+                                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+                            }
+                            writer.WriteEndArray();
+                        }
+
+                        if (minVar > 0)
+                        {
+                            WritePropName(writer, options, "MinVariableArgumentsCount");
+                            writer.WriteNumberValue(minVar);
+                        }
+
+                        writer.WriteEndObject();
+                    }
                 }
+
+                // Write Example and Description BEFORE OutputType
+                if (!string.IsNullOrWhiteSpace(syn.Example))
+                    Write(writer, options, nameof(FunctionSyntax.Example), syn.Example!);
+
+                if (!string.IsNullOrWhiteSpace(syn.Description))
+                    Write(writer, options, nameof(FunctionSyntax.Description), syn.Description!);
 
                 // Output type LAST
                 if (syn.OutputType is not null)
@@ -212,13 +233,6 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                     WritePropName(writer, options, nameof(FunctionSyntax.OutputType));
                     writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.OutputType));
                 }
-                // Example and Description (new)
-                if (!string.IsNullOrWhiteSpace(syn.Example))
-                    Write(writer, options, nameof(FunctionSyntax.Example), syn.Example!);
-
-                if (!string.IsNullOrWhiteSpace(syn.Description))
-                    Write(writer, options, nameof(FunctionSyntax.Description), syn.Description!);
-
 
                 writer.WriteEndObject();
             }
@@ -242,7 +256,7 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         WritePropName(writer, options, clrName);
         writer.WriteStringValue(value);
     }
-   private static void Write(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName, bool value)
+    private static void Write(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName, bool value)
     {
         WritePropName(writer, options, clrName);
         writer.WriteBooleanValue(value);
