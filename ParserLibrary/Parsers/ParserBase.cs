@@ -925,16 +925,12 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
-    #region Function/operator validators and strict type retrieval
-
-    protected static readonly ValidationResult _successResult = new();
-
     #region Functions
 
     protected static ValidationResult UnknownFunctionResult(string functionName) =>
         new([new ValidationFailure("function", $"Function '{functionName}' is not supported.")]);
 
-    public bool IsValidationFailureFunctionNotSupported (ValidationResult result)
+    public bool IsValidationFailureFunctionNotSupported(ValidationResult result)
     {
         return result.Errors.Count == 1 &&
                result.Errors[0].PropertyName == "function" &&
@@ -942,25 +938,184 @@ public partial class ParserBase : Tokenizer, IParser
                result.Errors[0].ErrorMessage.StartsWith("Function ");
     }
 
+    protected Result<Type[], ValidationResult> GetFunctionArgumentTypes2
+       (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
+    {
+        // Must have syntaxes defined for this "new stuff only" validator
+        if (funcInfo.Syntaxes is null || funcInfo.Syntaxes.Count == 0)
+            return new ValidationResult(failures: [new("function", $"Function '{funcInfo.Name}' has no declared syntaxes.")]);
+
+        // Nulls not allowed
+        if (args.Any(a => a is null))
+            return new ValidationResult(failures: [new("arguments", $"{funcInfo.Name} does not accept null arguments.")]);
+
+        // Resolve argument types (support passing Type directly)
+        var resolved = new Type[args.Length];
+        for (int i = 0; i < args.Length; i++)
+            resolved[i] = args[i] is Type t ? t : args[i]!.GetType();
+
+        // Try to match at least one syntax
+        foreach (var syn in funcInfo.Syntaxes)
+        {
+            // 1) Fixed signature: exact arity and compatible types per position
+            if (syn.InputsFixed is { Count: > 0 })
+            {
+                if (resolved.Length != syn.InputsFixed.Count)
+                    continue;
+
+                bool allMatch = true;
+                for (int i = 0; i < syn.InputsFixed.Count; i++)
+                {
+                    var expected = syn.InputsFixed[i];
+                    var actual = resolved[i];
+                    if (!TypeMatches(actual, expected, allowParentTypes))
+                    {
+                        allMatch = false;
+                        break;
+                    }
+                }
+
+                if (!allMatch) continue;
+
+                // Validate universal string values if any
+                var uniStrCheck = ValidateUniversalStringValues(funcInfo, args);
+                if (!uniStrCheck.IsSuccess) return uniStrCheck.Error!;
+
+                return resolved;
+            }
+
+            // 2) Dynamic signature:
+            //    [FirstInputType] (zero or more middle from InputsDynamic) [LastInputType]
+            var hasFirst = syn.FirstInputType is not null;
+            var hasLast = syn.LastInputType is not null;
+            var dynamicSet = syn.InputsDynamic; // may be null or empty
+
+            // Boundary feasibility
+            if (hasFirst && resolved.Length < 1)
+                continue;
+            if (hasLast && resolved.Length < (hasFirst ? 2 : 1))
+                continue;
+
+            // Check first
+            int start = 0;
+            int end = resolved.Length - 1;
+
+            if (hasFirst)
+            {
+                if (!TypeMatches(resolved[0], syn.FirstInputType!, allowParentTypes))
+                    continue;
+                start = 1;
+            }
+
+            // Check last
+            if (hasLast)
+            {
+                if (!TypeMatches(resolved[^1], syn.LastInputType!, allowParentTypes))
+                    continue;
+                end = resolved.Length - 2;
+            }
+
+            // Check middles
+            if (start <= end)
+            {
+                // Have middle args
+                if (dynamicSet is null || dynamicSet.Count == 0)
+                    continue; // no middles allowed by this syntax
+
+                bool allMiddlesOk = true;
+                for (int i = start; i <= end; i++)
+                {
+                    var actualMid = resolved[i];
+                    // any expected in the dynamic set that this actual (received) is a superclass/interface (or equal)
+                    if (!dynamicSet.Any(expectedMid => TypeMatches(actualMid, expectedMid, allowParentTypes)))
+                    {
+                        allMiddlesOk = false;
+                        break;
+                    }
+                }
+
+                if (!allMiddlesOk) continue;
+            }
+            else
+            {
+                // No middle args present (OK). Zero-or-more semantics.
+            }
+
+            // Matched this syntax
+            var uniStrCheckDyn = ValidateUniversalStringValues(funcInfo, args);
+            if (!uniStrCheckDyn.IsSuccess) return uniStrCheckDyn.Error!;
+
+            return resolved;
+        }
+
+        // None matched
+        return new ValidationResult(failures: [new("arguments", $"{funcInfo.Name} arguments do not match any declared syntax.")]);
+
+        // Validates only "universal" string value constraints:
+        // - AllowedStringValuesForLast for the last argument (if it is a string)
+        // - otherwise AllowedStringValuesForAll for any string arguments
+        static Result<bool, ValidationResult> ValidateUniversalStringValues(FunctionInformation info, object?[] callArgs)
+        {
+            var lastIdx = callArgs.Length - 1;
+            var hasLastValues = info.AllowedStringValuesForLast is { Count: > 0 };
+            var hasAllValues = info.AllowedStringValuesForAll is { Count: > 0 };
+
+            if (!hasLastValues && !hasAllValues)
+                return true; // nothing to validate
+
+            for (int i = 0; i < callArgs.Length; i++)
+            {
+                if (callArgs[i] is not string strArg) continue;
+
+                HashSet<string>? allowedStrings = null;
+
+                if (hasLastValues && i == lastIdx)
+                    allowedStrings = info.AllowedStringValuesForLast;
+                else if (hasAllValues)
+                    allowedStrings = info.AllowedStringValuesForAll;
+
+                if (allowedStrings is null || allowedStrings.Count == 0)
+                    continue;
+
+                if (!allowedStrings.Contains(strArg, StringComparer.OrdinalIgnoreCase))
+                {
+                    string posText = Helpers.ToOrdinal(i + 1);
+                    return new ValidationResult(failures: [
+                        new("arguments", $"{info.Name} function allowed string values for the {posText} argument are [{string.Join(", ", allowedStrings)}], got '{strArg}'.")
+                    ]);
+                }
+            }
+
+            return true;
+        }
+    }
+
+
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes
-        (FunctionInformation funcInfo, object?[] args) =>
-        funcInfo.FixedArgumentsCount.HasValue
+    (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
+    {
+        // Prefer the new syntax-based validation when syntaxes are declared
+        if (funcInfo.Syntaxes is { Count: > 0 })
+            return GetFunctionArgumentTypes2(funcInfo, args, allowParentTypes);
+
+        // Fallback to legacy per-position/global constraints when no syntaxes exist
+        return funcInfo.FixedArgumentsCount.HasValue
             ? GetFunctionArgumentTypes(
                 funcInfo.Name,
                 args,
                 funcInfo.FixedArgumentsCount.Value,
                 funcInfo.AllowedTypesPerPosition,
                 funcInfo.AllowedTypesForAll,
-                funcInfo.AllowedTypeForLast,
+                funcInfo.AllowedTypesForLast,
 
                 funcInfo.AllowedStringValuesPerPosition,
                 funcInfo.AllowedStringValuesForAll,
                 funcInfo.AllowedStringValuesForLast,
                 funcInfo.AllowedStringFormatsPerPosition,
                 funcInfo.AllowedStringFormatsForAll,
-                funcInfo.AllowedStringFormatsForLast
-                )
-
+                funcInfo.AllowedStringFormatsForLast,
+                allowParentTypes
+            )
             : (funcInfo.MinArgumentsCount.HasValue && funcInfo.MaxArgumentsCount.HasValue)
                 ? GetFunctionArgumentTypes(
                     funcInfo.Name,
@@ -969,27 +1124,25 @@ public partial class ParserBase : Tokenizer, IParser
                     funcInfo.MaxArgumentsCount.Value,
                     funcInfo.AllowedTypesPerPosition,
                     funcInfo.AllowedTypesForAll,
-                    funcInfo.AllowedTypeForLast,
+                    funcInfo.AllowedTypesForLast,
 
                     funcInfo.AllowedStringValuesPerPosition,
                     funcInfo.AllowedStringValuesForAll,
                     funcInfo.AllowedStringValuesForLast,
                     funcInfo.AllowedStringFormatsPerPosition,
                     funcInfo.AllowedStringFormatsForAll,
-                    funcInfo.AllowedStringFormatsForLast
-                    )
-
+                    funcInfo.AllowedStringFormatsForLast,
+                    allowParentTypes
+                )
                 : new ValidationResult(failures: [new("function", $"Function '{funcInfo.Name}' is not properly configured.")]);
+    }
 
-    // Single helper for all fixed-arity cases (any N).
-    // - Enforces exact argument count
-    // - Validates nulls (not allowed)
-    // - Validates types per position (if provided) and/or a global set for all positions
+    // New overload with allowParentTypes support
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
         string functionName,
         object?[] args,
         byte fixedCount,
-        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
+        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition,
         HashSet<Type>? allowedTypesForAll = null,
         HashSet<Type>? allowedTypeForLast = null,
 
@@ -999,7 +1152,8 @@ public partial class ParserBase : Tokenizer, IParser
 
         Dictionary<int, HashSet<string>>? allowedStringFormatsPerPosition = null,
         HashSet<string>? allowedStringFormatsForAll = null,
-        HashSet<string>? allowedStringFormatsForLast = null
+        HashSet<string>? allowedStringFormatsForLast = null,
+        bool allowParentTypes = true
     )
     {
         List<ValidationFailure> failures = [];
@@ -1029,7 +1183,7 @@ public partial class ParserBase : Tokenizer, IParser
             else
                 allowed = allowedTypesForAll;
 
-            if (allowed is not null && !allowed.Contains(t))
+            if (allowed is not null && allowed.Count > 0 && !allowed.Any(expected => TypeMatches(t, expected, allowParentTypes)))
             {
                 string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
                 string posText = i switch { 0 => "first", 1 => "second", 2 => "third", _ => $"{i + 1}th" };
@@ -1098,22 +1252,25 @@ public partial class ParserBase : Tokenizer, IParser
         return resolved;
     }
 
+
+    // New overload with allowParentTypes support
     protected Result<Type[], ValidationResult> GetFunctionArgumentTypes(
         string functionName,
         object?[] args,
         byte minCount,
         byte maxCount,
-        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition = null,
-        HashSet<Type>? allowedTypesForAll = null,
-        HashSet<Type>? allowedTypeForLast = null,
+        IReadOnlyList<HashSet<Type>>? allowedTypesPerPosition,
+        HashSet<Type>? allowedTypesForAll,
+        HashSet<Type>? allowedTypeForLast,
 
-        Dictionary<int, HashSet<string>>? allowedStringValuesPerPosition = null,
-        HashSet<string>? allowedStringValuesForAll = null,
-        HashSet<string>? allowedStringValuesForLast = null,
+        Dictionary<int, HashSet<string>>? allowedStringValuesPerPosition,
+        HashSet<string>? allowedStringValuesForAll,
+        HashSet<string>? allowedStringValuesForLast,
 
-        Dictionary<int, HashSet<string>>? allowedStringFormatsPerPosition = null,
-        HashSet<string>? allowedStringFormatsForAll = null,
-        HashSet<string>? allowedStringFormatsForLast = null
+        Dictionary<int, HashSet<string>>? allowedStringFormatsPerPosition,
+        HashSet<string>? allowedStringFormatsForAll,
+        HashSet<string>? allowedStringFormatsForLast,
+        bool allowParentTypes = true
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegative(minCount);
@@ -1131,7 +1288,6 @@ public partial class ParserBase : Tokenizer, IParser
         if (args.Any(a => a is null))
             return new ValidationResult(failures: [new("arguments", $"{functionName} does not accept null arguments.")]);
 
-
         // Type and string value validation
         var resolvedTypes = new Type[args.Length];
         for (int i = 0; i < args.Length; i++)
@@ -1146,10 +1302,10 @@ public partial class ParserBase : Tokenizer, IParser
             else
                 allowed = allowedTypesForAll;
 
-            if (allowed is not null && !allowed.Contains(t))
+            if (allowed is not null && allowed.Count > 0 && !allowed.Any(expected => TypeMatches(t, expected, allowParentTypes)))
             {
                 string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
-                string posText = ToOrdinal(i + 1);
+                string posText = Helpers.ToOrdinal(i + 1);
                 return new ValidationResult(failures: [new("arguments", $"{functionName} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")]);
             }
 
@@ -1169,7 +1325,7 @@ public partial class ParserBase : Tokenizer, IParser
 
                 if (allowedStrings is not null && strArg is not null && !allowedStrings.Contains(strArg, StringComparer.OrdinalIgnoreCase))
                 {
-                    string posText = ToOrdinal(i + 1);
+                    string posText = Helpers.ToOrdinal(i + 1);
                     return new ValidationResult(failures: [new("arguments", $"{functionName} function allowed string values for the {posText} argument are [{string.Join(", ", allowedStrings)}], got '{strArg}'.")]);
                 }
 
@@ -1189,7 +1345,7 @@ public partial class ParserBase : Tokenizer, IParser
                         System.Text.RegularExpressions.Regex.IsMatch(strArg, fmt, System.Text.RegularExpressions.RegexOptions.IgnoreCase));
                     if (!matches)
                     {
-                        string posText = ToOrdinal(i + 1);
+                        string posText = Helpers.ToOrdinal(i + 1);
                         return new ValidationResult(failures: [new("arguments", $"{functionName} function allowed string formats for the {posText} argument are [{string.Join(", ", allowedFormats)}], got '{strArg}'.")]);
                     }
                 }
@@ -1199,19 +1355,6 @@ public partial class ParserBase : Tokenizer, IParser
         }
 
         return resolvedTypes;
-
-        static string ToOrdinal(int n)
-        {
-            int rem100 = n % 100;
-            if (rem100 is >= 11 and <= 13) return $"{n}th";
-            return (n % 10) switch
-            {
-                1 => $"{n}st",
-                2 => $"{n}nd",
-                3 => $"{n}rd",
-                _ => $"{n}th"
-            };
-        }
     }
 
     public ValidationResult ValidateFunctionStringParameters(
@@ -1231,7 +1374,7 @@ public partial class ParserBase : Tokenizer, IParser
 
         return _successResult;
     }
-
+    protected readonly static ValidationResult _successResult = new();
 
     #region Virtual function hooks
 
@@ -1269,12 +1412,13 @@ public partial class ParserBase : Tokenizer, IParser
     protected static ValidationResult UnknownOperatorResult(string operatorName) =>
         new([new ValidationFailure("operator", $"Operator '{operatorName}' is not supported.")]);
 
-
+    // Back-compat overload: default to allowing parent types (same policy as functions/unary)
     protected Result<(Type, Type), ValidationResult> GetBinaryOperatorArgumentTypes(
         string operatorName,
         object? leftArg,
         object? rightArg,
-        HashSet<(Type, Type)> allowedOperandTypes)
+        HashSet<(Type, Type)> allowedOperandTypes,
+        bool allowParentTypes = true)
     {
         // Nulls not allowed
         if (leftArg is null || rightArg is null)
@@ -1290,36 +1434,54 @@ public partial class ParserBase : Tokenizer, IParser
         if (allowedOperandTypes is null || allowedOperandTypes.Count == 0)
             return (leftType, rightType);
 
-        // Validate allowed combinations (exact type matches)
-        if (allowedOperandTypes.Contains((leftType, rightType)))
+        // Validate allowed combinations (exact or superclass/interface when allowed)
+        bool anyMatch = allowedOperandTypes.Any(p =>
+            TypeMatches(leftType, p.Item1, allowParentTypes) &&
+            TypeMatches(rightType, p.Item2, allowParentTypes));
+
+        if (anyMatch)
             return (leftType, rightType);
 
         // Build helpful error message
         string allowedStr = string.Join(", ", allowedOperandTypes.Select(p => $"({p.Item1.Name}, {p.Item2.Name})"));
         return new ValidationResult(failures: [
             new ValidationFailure(
-            "operands",
-            $"{operatorName} operator allowed operand type pairs are [{allowedStr}], got ({leftType.Name}, {rightType.Name}).")
+                "operands",
+                $"{operatorName} operator allowed operand type pairs are [{allowedStr}], got ({leftType.Name}, {rightType.Name}).")
         ]);
     }
 
     protected Result<Type, ValidationResult> GetUnaryOperatorArgumentType(
-      string operatorName,
-      object? arg,
-      HashSet<Type> allowedOperandType)
+        string operatorName,
+        object? arg,
+        HashSet<Type> allowedOperandType,
+        bool allowParentTypes = true)
     {
-        var result = GetFunctionArgumentTypes(
-            operatorName,
-            [arg],
-            fixedCount: 1,
-            allowedTypesPerPosition: [allowedOperandType]
-        );
-        if (result.IsSuccess)
-            return result.Value![0];
-        return result.Error!;
-    }
+        // Nulls not allowed
+        if (arg is null)
+            return new ValidationResult(failures: [
+                new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
+            ]);
 
-    #region Virtual operator hooks
+        // Resolve operand type (support passing Type directly)
+        Type actual = arg is Type t ? t : arg.GetType();
+
+        // If no constraints provided, accept any type
+        if (allowedOperandType is null || allowedOperandType.Count == 0)
+            return actual;
+
+        // Check exact or superclass/interface (when allowed)
+        bool match = allowedOperandType.Any(expected => TypeMatches(actual, expected, allowParentTypes));
+        if (match)
+            return actual;
+
+        string allowedStr = string.Join(", ", allowedOperandType.Select(x => x.Name));
+        return new ValidationResult(failures: [
+            new ValidationFailure(
+            "operands",
+            $"{operatorName} operator allowed operand types are [{allowedStr}], got {actual.Name}.")
+        ]);
+    }
 
     public virtual ValidationResult ValidateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
     {
@@ -1331,7 +1493,7 @@ public partial class ParserBase : Tokenizer, IParser
         return UnknownOperatorResult(operatorName);
     }
 
-    public virtual Result<(Type,Type), ValidationResult> GetBinaryOperatorOperandTypes(string operatorName, object? leftArg, object? rightArg)
+    public virtual Result<(Type, Type), ValidationResult> GetBinaryOperatorOperandTypes(string operatorName, object? leftArg, object? rightArg)
     {
         return UnknownOperatorResult(operatorName);
     }
@@ -1363,7 +1525,13 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
-    #endregion
 
-    #endregion
+    // Common type-compatibility helper (exact or superclass/interface when allowed)
+    protected static bool TypeMatches(Type actual, Type expected, bool allowParentTypes)
+    {
+        // Accept exact match, or when 'actual' is a superclass/interface of 'expected'
+        // (i.e., broader received type is allowed)
+        return ReferenceEquals(actual, expected) || (allowParentTypes && actual.IsAssignableFrom(expected));
+    }
+
 }

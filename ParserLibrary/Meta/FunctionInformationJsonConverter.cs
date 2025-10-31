@@ -72,10 +72,10 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
             WriteStringArray(writer, value.AllowedTypesForAll.Select(TypeNameDisplay.GetDisplayTypeName));
         }
 
-        if (value.AllowedTypeForLast is { Count: > 0 })
+        if (value.AllowedTypesForLast is { Count: > 0 })
         {
             WritePropName(writer, options, "AllowedTypesForLast");
-            WriteStringArray(writer, value.AllowedTypeForLast.Select(TypeNameDisplay.GetDisplayTypeName));
+            WriteStringArray(writer, value.AllowedTypesForLast.Select(TypeNameDisplay.GetDisplayTypeName));
         }
 
         // String values per position
@@ -134,6 +134,94 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         {
             WritePropName(writer, options, "AllowedStringFormatsForLast");
             WriteStringArray(writer, value.AllowedStringFormatsForLast);
+        }
+
+        // Function syntaxes (static input/output typing)
+        if (value.Syntaxes is { Count: > 0 })
+        {
+            WritePropName(writer, options, nameof(FunctionInformation.Syntaxes));
+            writer.WriteStartArray();
+
+            foreach (var syn in value.Syntaxes)
+            {
+                writer.WriteStartObject();
+
+                if (syn.Scenario.HasValue)
+                    Write(writer, options, nameof(FunctionSyntax.Scenario), syn.Scenario.Value);
+
+                // InputsFixed: array of { position, type }
+                if (syn.InputsFixed is { Count: > 0 })
+                {
+                    WritePropName(writer, options, nameof(FunctionSyntax.InputsFixed));
+                    writer.WriteStartArray();
+                    for (int i = 0; i < syn.InputsFixed.Count; i++)
+                    {
+                        var t = syn.InputsFixed[i];
+                        if (t is null) continue;
+                        writer.WriteStartObject();
+                        Write(writer, options, "Position", i + 1); // 1-based
+                        WritePropName(writer, options, "Type");
+                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+
+                // InputsDynamic: { firstInputType?, lastInputType?, types? }
+                var hasFirst = syn.FirstInputType is not null;
+                var hasLast = syn.LastInputType is not null;
+                var hasTypes = syn.InputsDynamic is { Count: > 0 };
+
+                if (hasFirst || hasLast || hasTypes)
+                {
+                    WritePropName(writer, options, nameof(FunctionSyntax.InputsDynamic));
+                    writer.WriteStartObject();
+
+                    if (hasFirst)
+                    {
+                        WritePropName(writer, options, nameof(FunctionSyntax.FirstInputType));
+                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.FirstInputType!));
+                    }
+
+                    if (hasLast)
+                    {
+                        WritePropName(writer, options, nameof(FunctionSyntax.LastInputType));
+                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.LastInputType!));
+                    }
+
+                    if (hasTypes)
+                    {
+                        WritePropName(writer, options, "Types");
+                        writer.WriteStartArray();
+                        foreach (var t in syn.InputsDynamic!)
+                        {
+                            if (t is null) continue;
+                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+                        }
+                        writer.WriteEndArray();
+                    }
+
+                    writer.WriteEndObject();
+                }
+
+                // Output type LAST
+                if (syn.OutputType is not null)
+                {
+                    WritePropName(writer, options, nameof(FunctionSyntax.OutputType));
+                    writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.OutputType));
+                }
+                // Example and Description (new)
+                if (!string.IsNullOrWhiteSpace(syn.Example))
+                    Write(writer, options, nameof(FunctionSyntax.Example), syn.Example!);
+
+                if (!string.IsNullOrWhiteSpace(syn.Description))
+                    Write(writer, options, nameof(FunctionSyntax.Description), syn.Description!);
+
+
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
         }
 
         writer.WriteEndObject();
