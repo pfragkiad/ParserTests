@@ -32,65 +32,7 @@ public sealed class ParserValidator : IParserValidator
             string name = node.Value.Text;
             int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
 
-            var fixedCount = metadata.GetCustomFunctionFixedArgCount(name) ??
-                             metadata.GetMainFunctionFixedArgCount(name) ??
-                             //new interface method to get fixed count when functioninformation data is available
-                             metadata.GetFunctionFixedArgCount(name);
-
-            if (fixedCount is not null)
-            {
-                var r = new FunctionArguments
-                {
-                    FunctionName = name,
-                    Position = node.Value.Index + 1,
-                    ActualArgumentsCount = actual,
-                    ExpectedArgumentsCount = fixedCount.Value
-                };
-                if (actual != fixedCount.Value) invalid.Add(r); else valid.Add(r);
-                continue;
-            }
-
-            var minCount = metadata.GetMainFunctionMinVariableArgCount(name);
-            if (minCount is not null)
-            {
-                var r = new FunctionArguments
-                {
-                    FunctionName = name,
-                    Position = node.Value.Index + 1,
-                    ActualArgumentsCount = actual,
-                    MinExpectedArgumentsCount = minCount.Value
-                };
-                if (actual < minCount.Value) invalid.Add(r); else valid.Add(r);
-                continue;
-            }
-
-            var minMaxCount = metadata.GetMainFunctionMinMaxVariableArgCount(name)
-                //new implementation to get min-max count when functioninformation data is available
-                ?? metadata.GetFunctionMinMaxVariableArgCount(name);
-            if (minMaxCount is not null)
-            {
-                var r = new FunctionArguments
-                {
-                    FunctionName = name,
-                    Position = node.Value.Index + 1,
-                    ActualArgumentsCount = actual,
-                    MinExpectedArgumentsCount = minMaxCount.Value.Item1,
-                    MaxExpectedArgumentsCount = minMaxCount.Value.Item2
-                };
-                if (actual < minMaxCount.Value.Item1 || actual > minMaxCount.Value.Item2)
-                    invalid.Add(r);
-                else
-                    valid.Add(r);
-                continue;
-            }
-
-            invalid.Add(new FunctionArguments
-            {
-                FunctionName = name,
-                Position = node.Value.Index + 1,
-                ActualArgumentsCount = actual,
-                ExpectedArgumentsCount = 0
-            });
+            ValidateFunctionCount(metadata, valid, invalid, node.Value, name, actual);
         }
 
         return new FunctionArgumentsCountCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
@@ -116,6 +58,7 @@ public sealed class ParserValidator : IParserValidator
 
         return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
+    
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(
           Dictionary<Token, Node<Token>> nodeDictionary)
     {
@@ -288,65 +231,7 @@ public sealed class ParserValidator : IParserValidator
                     //int actual = ((Node<Token>)node).GetFunctionArgumentsCount();
                     int actual = args.Length;
 
-                    int? fixedCount =
-                        functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
-                        functionDescriptors.GetMainFunctionFixedArgCount(name) ??
-                        //new interface method to get fixed count when functioninformation data is available
-                        functionDescriptors.GetFunctionFixedArgCount(name);
-
-                    int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name); //no interface method
-                    (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
-                        //new interface method
-                        functionDescriptors.GetFunctionMinMaxVariableArgCount(name)
-                        ;
-
-                    if (fixedCount is not null)
-                    {
-                        var r = new FunctionArguments
-                        {
-                            FunctionName = name,
-                            Position = token.Index + 1,
-                            ActualArgumentsCount = actual,
-                            ExpectedArgumentsCount = fixedCount.Value
-                        };
-                        if (actual != fixedCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
-                    }
-                    else if (minCount is not null)
-                    {
-                        var r = new FunctionArguments
-                        {
-                            FunctionName = name,
-                            Position = token.Index + 1,
-                            ActualArgumentsCount = actual,
-                            MinExpectedArgumentsCount = minCount.Value
-                        };
-                        if (actual < minCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
-                    }
-                    else if (minMaxCount is not null)
-                    {
-                        var r = new FunctionArguments
-                        {
-                            FunctionName = name,
-                            Position = token.Index + 1,
-                            ActualArgumentsCount = actual,
-                            MinExpectedArgumentsCount = minMaxCount.Value.Item1,
-                            MaxExpectedArgumentsCount = minMaxCount.Value.Item2
-                        };
-                        if (actual < minMaxCount.Value.Item1 || actual > minMaxCount.Value.Item2)
-                            funcCountInvalid.Add(r);
-                        else
-                            funcCountValid.Add(r);
-                    }
-                    else
-                    {
-                        funcCountInvalid.Add(new FunctionArguments
-                        {
-                            FunctionName = name,
-                            Position = token.Index + 1,
-                            ActualArgumentsCount = actual,
-                            ExpectedArgumentsCount = 0
-                        });
-                    }
+                    ValidateFunctionCount(functionDescriptors, funcCountValid, funcCountInvalid, token, name, actual);
                 }
 
                 if (earlyReturnOnErrors && funcCountInvalid.Count > 0 && !ignoreFunctions)
@@ -475,5 +360,108 @@ public sealed class ParserValidator : IParserValidator
             UnaryOperatorOperandsResult = unOpsResult,
             OrphanArgumentSeparatorsResult = sepResult
         };
+    }
+
+    private static void ValidateFunctionCount(IFunctionDescriptors? functionDescriptors, HashSet<FunctionArguments> funcCountValid, HashSet<FunctionArguments> funcCountInvalid, Token token, string name, int actual)
+    {
+        int? fixedCount =
+                                functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
+                                functionDescriptors.GetMainFunctionFixedArgCount(name) ??
+                                //new interface method to get fixed count when functioninformation data is available
+                                functionDescriptors.GetFunctionFixedArgCount(name);
+
+        int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name); //no interface method
+        (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
+            //new interface method
+            functionDescriptors.GetFunctionMinMaxVariableArgCount(name)
+            ;
+
+        //latest methods (to be unified and remove old ones) (fixed alternatives and dynamic min only)
+        IList<byte>? syntaxesFixedCounts =
+            functionDescriptors.GetFunctionSyntaxesFixedArgCount(name);
+        byte? minSyntaxVariablesCount =
+            functionDescriptors.GetFunctionSyntaxesMinVariableArgCount(name);
+
+
+        if (fixedCount is not null)
+        {
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                ExpectedArgumentsCount = fixedCount.Value
+            };
+            if (actual != fixedCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+        }
+        else if (minCount is not null)
+        {
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                MinExpectedArgumentsCount = minCount.Value
+            };
+            if (actual < minCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+        }
+        else if (minMaxCount is not null)
+        {
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                MinExpectedArgumentsCount = minMaxCount.Value.Item1,
+                MaxExpectedArgumentsCount = minMaxCount.Value.Item2
+            };
+            if (actual < minMaxCount.Value.Item1 || actual > minMaxCount.Value.Item2)
+                funcCountInvalid.Add(r);
+            else
+                funcCountValid.Add(r);
+        }
+
+        else if (minSyntaxVariablesCount is not null) //latest method
+        {
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                MinExpectedArgumentsCount = minSyntaxVariablesCount.Value
+            };
+            if (actual < minSyntaxVariablesCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+        }
+        else if (syntaxesFixedCounts is not null && syntaxesFixedCounts.Count > 0) //latest method
+        {
+            //check against all syntaxes fixed counts
+            bool anyMatch = false;
+            foreach (var fc in syntaxesFixedCounts)
+            {
+                if (actual == fc)
+                {
+                    anyMatch = true;
+                    break;
+                }
+            }
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                //no single expected count, so we leave it null
+            };
+            if (!anyMatch) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+        }
+        else
+        {
+            funcCountInvalid.Add(new FunctionArguments
+            {
+                FunctionName = name,
+                Position = token.Index + 1,
+                ActualArgumentsCount = actual,
+                ExpectedArgumentsCount = 0
+            });
+        }
     }
 }

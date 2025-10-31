@@ -5,7 +5,7 @@ namespace ParserLibrary.Meta;
 
 // Generic catalog base reusable for Function/Unary/Binary catalogs.
 // Provides reflection-based enumeration and name/description search.
-public abstract class MetadataCatalogBase<TInfo> where TInfo : struct
+public abstract class MetadataCatalogBase<TInfo> where TInfo : OperatorInformation
 {
     protected List<TInfo>? _allItemsCache;
 

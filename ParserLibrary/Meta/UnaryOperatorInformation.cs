@@ -9,14 +9,8 @@ public enum UnaryOperatorKind : byte
 }
 
 [JsonConverter(typeof(UnaryOperatorInformationJsonConverter))]
-public readonly struct UnaryOperatorInformation
+public class UnaryOperatorInformation :OperatorInformation
 {
-    // Symbol of the operator, e.g., "+", "-", "!", "++"
-    public string Name { get; init; }
-    public string? Description { get; init; }
-
-    public IList<SyntaxExample>? Examples { get; init; }
-
     // Unary placement kind
     public UnaryOperatorKind Kind { get; init; }
 

@@ -19,6 +19,10 @@ public interface IFunctionDescriptors
 
     (byte, byte)? GetFunctionMinMaxVariableArgCount(string functionName);
 
+    IList<byte>? GetFunctionSyntaxesFixedArgCount(string functionName);
+
+    byte? GetFunctionSyntaxesMinVariableArgCount(string functionName);
+
     bool IsKnownFunction(string functionName);
 
     bool IsUnknownFunction(string functionName);

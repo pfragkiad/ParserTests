@@ -21,6 +21,8 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         if (!string.IsNullOrEmpty(value.Description))
             Write(writer, options, nameof(FunctionInformation.Description), value.Description);
 
+        Write(writer, options, nameof(FunctionInformation.IsCustomFunction), value.IsCustomFunction);
+
         if (value.MinArgumentsCount.HasValue)
             Write(writer, options, nameof(FunctionInformation.MinArgumentsCount), value.MinArgumentsCount.Value);
 
@@ -170,11 +172,11 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                 // InputsDynamic: { firstInputType?, lastInputType?, types? }
                 var hasFirst = syn.FirstInputType is not null;
                 var hasLast = syn.LastInputType is not null;
-                var hasTypes = syn.InputsDynamic is { Count: > 0 };
+                var hasTypes = syn.MiddleInputTypes is { Count: > 0 };
 
                 if (hasFirst || hasLast || hasTypes)
                 {
-                    WritePropName(writer, options, nameof(FunctionSyntax.InputsDynamic));
+                    WritePropName(writer, options, nameof(FunctionSyntax.MiddleInputTypes));
                     writer.WriteStartObject();
 
                     if (hasFirst)
@@ -193,7 +195,7 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                     {
                         WritePropName(writer, options, "Types");
                         writer.WriteStartArray();
-                        foreach (var t in syn.InputsDynamic!)
+                        foreach (var t in syn.MiddleInputTypes!)
                         {
                             if (t is null) continue;
                             writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
@@ -240,7 +242,11 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         WritePropName(writer, options, clrName);
         writer.WriteStringValue(value);
     }
-
+   private static void Write(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName, bool value)
+    {
+        WritePropName(writer, options, clrName);
+        writer.WriteBooleanValue(value);
+    }
     private static void Write(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName, int value)
     {
         WritePropName(writer, options, clrName);

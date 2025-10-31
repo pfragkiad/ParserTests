@@ -6,38 +6,15 @@ using System.Text.RegularExpressions;
 
 namespace ParserLibrary.Meta;
 
-public readonly struct FunctionSyntax
+public class FunctionInformation : OperatorInformation
 {
-    public int? Scenario { get; init; }
 
-    public List<Type>? InputsFixed { get; init; }
+    public bool IsCustomFunction { get; init; } = false;
 
-
-    public Type? FirstInputType { get; init; }
-    public HashSet<Type>? InputsDynamic { get; init; }
-    public Type? LastInputType { get; init; }
-
-    public Type OutputType { get; init; }
-
-    public string? Example { get; init; }
-    public string? Description { get; init; }
-}
-
-public readonly struct FunctionInformation
-{
-    public int? Id { get; init; }
-
-    public string Name { get; init; }
-
-    public override string ToString() => Id.HasValue ?
-        $"{Name} (ID: {Id})" : Name;
-
-    public string? Description { get; init; }
     public byte? MinArgumentsCount { get; init; }
     public byte? MaxArgumentsCount { get; init; }
     public byte? FixedArgumentsCount { get; init; }
 
-    public IList<SyntaxExample>? Examples { get; init; }
 
     // Types: ignored in JSON to avoid reflection graphs and schema collisions
     [JsonIgnore] public IReadOnlyList<HashSet<Type>>? AllowedTypesPerPosition { get; init; }
@@ -106,7 +83,7 @@ public readonly struct FunctionInformation
             // Dynamic: [FirstInputType] (zero-or-more middles from InputsDynamic) [LastInputType]
             var hasFirst = syn.FirstInputType is not null;
             var hasLast = syn.LastInputType is not null;
-            var dynamicSet = syn.InputsDynamic; // can be null/empty
+            var dynamicSet = syn.MiddleInputTypes; // can be null/empty
 
             // Boundary feasibility
             if (hasFirst && resolved.Length < 1)
@@ -157,63 +134,64 @@ public readonly struct FunctionInformation
 
         // Nothing matched
         return Helpers.GetFailureResult("arguments", $"{Name} arguments do not match any declared syntax.", null);
-
-        // Applies string value and format constraints:
-        // - Per-position dictionaries (0-based)
-        // - For-all and For-last sets
-        static ValidationResult ValidateStringConstraints(FunctionInformation info, object?[] callArgs)
-        {
-            for (int i = 0; i < callArgs.Length; i++)
-            {
-                if (callArgs[i] is not string strArg) continue;
-
-                // Values
-                HashSet<string>? allowedValues = null;
-                if (info.AllowedStringValuesForLast is { Count: > 0 } && i == callArgs.Length - 1)
-                    allowedValues = info.AllowedStringValuesForLast;
-                else if (info.AllowedStringValuesPerPosition is not null && info.AllowedStringValuesPerPosition.TryGetValue(i, out var set) && set.Count > 0)
-                    allowedValues = set;
-                else if (info.AllowedStringValuesForAll is { Count: > 0 })
-                    allowedValues = info.AllowedStringValuesForAll;
-
-                if (allowedValues is not null && allowedValues.Count > 0)
-                {
-                    if (!allowedValues.Contains(strArg, StringComparer.OrdinalIgnoreCase))
-                    {
-                        string posText = Helpers.ToOrdinal(i + 1);
-                        return Helpers.GetFailureResult(
-                            "arguments",
-                            $"{info.Name} function allowed string values for the {posText} argument are [{string.Join(", ", allowedValues)}], got '{strArg}'.",
-                            strArg);
-                    }
-                }
-
-                // Formats (regex)
-                HashSet<string>? allowedFormats = null;
-                if (info.AllowedStringFormatsForLast is { Count: > 0 } && i == callArgs.Length - 1)
-                    allowedFormats = info.AllowedStringFormatsForLast;
-                else if (info.AllowedStringFormatsPerPosition is not null && info.AllowedStringFormatsPerPosition.TryGetValue(i, out var fmtSet) && fmtSet.Count > 0)
-                    allowedFormats = fmtSet;
-                else if (info.AllowedStringFormatsForAll is { Count: > 0 })
-                    allowedFormats = info.AllowedStringFormatsForAll;
-
-                if (allowedFormats is not null && allowedFormats.Count > 0)
-                {
-                    bool matches = allowedFormats.Any(fmt =>
-                        !string.IsNullOrEmpty(fmt) &&
-                        Regex.IsMatch(strArg, fmt, RegexOptions.IgnoreCase));
-                    if (!matches)
-                    {
-                        string posText = Helpers.ToOrdinal(i + 1);
-                        return Helpers.GetFailureResult(
-                            "arguments",
-                            $"{info.Name} function allowed string formats for the {posText} argument are [{string.Join(", ", allowedFormats)}], got '{strArg}'.",
-                            strArg);
-                    }
-                }
-            }
-            return new ValidationResult();
-        }
     }
 
+    public static ValidationResult ValidateStringConstraints(FunctionInformation info, object?[] callArgs)
+    {
+        for (int i = 0; i < callArgs.Length; i++)
+        {
+            if (callArgs[i] is not string strArg) continue;
+
+            // Values
+            HashSet<string>? allowedValues = null;
+            if (info.AllowedStringValuesForLast is { Count: > 0 } && i == callArgs.Length - 1)
+                allowedValues = info.AllowedStringValuesForLast;
+            else if (info.AllowedStringValuesPerPosition is not null && info.AllowedStringValuesPerPosition.TryGetValue(i, out var set) && set.Count > 0)
+                allowedValues = set;
+            else if (info.AllowedStringValuesForAll is { Count: > 0 })
+                allowedValues = info.AllowedStringValuesForAll;
+
+            if (allowedValues is not null && allowedValues.Count > 0)
+            {
+                if (!allowedValues.Contains(strArg, StringComparer.OrdinalIgnoreCase))
+                {
+                    string posText = Helpers.ToOrdinal(i + 1);
+                    return Helpers.GetFailureResult(
+                        "arguments",
+                        $"{info.Name} function allowed string values for the {posText} argument are [{string.Join(", ", allowedValues)}], got '{strArg}'.",
+                        strArg);
+                }
+            }
+
+            // Formats (regex)
+            HashSet<string>? allowedFormats = null;
+            if (info.AllowedStringFormatsForLast is { Count: > 0 } && i == callArgs.Length - 1)
+                allowedFormats = info.AllowedStringFormatsForLast;
+            else if (info.AllowedStringFormatsPerPosition is not null && info.AllowedStringFormatsPerPosition.TryGetValue(i, out var fmtSet) && fmtSet.Count > 0)
+                allowedFormats = fmtSet;
+            else if (info.AllowedStringFormatsForAll is { Count: > 0 })
+                allowedFormats = info.AllowedStringFormatsForAll;
+
+            if (allowedFormats is not null && allowedFormats.Count > 0)
+            {
+                bool matches = allowedFormats.Any(fmt =>
+                    !string.IsNullOrEmpty(fmt) &&
+                    Regex.IsMatch(strArg, fmt, RegexOptions.IgnoreCase));
+                if (!matches)
+                {
+                    string posText = Helpers.ToOrdinal(i + 1);
+                    return Helpers.GetFailureResult(
+                        "arguments",
+                        $"{info.Name} function allowed string formats for the {posText} argument are [{string.Join(", ", allowedFormats)}], got '{strArg}'.",
+                        strArg);
+                }
+            }
+        }
+        return new ValidationResult();
+    }
+
+    public FunctionDefinitionDto ToDefinitionDto() =>
+        FunctionDefinitionDto.From(this);
 }
+
+
