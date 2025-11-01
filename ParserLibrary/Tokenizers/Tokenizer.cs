@@ -224,6 +224,19 @@ public class Tokenizer : ITokenizer
             }
         }
 
+        // NEW: purge any tokens that accidentally fell inside identifier spans (e.g., numeric literal inside [IDENT-1])
+        if (identifierSpans.Count > 0 && tokens.Count > 0)
+        {
+            tokens.RemoveAll(t =>
+            {
+                // Keep identifiers/functions themselves; remove any other token fully inside an identifier span
+                if (t.TokenType == TokenType.Identifier || t.TokenType == TokenType.Function) return false;
+                int start = t.Index;
+                int end = t.Index + (t.Text?.Length ?? 1);
+                return IsInsideAnySpan(start, end, identifierSpans);
+            });
+        }
+
         // Track already-claimed operator spans so shorter ops inside a longer one are skipped.
         List<(int Start, int End)> operatorSpans = [];
 
@@ -288,9 +301,13 @@ public class Tokenizer : ITokenizer
         }
 
         // 3) Parentheses & argument separators (single pass over chars)
+        // Prevent adding any of these if they fall inside an identifier span.
         for (int i = 0; i < expression.Length; i++)
         {
             char c = expression[i];
+            bool insideIdentifier = IsInsideAnySpan(i, i + 1, identifierSpans);
+            if (insideIdentifier) continue;
+
             if (c == _patterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
             else if (c == _patterns.CloseParenthesis)
