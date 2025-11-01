@@ -39,7 +39,7 @@ public class FunctionSyntax
     public string? Example { get; init; }
     public string? Description { get; init; }
 
-    public Func<object?[], object?>? Calc { get; init; }
+    public Func<object?[],object?, object?>? Calc { get; init; } //args, context, returns result
 
     [JsonIgnore]
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }

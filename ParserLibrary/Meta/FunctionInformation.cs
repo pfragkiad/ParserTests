@@ -55,13 +55,13 @@ public class FunctionInformation : OperatorInformation
         return syntaxMatch.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args)
+    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, object? context)
     {
         var syntaxMatch = ValidateArgumentTypes(args);
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
-        return syntax.Calc!(args);
+        return syntax.Calc!(args, context);
     }
 
 
