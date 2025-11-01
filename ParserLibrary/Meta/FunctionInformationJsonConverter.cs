@@ -154,30 +154,31 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                 if (!string.IsNullOrWhiteSpace(syn.Expression))
                     Write(writer, options, nameof(FunctionSyntax.Expression), syn.Expression!);
 
-                // InputsFixed: array of { position, type }
+                // InputsFixed: array of { position, types[] }
                 if (syn.InputsFixed is { Count: > 0 })
                 {
                     WritePropName(writer, options, nameof(FunctionSyntax.InputsFixed));
                     writer.WriteStartArray();
                     for (int i = 0; i < syn.InputsFixed.Count; i++)
                     {
-                        var t = syn.InputsFixed[i];
-                        if (t is null) continue;
+                        var set = syn.InputsFixed[i];
+                        if (set is null || set.Count == 0) continue;
+
                         writer.WriteStartObject();
                         Write(writer, options, "Position", i + 1); // 1-based
-                        WritePropName(writer, options, "Type");
-                        writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+                        WritePropName(writer, options, "Types");
+                        WriteStringArray(writer, set.Select(TypeNameDisplay.GetDisplayTypeName).Distinct());
                         writer.WriteEndObject();
                     }
                     writer.WriteEndArray();
                 }
 
-                // InputsDynamic: { firstInputType?, lastInputType?, types?, minVariableArgumentsCount? }
+                // InputsDynamic: { firstInputTypes?, lastInputTypes?, types?, minVariableArgumentsCount? }
                 if (syn.InputsDynamic.HasValue)
                 {
                     var dyn = syn.InputsDynamic.Value;
-                    var hasFirst = dyn.FirstInputType is not null;
-                    var hasLast = dyn.LastInputType is not null;
+                    var hasFirst = dyn.FirstInputType is { Count: > 0 };
+                    var hasLast = dyn.LastInputType is { Count: > 0 };
                     var hasTypes = dyn.MiddleInputTypes is { Count: > 0 };
                     var minVar = dyn.MinVariableArgumentsCount;
 
@@ -188,26 +189,20 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
 
                         if (hasFirst)
                         {
-                            WritePropName(writer, options, "FirstInputType");
-                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(dyn.FirstInputType!));
+                            WritePropName(writer, options, "FirstInputTypes");
+                            WriteStringArray(writer, dyn.FirstInputType!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct());
                         }
 
                         if (hasLast)
                         {
-                            WritePropName(writer, options, "LastInputType");
-                            writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(dyn.LastInputType!));
+                            WritePropName(writer, options, "LastInputTypes");
+                            WriteStringArray(writer, dyn.LastInputType!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct());
                         }
 
                         if (hasTypes)
                         {
                             WritePropName(writer, options, "Types");
-                            writer.WriteStartArray();
-                            foreach (var t in dyn.MiddleInputTypes!)
-                            {
-                                if (t is null) continue;
-                                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
-                            }
-                            writer.WriteEndArray();
+                            WriteStringArray(writer, dyn.MiddleInputTypes!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct());
                         }
 
                         if (minVar > 0)

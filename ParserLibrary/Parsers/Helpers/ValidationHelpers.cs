@@ -1,8 +1,8 @@
 ﻿using FluentValidation.Results;
 
-namespace ParserLibrary;
+namespace ParserLibrary.Parsers.Helpers;
 
-public static class Helpers
+public static class ValidationHelpers
 {
     public static string ToOrdinal(int n)
     {
@@ -33,4 +33,23 @@ public static class Helpers
         ValidationFailure f = GetFailure(propertyName, errorMessage, attemptedValue);
         return new ValidationResult([f]);
     }
+
+    public static ValidationResult UnknownFunctionResult(string functionName) =>
+        new([new ValidationFailure("function", $"Function '{functionName}' is not supported.")]);
+
+    public static ValidationResult UnknownOperatorResult(string operatorName) =>
+        new([new ValidationFailure("operator", $"Operator '{operatorName}' is not supported.")]);
+
+
+    public static bool IsValidationFailureFunctionNotSupported(ValidationResult result)
+    {
+        return result.Errors.Count == 1 &&
+               result.Errors[0].PropertyName == "function" &&
+               result.Errors[0].ErrorMessage.Contains("is not supported.") &&
+               result.Errors[0].ErrorMessage.StartsWith("Function ");
+    }
+
+    public readonly static ValidationResult Success = new();
+
+
 }

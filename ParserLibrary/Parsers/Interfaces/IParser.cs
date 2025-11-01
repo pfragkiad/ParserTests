@@ -182,5 +182,4 @@ public interface IParser : ITokenizer
         Dictionary<string, Func<Type?[], Type?>>? ambiguousFunctionReturnTypes = null);
     List<Token> GetIdentifiers(string expression, string captureGroup, bool excludeConstantNames = true);
     string GetExpandedExpressionString(string expression, bool spacesAroundOperators = true, int maxDepth = 10);
-    bool IsValidationFailureFunctionNotSupported(ValidationResult result);
 }

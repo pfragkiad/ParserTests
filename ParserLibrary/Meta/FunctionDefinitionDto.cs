@@ -162,16 +162,16 @@ public sealed class FunctionDefinitionDto
     {
         var dyn = syn.InputsDynamic;
 
-        // Map to { position, type } with 1-based positions
+        // Map to [{ position, types[] }] with 1-based positions
         var inputsFixed = syn.InputsFixed is { Count: > 0 }
             ? syn.InputsFixed
-                .Select((t, idx) => t is null
-                    ? null
-                    : new InputFixedDto
+                .Select((set, idx) => set is { Count: > 0 }
+                    ? new InputFixedDto
                     {
                         Position = idx + 1,
-                        Type = TypeNameDisplay.GetDisplayTypeName(t)
-                    })
+                        Types = set.Select(TypeNameDisplay.GetDisplayTypeName).Distinct().ToList()
+                    }
+                    : null)
                 .Where(x => x is not null)
                 .Select(x => x!)
                 .ToList()
@@ -180,20 +180,22 @@ public sealed class FunctionDefinitionDto
         InputsDynamicDto? inputsDynamic = null;
         if (dyn is not null)
         {
-            var hasFirst = dyn.Value.FirstInputType is not null;
-            var hasLast = dyn.Value.LastInputType is not null;
-            var hasTypes = dyn.Value.MiddleInputTypes is { Count: > 0 };
+            var first = dyn.Value.FirstInputType;
+            var last = dyn.Value.LastInputType;
+            var middle = dyn.Value.MiddleInputTypes;
             var minVar = dyn.Value.MinVariableArgumentsCount;
 
-            if (hasFirst || hasLast || hasTypes || minVar > 0)
+            var hasFirst = first is { Count: > 0 };
+            var hasLast = last is { Count: > 0 };
+            var hasMiddle = middle is { Count: > 0 };
+
+            if (hasFirst || hasLast || hasMiddle || minVar > 0)
             {
                 inputsDynamic = new InputsDynamicDto
                 {
-                    FirstInputType = hasFirst ? TypeNameDisplay.GetDisplayTypeName(dyn.Value.FirstInputType!) : null,
-                    LastInputType = hasLast ? TypeNameDisplay.GetDisplayTypeName(dyn.Value.LastInputType!) : null,
-                    Types = hasTypes
-                        ? dyn.Value.MiddleInputTypes!.Select(TypeNameDisplay.GetDisplayTypeName).ToList()
-                        : null,
+                    FirstInputTypes = hasFirst ? [.. first!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
+                    LastInputTypes = hasLast ? [.. last!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
+                    Types = hasMiddle ? [.. middle!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
                     MinVariableArgumentsCount = minVar > 0 ? minVar : null
                 };
             }
@@ -244,7 +246,7 @@ public sealed class FunctionSyntaxDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Expression { get; init; }
 
-    // Array of { position, type }
+    // Array of { position, types[] } (1-based)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<InputFixedDto>? InputsFixed { get; init; }
 
@@ -267,17 +269,18 @@ public sealed class FunctionSyntaxDto
 public sealed class InputFixedDto
 {
     public int Position { get; init; }
-    public required string Type { get; init; }
+    public required List<string> Types { get; init; }
 }
 
 public sealed class InputsDynamicDto
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? FirstInputType { get; init; }
+    public List<string>? FirstInputTypes { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? LastInputType { get; init; }
+    public List<string>? LastInputTypes { get; init; }
 
+    // Middle input types (applies to all middle positions)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Types { get; init; }
 

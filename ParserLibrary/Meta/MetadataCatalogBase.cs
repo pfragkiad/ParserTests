@@ -9,9 +9,21 @@ public abstract class MetadataCatalogBase<TInfo> where TInfo : OperatorInformati
 {
     protected List<TInfo>? _allItemsCache;
 
+    public abstract bool RefreshEachTime { get; }
+
     protected virtual List<TInfo> GetAllCore()
     {
-        if (_allItemsCache is not null)
+        return GetAllCoreInternal();
+    }
+
+    //protected virtual async Task<List<TInfo>> GetAllCoreAsync()
+    //{
+    //    return await Task.FromResult(GetAllCoreInternal());
+    //}
+
+    protected private List<TInfo> GetAllCoreInternal()
+    {
+        if (_allItemsCache is not null && !RefreshEachTime)
             return _allItemsCache;
 
         var props = GetType()
@@ -25,6 +37,9 @@ public abstract class MetadataCatalogBase<TInfo> where TInfo : OperatorInformati
         return _allItemsCache;
     }
 
+
+
+
     protected List<TInfo> SearchByNameOrDescription(string searchTerm, StringComparison comparisonType)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
@@ -32,7 +47,9 @@ public abstract class MetadataCatalogBase<TInfo> where TInfo : OperatorInformati
 
         searchTerm = searchTerm.Trim();
 
-        var all = GetAllCore();
+        _allItemsCache ??= GetAllCore();
+
+        var all = _allItemsCache;
         var results = all
             .Where(it =>
                 GetName(it).Contains(searchTerm, comparisonType) ||
