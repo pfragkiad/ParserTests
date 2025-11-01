@@ -54,86 +54,104 @@ public class FunctionInformation : OperatorInformation
         // Try to match any syntax
         foreach (var syn in Syntaxes)
         {
-            // Fixed signature: exact arity and type match per position
-            if (syn.InputsFixed is { Count: > 0 })
+            // 1) Try fixed signature
+            if (IsFixedMatch(syn.InputsFixed, resolved))
             {
-                if (resolved.Length != syn.InputsFixed.Count)
-                    continue;
-
-                bool allMatch = true;
-                for (int i = 0; i < syn.InputsFixed.Count; i++)
-                {
-                    var expected = syn.InputsFixed[i];
-                    var actual = resolved[i];
-                    if (!ReferenceEquals(expected, actual))
-                    {
-                        allMatch = false;
-                        break;
-                    }
-                }
-
-                if (!allMatch) continue;
-
-                // Validate string values/formats
                 var strCheck = ValidateStringConstraints(this, args);
                 if (!strCheck.IsValid) return strCheck;
                 return syn;
             }
 
-            // Dynamic: [FirstInputType] (zero-or-more middles from InputsDynamic) [LastInputType]
-            var hasFirst = syn.FirstInputType is not null;
-            var hasLast = syn.LastInputType is not null;
-            var dynamicSet = syn.MiddleInputTypes; // can be null/empty
-
-            // Boundary feasibility
-            if (hasFirst && resolved.Length < 1)
-                continue;
-            if (hasLast && resolved.Length < (hasFirst ? 2 : 1))
-                continue;
-
-            int start = 0, end = resolved.Length - 1;
-
-            if (hasFirst)
+            // 2) Try dynamic signature
+            if (IsDynamicMatch(syn.InputsDynamic, resolved))
             {
-                if (!ReferenceEquals(resolved[0], syn.FirstInputType))
-                    continue;
-                start = 1;
+                var strCheckDyn = ValidateStringConstraints(this, args);
+                if (!strCheckDyn.IsValid) return strCheckDyn;
+                return syn;
             }
-
-            if (hasLast)
-            {
-                if (!ReferenceEquals(resolved[^1], syn.LastInputType))
-                    continue;
-                end = resolved.Length - 2;
-            }
-
-            // Validate middles: must all belong to InputsDynamic (if there are middles)
-            if (start <= end)
-            {
-                if (dynamicSet is null || dynamicSet.Count == 0)
-                    continue;
-
-                bool middlesOk = true;
-                for (int i = start; i <= end; i++)
-                {
-                    if (!dynamicSet.Contains(resolved[i]))
-                    {
-                        middlesOk = false;
-                        break;
-                    }
-                }
-                if (!middlesOk) continue;
-            }
-
-            // String constraints (values + formats)
-            var strCheckDyn = ValidateStringConstraints(this, args);
-            if (!strCheckDyn.IsValid) return strCheckDyn;
-
-            return syn;
         }
 
         // Nothing matched
         return Helpers.GetFailureResult("arguments", $"{Name} arguments do not match any declared syntax.", null);
+    }
+
+    private static bool IsFixedMatch(List<Type>? inputsFixed, Type[] resolved)
+    {
+        if (inputsFixed is null)
+            return false;
+
+        // Allow zero-args fixed signature when the list is empty
+        if (resolved.Length != inputsFixed.Count)
+            return false;
+
+        for (int i = 0; i < inputsFixed.Count; i++)
+        {
+            var expected = inputsFixed[i];
+            var actual = resolved[i];
+            if (!ReferenceEquals(expected, actual))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsDynamicMatch(InputsDynamic? inputsDynamic, Type[] resolved)
+    {
+        if (!inputsDynamic.HasValue)
+            return false;
+
+        var dyn = inputsDynamic.Value;
+        var hasFirst = dyn.FirstInputType is not null;
+        var hasLast = dyn.LastInputType is not null;
+        var middleSet = dyn.MiddleInputTypes; // can be null/empty
+        var minVar = dyn.MinVariableArgumentsCount;
+
+        // Boundary feasibility
+        if (hasFirst && resolved.Length < 1)
+            return false;
+        if (hasLast && resolved.Length < (hasFirst ? 2 : 1))
+            return false;
+
+        int start = 0;
+        int endExclusive = resolved.Length;
+
+        // Check first
+        if (hasFirst)
+        {
+            if (!ReferenceEquals(resolved[0], dyn.FirstInputType))
+                return false;
+            start = 1;
+        }
+
+        // Check last
+        if (hasLast)
+        {
+            if (!ReferenceEquals(resolved[^1], dyn.LastInputType))
+                return false;
+            endExclusive = resolved.Length - 1;
+        }
+
+        // Middle segment
+        int middleCount = endExclusive - start;
+
+        // Enforce minimum number of middle arguments (if specified)
+        if (minVar > 0 && middleCount < minVar)
+            return false;
+
+        // Validate middles: must all belong to MiddleInputTypes when there are middles
+        if (middleCount > 0)
+        {
+            if (middleSet is null || middleSet.Count == 0)
+                return false;
+
+            for (int i = start; i < endExclusive; i++)
+            {
+                if (!middleSet.Contains(resolved[i]))
+                    return false;
+            }
+        }
+
+        return true;
     }
 
     public static ValidationResult ValidateStringConstraints(FunctionInformation info, object?[] callArgs)
