@@ -9,7 +9,8 @@ public sealed class FunctionDefinitionDto
 {
     public required string Name { get; init; }
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    // NOTE: the custom converter always writes this (even when false).
+    // To keep output identical, do NOT suppress default(false).
     public bool IsCustomFunction { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
