@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace ParserLibrary.Meta;
 
@@ -34,12 +35,57 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
             writer.WriteEndArray();
         }
 
-        if (value.AllowedOperandTypes is { Count: > 0 })
+        // Legacy flat operand types (back-compat if rich syntaxes not provided)
+        if ((value.Syntaxes is null || value.Syntaxes.Count == 0) && value.AllowedOperandTypes is { Count: > 0 })
         {
             WritePropName(writer, options, nameof(UnaryOperatorInformation.AllowedOperandTypes));
             writer.WriteStartArray();
             foreach (var t in value.AllowedOperandTypes)
                 writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(t));
+            writer.WriteEndArray();
+        }
+
+        // New: rich syntaxes with per-syntax examples
+        if (value.Syntaxes is { Count: > 0 })
+        {
+            WritePropName(writer, options, nameof(UnaryOperatorInformation.Syntaxes));
+            writer.WriteStartArray();
+            foreach (var syn in value.Syntaxes)
+            {
+                writer.WriteStartObject();
+
+                if (syn.Scenario.HasValue)
+                    Write(writer, options, nameof(UnaryOperatorSyntax.Scenario), syn.Scenario.Value);
+
+                // Operand types
+                if (syn.OperandTypes is { Count: > 0 })
+                {
+                    WritePropName(writer, options, nameof(UnaryOperatorSyntax.OperandTypes));
+                    writer.WriteStartArray();
+                    foreach (var t in syn.OperandTypes.Select(TypeNameDisplay.GetDisplayTypeName).Distinct())
+                        writer.WriteStringValue(t);
+                    writer.WriteEndArray();
+                }
+
+                // Multiple examples first
+                if (syn.Examples is { Length: > 0 })
+                {
+                    WritePropName(writer, options, nameof(UnaryOperatorSyntax.Examples));
+                    writer.WriteStartArray();
+                    foreach (var s in syn.Examples.Distinct())
+                        writer.WriteStringValue(s);
+                    writer.WriteEndArray();
+                }
+
+                if (!string.IsNullOrWhiteSpace(syn.Description))
+                    Write(writer, options, nameof(UnaryOperatorSyntax.Description), syn.Description!);
+
+                // OutputType last
+                WritePropName(writer, options, nameof(UnaryOperatorSyntax.OutputType));
+                writer.WriteStringValue(TypeNameDisplay.GetDisplayTypeName(syn.OutputType));
+
+                writer.WriteEndObject();
+            }
             writer.WriteEndArray();
         }
 
@@ -50,6 +96,11 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
     {
         WritePropName(writer, options, clrName);
         writer.WriteStringValue(value);
+    }
+    private static void Write(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName, int value)
+    {
+        WritePropName(writer, options, clrName);
+        writer.WriteNumberValue(value);
     }
 
     private static void WritePropName(Utf8JsonWriter writer, JsonSerializerOptions options, string clrName)

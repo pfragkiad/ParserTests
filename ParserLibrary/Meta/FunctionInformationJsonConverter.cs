@@ -154,6 +154,9 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                 if (!string.IsNullOrWhiteSpace(syn.Expression))
                     Write(writer, options, nameof(FunctionSyntax.Expression), syn.Expression!);
 
+                if (!string.IsNullOrWhiteSpace(syn.ExpressionClean))
+                    Write(writer, options, nameof(FunctionSyntax.ExpressionClean), syn.ExpressionClean!);
+
                 // InputsFixed: array of { position, types[] }
                 if (syn.InputsFixed is { Count: > 0 })
                 {
@@ -215,9 +218,12 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                     }
                 }
 
-                // Write Example and Description BEFORE OutputType
-                if (!string.IsNullOrWhiteSpace(syn.Example))
-                    Write(writer, options, nameof(FunctionSyntax.Example), syn.Example!);
+                // Multiple syntax examples (array) BEFORE single Example/Description/OutputType
+                if (syn.Examples is { Length: > 0 })
+                {
+                    WritePropName(writer, options, nameof(FunctionSyntax.Examples));
+                    WriteStringArray(writer, syn.Examples.Distinct());
+                }
 
                 if (!string.IsNullOrWhiteSpace(syn.Description))
                     Write(writer, options, nameof(FunctionSyntax.Description), syn.Description!);

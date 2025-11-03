@@ -4,21 +4,6 @@ namespace ParserLibrary.Meta;
 
 public abstract class BinaryOperatorCatalog : MetadataCatalogBase<BinaryOperatorInformation>
 {
-    // Example property pattern (one operator form per instance):
-    /*
-    private BinaryOperatorInformation? _plusBinary;
-    public BinaryOperatorInformation PlusBinary => (_plusBinary ??= new()
-    {
-        Name = "+",
-        Description = "Addition (binary).",
-        Examples = [ new() { Syntax = "a + b", Description = "Binary addition" } ],
-        AllowedTypePairs =
-        [
-            (typeof(int), typeof(int)),
-            (typeof(double), typeof(double))
-        ]
-    }).Value;
-    */
 
     public List<BinaryOperatorInformation> GetAllOperators() => GetAllCore();
 

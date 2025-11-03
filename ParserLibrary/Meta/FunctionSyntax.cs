@@ -26,6 +26,8 @@ public class FunctionSyntax
 
     public string? Expression { get; init; } //useful for custom functions only
 
+    public string? ExpressionClean { get; init; }
+
 
     //should be initialized to EMPTY array if no inputs at all
     public List<HashSet<Type>>? InputsFixed { get; init; }
@@ -36,7 +38,8 @@ public class FunctionSyntax
 
     public required Type OutputType { get; init; }
 
-    public string? Example { get; init; }
+    public string[]? Examples { get; init; }
+
     public string? Description { get; init; }
 
     public Func<object?[],object?, object?>? Calc { get; init; } //args, context, returns result
@@ -45,40 +48,39 @@ public class FunctionSyntax
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
 
 
-    public static FunctionSyntax CreateEmpty(Type outputType, int? scenarioId, string? example = null, string? description = null)
+    public static FunctionSyntax CreateEmpty(Type outputType, int? scenarioId, string? description = null, params string[] examples)
     {
         return new FunctionSyntax
         {
             Scenario = scenarioId,
             InputsFixed = [],
             OutputType = outputType,
-            Example = example,
+            Examples = examples,
             Description = description
         };
     }
 
     // New: fixed with multi-type positions
-    public static FunctionSyntax CreateFixed(List<HashSet<Type>> inputTypeSets, Type outputType, int? scenarioId, string? example = null, string? description = null)
+    public static FunctionSyntax CreateFixed(List<HashSet<Type>> inputTypeSets, Type outputType, int? scenarioId, string? description = null, params string[] examples)
     {
         return new FunctionSyntax
         {
             Scenario = scenarioId,
             InputsFixed = inputTypeSets,
             OutputType = outputType,
-            Example = example,
+            Examples = examples,
             Description = description
         };
     }
 
     // Back-compat convenience: single-type positions
-    public static FunctionSyntax CreateFixed(List<Type> inputTypes, Type outputType, int? scenarioId, string? example = null, string? description = null)
-    {
+    public static FunctionSyntax CreateFixed(List<Type> inputTypes, Type outputType, int? scenarioId, string? description = null, params string[] examples)    {
         return new FunctionSyntax
         {
             Scenario = scenarioId,
             InputsFixed = inputTypes.Select(t => new HashSet<Type> { t }).ToList(),
             OutputType = outputType,
-            Example = example,
+            Examples = examples,
             Description = description
         };
     }
@@ -90,9 +92,9 @@ public class FunctionSyntax
         HashSet<Type> middleInputTypes, //at least one middle input type or else it is not variable
         HashSet<Type>? lastInputTypes,
         Type outputType,
-        string? example = null,
         string? description = null,
-        int? scenarioId = null)
+        int? scenarioId = null,
+        params string[] examples)
     {
         return new FunctionSyntax
         {
@@ -105,7 +107,7 @@ public class FunctionSyntax
                 MinVariableArgumentsCount = minVariableArgsCount
             },
             OutputType = outputType,
-            Example = example,
+            Examples = examples,
             Description = description
         };
     }

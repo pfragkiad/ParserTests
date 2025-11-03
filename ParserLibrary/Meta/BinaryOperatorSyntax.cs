@@ -13,8 +13,11 @@ public sealed class BinaryOperatorSyntax
 
     public required Type OutputType { get; init; }
 
-    public string? Example { get; init; }
+    // Single example and description
     public string? Description { get; init; }
+
+    // Multiple examples for this syntax
+    public string[]? Examples { get; init; }
 
     // args: [left, right]; context: optional runtime context
     public Func<object?[], object?, object?>? Calc { get; init; }

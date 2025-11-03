@@ -206,13 +206,15 @@ public sealed class FunctionDefinitionDto
         {
             Scenario = syn.Scenario,
             Expression = string.IsNullOrWhiteSpace(syn.Expression) ? null : syn.Expression,
+            ExpressionClean = string.IsNullOrWhiteSpace(syn.ExpressionClean) ? null : syn.ExpressionClean,
             InputsFixed = inputsFixed,
             InputsDynamic = inputsDynamic,
+            // multi-examples array
+            Examples = syn.Examples is { Length: > 0 } ? syn.Examples.Distinct().ToList() : null,
             // ensure output last via JsonPropertyOrder
             OutputType = syn.OutputType is not null
                 ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType)
                 : null,
-            Example = string.IsNullOrWhiteSpace(syn.Example) ? null : syn.Example,
             Description = string.IsNullOrWhiteSpace(syn.Description) ? null : syn.Description
         };
     }
@@ -247,13 +249,20 @@ public sealed class FunctionSyntaxDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Expression { get; init; }
 
-    // Array of { position, types[] } (1-based)
+     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExpressionClean { get; init; }
+
+   // Array of { position, types[] } (1-based)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<InputFixedDto>? InputsFixed { get; init; }
 
     // Object with optional first/last/types/minVariableArgumentsCount
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public InputsDynamicDto? InputsDynamic { get; init; }
+
+    // Multiple examples at syntax level
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Examples { get; init; }
 
     // Must be last in JSON
     [JsonPropertyOrder(int.MaxValue)]

@@ -34,8 +34,10 @@ public static class ExpressionFormatter
         {
             TokenType.Literal or TokenType.Identifier => token.Text,
             TokenType.Function => FormatFunction(node, token, patterns, fmt),
-            TokenType.Operator => FormatOperator(node, token, parentOp, isRightChild, patterns, opDict, unaryDict, fmt),
+            TokenType.OperatorUnary or  TokenType.Operator => FormatOperator(node, token, parentOp, isRightChild, patterns, opDict, unaryDict, fmt),
             _ => token.Text
+
+
         };
     }
 

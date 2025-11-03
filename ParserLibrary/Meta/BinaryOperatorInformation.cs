@@ -25,7 +25,8 @@ public sealed class BinaryOperatorInformation : OperatorInformation
         return res.Value!.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object? left, object? right, object? context = null, bool allowParentTypes = true)
+    public Result<object?, ValidationResult> ValidateAndCalc(object? left, object?
+        right, object? context = null, bool allowParentTypes = true)
     {
         var match = ValidateOperands(left, right, allowParentTypes);
         if (match.IsFailure) return match.Error!;
