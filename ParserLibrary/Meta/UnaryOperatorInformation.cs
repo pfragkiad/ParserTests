@@ -11,7 +11,6 @@ public enum UnaryOperatorKind : byte
     Postfix = 2
 }
 
-[JsonConverter(typeof(UnaryOperatorInformationJsonConverter))]
 public sealed class UnaryOperatorInformation : OperatorInformation
 {
     // Unary placement kind

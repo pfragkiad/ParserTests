@@ -708,10 +708,6 @@ public static class ParserApp
     #region JSON converters
     public static void AddParserConverters(this JsonSerializerOptions options)
     {
-        AddConverterOnce(options, new FunctionInformationJsonConverter());
-        AddConverterOnce(options, new BinaryOperatorInformationJsonConverter());
-        AddConverterOnce(options, new UnaryOperatorInformationJsonConverter());
-
         // Existing: Node<Token> binary-only converter
         AddConverterOnce(options, new NodeTokenBinaryJsonConverter());
 

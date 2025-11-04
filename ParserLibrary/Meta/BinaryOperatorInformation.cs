@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 
 namespace ParserLibrary.Meta;
 
-[JsonConverter(typeof(BinaryOperatorInformationJsonConverter))]
 public sealed class BinaryOperatorInformation : OperatorInformation
 {
     // Allowed operand type pairs. Ignored in JSON; the converter emits display type names.
