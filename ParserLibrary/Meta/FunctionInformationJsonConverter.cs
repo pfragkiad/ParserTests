@@ -21,6 +21,16 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
         if (!string.IsNullOrEmpty(value.Description))
             Write(writer, options, nameof(FunctionInformation.Description), value.Description);
 
+        // NEW: Aliases
+        if (value.Aliases is { Length: > 0 })
+        {
+            WritePropName(writer, options, nameof(FunctionInformation.Aliases));
+            writer.WriteStartArray();
+            foreach (var a in value.Aliases.Distinct())
+                writer.WriteStringValue(a);
+            writer.WriteEndArray();
+        }
+
         Write(writer, options, nameof(FunctionInformation.IsCustomFunction), value.IsCustomFunction);
 
         if (value.MinArgumentsCount.HasValue)
@@ -138,7 +148,7 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
             WriteStringArray(writer, value.AllowedStringFormatsForLast);
         }
 
-        // Function syntaxes (static input/output typing)
+        // Function syntaxes
         if (value.Syntaxes is { Count: > 0 })
         {
             WritePropName(writer, options, nameof(FunctionInformation.Syntaxes));
@@ -153,9 +163,6 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
 
                 if (!string.IsNullOrWhiteSpace(syn.Expression))
                     Write(writer, options, nameof(FunctionSyntax.Expression), syn.Expression!);
-
-                if (!string.IsNullOrWhiteSpace(syn.ExpressionClean))
-                    Write(writer, options, nameof(FunctionSyntax.ExpressionClean), syn.ExpressionClean!);
 
                 // InputsFixed: array of { position, types[] }
                 if (syn.InputsFixed is { Count: > 0 })
@@ -218,13 +225,14 @@ public sealed class FunctionInformationJsonConverter : JsonConverter<FunctionInf
                     }
                 }
 
-                // Multiple syntax examples (array) BEFORE single Example/Description/OutputType
+                // Multiple syntax examples (array) BEFORE Description/OutputType
                 if (syn.Examples is { Length: > 0 })
                 {
                     WritePropName(writer, options, nameof(FunctionSyntax.Examples));
                     WriteStringArray(writer, syn.Examples.Distinct());
                 }
 
+                // Description BEFORE OutputType
                 if (!string.IsNullOrWhiteSpace(syn.Description))
                     Write(writer, options, nameof(FunctionSyntax.Description), syn.Description!);
 

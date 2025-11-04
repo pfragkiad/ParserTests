@@ -13,6 +13,12 @@ public class SyntaxMatch
     public Type[] ResolvedTypes { get; init; } = [];
 }
 
+public class ExpectedFunctionArgumentsCount
+{
+    public IList<int>? FixedCounts { get; init; } = [];
+    public int? MinCount { get; init; }
+}
+
 public class FunctionInformation : OperatorInformation
 {
 
@@ -43,6 +49,58 @@ public class FunctionInformation : OperatorInformation
 
 
     [JsonIgnore] public List<FunctionSyntax>? Syntaxes { get; init; }
+
+    public ExpectedFunctionArgumentsCount GetExpectedArgumentsCountFromSyntaxes()
+    {
+        // Prefer syntax-based discovery when syntaxes exist
+        if (Syntaxes is { Count: > 0 })
+        {
+            // Collect distinct fixed arities from fixed signatures (0 included for zero-arg syntaxes)
+            var fixedCounts = Syntaxes
+                .Where(s => s.InputsFixed is not null)
+                .Select(s => s.InputsFixed!.Count)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+
+            // Compute minimum total argument count among dynamic signatures:
+            // minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + MinVariableArgumentsCount
+            int? minDynamicTotal = null;
+            foreach (var s in Syntaxes)
+            {
+                if (!s.InputsDynamic.HasValue) continue;
+                var dyn = s.InputsDynamic.Value;
+
+                var hasFirst = dyn.FirstInputType is { Count: > 0 };
+                var hasLast = dyn.LastInputType is { Count: > 0 };
+
+                int minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + dyn.MinVariableArgumentsCount;
+                if (minDynamicTotal is null || minTotal < minDynamicTotal)
+                    minDynamicTotal = minTotal;
+            }
+
+            return new ExpectedFunctionArgumentsCount
+            {
+                FixedCounts = fixedCounts.Count > 0 ? fixedCounts : null,
+                MinCount = minDynamicTotal
+            };
+        }
+
+        // Legacy fallback (to be removed later): use legacy Min/Fixed values
+        List<int>? legacyFixed = null;
+        if (FixedArgumentsCount.HasValue)
+            legacyFixed = new List<int> { FixedArgumentsCount.Value };
+
+        int? legacyMin = MinArgumentsCount.HasValue ? MinArgumentsCount.Value : (int?)null;
+
+        return new ExpectedFunctionArgumentsCount
+        {
+            FixedCounts = legacyFixed,
+            MinCount = legacyMin
+        };
+    }
+
+
 
     [JsonIgnore]
     public Func<object?[], Result<SyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
@@ -122,7 +180,7 @@ public class FunctionInformation : OperatorInformation
                 var strCheck = ValidateStringConstraints(args);
                 if (!strCheck.IsValid) return strCheck;
 
-                if(syn.AdditionalValidation is not null)
+                if (syn.AdditionalValidation is not null)
                 {
                     var addVal = syn.AdditionalValidation(args);
                     if (!addVal.IsValid) return addVal;

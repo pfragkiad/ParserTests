@@ -6,6 +6,8 @@ public class OperatorInformation
 
     public required string Name { get; init; }
 
+    public string[]? Aliases { get; init; }
+
     public override string ToString() => Id.HasValue ?
         $"{Name} (ID: {Id})" : Name;
 

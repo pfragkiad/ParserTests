@@ -9,6 +9,11 @@ public sealed class FunctionDefinitionDto
 {
     public required string Name { get; init; }
 
+
+    // NEW: aliases for function names
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Aliases { get; init; }
+
     // NOTE: the custom converter always writes this (even when false).
     // To keep output identical, do NOT suppress default(false).
     public bool IsCustomFunction { get; init; }
@@ -70,6 +75,11 @@ public sealed class FunctionDefinitionDto
             Name = src.Name,
             IsCustomFunction = src.IsCustomFunction,
             Description = string.IsNullOrWhiteSpace(src.Description) ? null : src.Description,
+
+            Aliases = src.Aliases is { Length: > 0 }
+                ? [.. src.Aliases.Distinct()]
+                : null,
+
             MinArgumentsCount = src.MinArgumentsCount,
             MaxArgumentsCount = src.MaxArgumentsCount,
             FixedArgumentsCount = src.FixedArgumentsCount,
@@ -206,7 +216,6 @@ public sealed class FunctionDefinitionDto
         {
             Scenario = syn.Scenario,
             Expression = string.IsNullOrWhiteSpace(syn.Expression) ? null : syn.Expression,
-            ExpressionClean = string.IsNullOrWhiteSpace(syn.ExpressionClean) ? null : syn.ExpressionClean,
             InputsFixed = inputsFixed,
             InputsDynamic = inputsDynamic,
             // multi-examples array

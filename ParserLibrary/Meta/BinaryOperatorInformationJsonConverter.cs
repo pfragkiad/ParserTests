@@ -15,6 +15,16 @@ public sealed class BinaryOperatorInformationJsonConverter : JsonConverter<Binar
 
         Write(writer, options, nameof(BinaryOperatorInformation.Name), value.Name);
 
+        // NEW: Aliases
+        if (value.Aliases is { Length: > 0 })
+        {
+            WritePropName(writer, options, nameof(BinaryOperatorInformation.Aliases));
+            writer.WriteStartArray();
+            foreach (var a in value.Aliases.Distinct())
+                writer.WriteStringValue(a);
+            writer.WriteEndArray();
+        }
+
         if (!string.IsNullOrEmpty(value.Description))
             Write(writer, options, nameof(BinaryOperatorInformation.Description), value.Description);
 

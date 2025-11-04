@@ -18,6 +18,16 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
         if (!string.IsNullOrEmpty(value.Description))
             Write(writer, options, nameof(UnaryOperatorInformation.Description), value.Description);
 
+        // NEW: Aliases
+        if (value.Aliases is { Length: > 0 })
+        {
+            WritePropName(writer, options, nameof(UnaryOperatorInformation.Aliases));
+            writer.WriteStartArray();
+            foreach (var a in value.Aliases.Distinct())
+                writer.WriteStringValue(a);
+            writer.WriteEndArray();
+        }
+
         Write(writer, options, nameof(UnaryOperatorInformation.Kind), value.Kind.ToString());
 
         if (value.Examples is { Count: > 0 })
@@ -45,7 +55,7 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
             writer.WriteEndArray();
         }
 
-        // New: rich syntaxes with per-syntax examples
+        // Rich syntaxes with per-syntax examples
         if (value.Syntaxes is { Count: > 0 })
         {
             WritePropName(writer, options, nameof(UnaryOperatorInformation.Syntaxes));
@@ -57,7 +67,6 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
                 if (syn.Scenario.HasValue)
                     Write(writer, options, nameof(UnaryOperatorSyntax.Scenario), syn.Scenario.Value);
 
-                // Operand types
                 if (syn.OperandTypes is { Count: > 0 })
                 {
                     WritePropName(writer, options, nameof(UnaryOperatorSyntax.OperandTypes));
@@ -67,7 +76,7 @@ public sealed class UnaryOperatorInformationJsonConverter : JsonConverter<UnaryO
                     writer.WriteEndArray();
                 }
 
-                // Multiple examples first
+                // Multiple examples only
                 if (syn.Examples is { Length: > 0 })
                 {
                     WritePropName(writer, options, nameof(UnaryOperatorSyntax.Examples));

@@ -58,7 +58,7 @@ public sealed class ParserValidator : IParserValidator
 
         return new EmptyFunctionArgumentsCheckResult { ValidFunctions = [.. valid], InvalidFunctions = [.. invalid] };
     }
-    
+
     public InvalidArgumentSeparatorsCheckResult CheckOrphanArgumentSeparators(
           Dictionary<Token, Node<Token>> nodeDictionary)
     {
@@ -329,10 +329,10 @@ public sealed class ParserValidator : IParserValidator
         var emptyArgsResult =
             ignoreFunctions ? new EmptyFunctionArgumentsCheckResult() :
             new EmptyFunctionArgumentsCheckResult
-        {
-            ValidFunctions = [.. emptyArgsValid],
-            InvalidFunctions = [.. emptyArgsInvalid]
-        };
+            {
+                ValidFunctions = [.. emptyArgsValid],
+                InvalidFunctions = [.. emptyArgsInvalid]
+            };
 
         var binOpsResult = new InvalidBinaryOperatorsCheckResult
         {
@@ -362,55 +362,52 @@ public sealed class ParserValidator : IParserValidator
         };
     }
 
-    private static void ValidateFunctionCount(IFunctionDescriptors? functionDescriptors, HashSet<FunctionArguments> funcCountValid, HashSet<FunctionArguments> funcCountInvalid, Token token, string name, int actual)
+    private static void ValidateFunctionCount(
+        IFunctionDescriptors? functionDescriptors,
+        HashSet<FunctionArguments> funcCountValid,
+        HashSet<FunctionArguments> funcCountInvalid,
+        Token token,
+        string name,
+        int actual)
     {
+        if (functionDescriptors is null) return;
+       
+        int position = token.Index + 1;
+
+        // Legacy sources
         int? fixedCount =
-                                functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
-                                functionDescriptors.GetMainFunctionFixedArgCount(name) ??
-                                //new interface method to get fixed count when functioninformation data is available
-                                functionDescriptors.GetFunctionFixedArgCount(name);
+            functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
+            functionDescriptors.GetMainFunctionFixedArgCount(name) ??
+            functionDescriptors.GetFunctionFixedArgCount(name);
 
-        int? minCount = functionDescriptors.GetMainFunctionMinVariableArgCount(name); //no interface method
-        (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
-            //new interface method
-            functionDescriptors.GetFunctionMinMaxVariableArgCount(name)
-            ;
+        int? minCountLegacy = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
+        (int, int)? minMaxCount =
+            functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
+            functionDescriptors.GetFunctionMinMaxVariableArgCount(name);
 
-        //latest methods (to be unified and remove old ones) (fixed alternatives and dynamic min only)
-        IList<byte>? syntaxesFixedCounts =
-            functionDescriptors.GetFunctionSyntaxesFixedArgCount(name);
-        byte? minSyntaxVariablesCount =
-            functionDescriptors.GetFunctionSyntaxesMinVariableArgCount(name);
-
+        // Preferred: syntax-based (equivalent to FunctionInformation.GetExpectedArgumentsCountFromSyntaxes())
+        IList<byte>? syntaxesFixedCounts = functionDescriptors.GetFunctionSyntaxesFixedArgCount(name);
+        byte? minSyntaxVariablesCount = functionDescriptors.GetFunctionSyntaxesMinVariableArgCount(name);
 
         if (fixedCount is not null)
         {
             var r = new FunctionArguments
             {
                 FunctionName = name,
-                Position = token.Index + 1,
+                Position = position,
                 ActualArgumentsCount = actual,
                 ExpectedArgumentsCount = fixedCount.Value
             };
             if (actual != fixedCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+            return;
         }
-        else if (minCount is not null)
+
+        if (minMaxCount is not null)
         {
             var r = new FunctionArguments
             {
                 FunctionName = name,
-                Position = token.Index + 1,
-                ActualArgumentsCount = actual,
-                MinExpectedArgumentsCount = minCount.Value
-            };
-            if (actual < minCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
-        }
-        else if (minMaxCount is not null)
-        {
-            var r = new FunctionArguments
-            {
-                FunctionName = name,
-                Position = token.Index + 1,
+                Position = position,
                 ActualArgumentsCount = actual,
                 MinExpectedArgumentsCount = minMaxCount.Value.Item1,
                 MaxExpectedArgumentsCount = minMaxCount.Value.Item2
@@ -419,49 +416,52 @@ public sealed class ParserValidator : IParserValidator
                 funcCountInvalid.Add(r);
             else
                 funcCountValid.Add(r);
+            return;
         }
 
-        else if (minSyntaxVariablesCount is not null) //latest method
+        // New: combine fixed alternatives (from syntaxes) with a dynamic minimum (if any).
+        if ((syntaxesFixedCounts is { Count: > 0 }) || minSyntaxVariablesCount is not null)
+        {
+            var allowedFixed = syntaxesFixedCounts is { Count: > 0 }
+                ? syntaxesFixedCounts.Select(b => (int)b).Distinct().OrderBy(x => x).ToList()
+                : null;
+
+            bool inFixed = allowedFixed is { Count: > 0 } && allowedFixed.Contains(actual);
+            bool meetsMin = minSyntaxVariablesCount is not null && actual >= minSyntaxVariablesCount.Value;
+            bool isValid = inFixed || meetsMin;
+
+            var r = new FunctionArguments
+            {
+                FunctionName = name,
+                Position = position,
+                ActualArgumentsCount = actual,
+                AllowedFixedCounts = allowedFixed,
+                MinExpectedArgumentsCount = minSyntaxVariablesCount
+            };
+
+            if (isValid) funcCountValid.Add(r); else funcCountInvalid.Add(r);
+            return;
+        }
+
+        if (minCountLegacy is not null)
         {
             var r = new FunctionArguments
             {
                 FunctionName = name,
-                Position = token.Index + 1,
+                Position = position,
                 ActualArgumentsCount = actual,
-                MinExpectedArgumentsCount = minSyntaxVariablesCount.Value
+                MinExpectedArgumentsCount = minCountLegacy.Value
             };
-            if (actual < minSyntaxVariablesCount.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+            if (actual < minCountLegacy.Value) funcCountInvalid.Add(r); else funcCountValid.Add(r);
+            return;
         }
-        else if (syntaxesFixedCounts is not null && syntaxesFixedCounts.Count > 0) //latest method
+
+        // Unknown metadata -> mark invalid with a generic message
+        funcCountInvalid.Add(new FunctionArguments
         {
-            //check against all syntaxes fixed counts
-            bool anyMatch = false;
-            foreach (var fc in syntaxesFixedCounts)
-            {
-                if (actual == fc)
-                {
-                    anyMatch = true;
-                    break;
-                }
-            }
-            var r = new FunctionArguments
-            {
-                FunctionName = name,
-                Position = token.Index + 1,
-                ActualArgumentsCount = actual,
-                //no single expected count, so we leave it null
-            };
-            if (!anyMatch) funcCountInvalid.Add(r); else funcCountValid.Add(r);
-        }
-        else
-        {
-            funcCountInvalid.Add(new FunctionArguments
-            {
-                FunctionName = name,
-                Position = token.Index + 1,
-                ActualArgumentsCount = actual,
-                ExpectedArgumentsCount = 0
-            });
-        }
+            FunctionName = name,
+            Position = position,
+            ActualArgumentsCount = actual
+        });
     }
 }
