@@ -306,7 +306,8 @@ public class Tokenizer : ITokenizer
         {
             char c = expression[i];
             bool insideIdentifier = IsInsideAnySpan(i, i + 1, identifierSpans);
-            if (insideIdentifier) continue;
+            bool insideLiteral = IsInsideAnySpan(i, i + 1, literalSpans);
+            if (insideIdentifier || insideLiteral) continue;
 
             if (c == _patterns.OpenParenthesis && !functionParenthesisPositions.Contains(i))
                 tokens.Add(new Token(TokenType.OpenParenthesis, c, i));
