@@ -216,6 +216,7 @@ public sealed class FunctionDefinitionDto
         {
             Scenario = syn.Scenario,
             Expression = string.IsNullOrWhiteSpace(syn.Expression) ? null : syn.Expression,
+            ExpressionClean = syn.ExpressionClean,
             InputsFixed = inputsFixed,
             InputsDynamic = inputsDynamic,
             // multi-examples array
