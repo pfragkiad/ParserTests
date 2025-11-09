@@ -57,17 +57,15 @@ public partial class ParserBase : Tokenizer, IParser
 
     public Dictionary<string, (string[] Parameters, string Body)> CustomFunctions = [];
 
-    /// <summary>
-    /// The dictionary stores the main functions with their names and the exact number of arguments.
-    /// </summary>
+    #region Legacy way of defining functions arguments count (for simple cases only)
+
     protected virtual Dictionary<string, byte> MainFunctionsWithFixedArgumentsCount => [];
 
-    /// <summary>
-    /// The dictionary stores the minimum number of arguments for each main function.
-    /// </summary>
     protected virtual Dictionary<string, byte> MainFunctionsMinVariableArgumentsCount => [];
 
     protected virtual Dictionary<string, (byte, byte)> MainFunctionsWithVariableArgumentsCount => [];
+
+    #endregion
 
     #region Custom functions
 
@@ -788,134 +786,134 @@ public partial class ParserBase : Tokenizer, IParser
 
 
 
-    protected Result<Type[], ValidationResult> ValidateArgumentTypes
-    (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
-    {
-        // Prefer the new syntax-based validation when syntaxes are declared
-        if (funcInfo.Syntaxes is { Count: > 0 })
-            return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
+    //protected Result<Type[], ValidationResult> ValidateArgumentTypes
+    //(FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
+    //{
+    //    // Prefer the new syntax-based validation when syntaxes are declared
+    //    if (funcInfo.Syntaxes is { Count: > 0 })
+    //        return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
 
-        // Fallback to legacy per-position/global constraints when no syntaxes exist
-        return GetFunctionArgumentTypesOld(funcInfo, args, allowParentTypes);
-    }
+    //    // Fallback to legacy per-position/global constraints when no syntaxes exist
+    //    return GetFunctionArgumentTypesOld(funcInfo, args, allowParentTypes);
+    //}
 
     //[Obsolete]
-    protected Result<Type[], ValidationResult> GetFunctionArgumentTypesOld //temporary - to be removed
-        (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
-    {
-        // Prefer new syntax-based validation
-        if (funcInfo.Syntaxes is { Count: > 0 })
-            return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
+    //protected Result<Type[], ValidationResult> GetFunctionArgumentTypesOld //temporary - to be removed
+    //    (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
+    //{
+    //    // Prefer new syntax-based validation
+    //    if (funcInfo.Syntaxes is { Count: > 0 })
+    //        return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
 
-        // Fixed arity path
-        if (funcInfo.FixedArgumentsCount.HasValue)
-        {
-            var fixedCount = funcInfo.FixedArgumentsCount.Value;
+    //    // Fixed arity path
+    //    if (funcInfo.FixedArgumentsCount.HasValue)
+    //    {
+    //        var fixedCount = funcInfo.FixedArgumentsCount.Value;
 
-            if (args.Length != fixedCount)
-                return new ValidationResult(failures: [
-                    new("arguments", $"{funcInfo.Name} requires exactly {fixedCount} argument{(fixedCount == 1 ? "" : "s")}.")
-                ]);
+    //        if (args.Length != fixedCount)
+    //            return new ValidationResult(failures: [
+    //                new("arguments", $"{funcInfo.Name} requires exactly {fixedCount} argument{(fixedCount == 1 ? "" : "s")}.")
+    //            ]);
 
-            if (args.Any(a => a is null))
-                return new ValidationResult(failures: [
-                    new("arguments", $"{funcInfo.Name} does not accept null arguments.")
-                ]);
+    //        if (args.Any(a => a is null))
+    //            return new ValidationResult(failures: [
+    //                new("arguments", $"{funcInfo.Name} does not accept null arguments.")
+    //            ]);
 
-            var resolved = new Type[fixedCount];
-            for (int i = 0; i < fixedCount; i++)
-            {
-                var t = args[i] is Type provided ? provided : args[i]!.GetType();
+    //        var resolved = new Type[fixedCount];
+    //        for (int i = 0; i < fixedCount; i++)
+    //        {
+    //            var t = args[i] is Type provided ? provided : args[i]!.GetType();
 
-                // Allowed types come only from FunctionInformation
-                HashSet<Type>? allowed = null;
-                if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == fixedCount - 1)
-                    allowed = funcInfo.AllowedTypesForLast;
-                else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
-                    allowed = funcInfo.AllowedTypesPerPosition[i];
-                else
-                    allowed = funcInfo.AllowedTypesForAll;
+    //            // Allowed types come only from FunctionInformation
+    //            HashSet<Type>? allowed = null;
+    //            if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == fixedCount - 1)
+    //                allowed = funcInfo.AllowedTypesForLast;
+    //            else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
+    //                allowed = funcInfo.AllowedTypesPerPosition[i];
+    //            else
+    //                allowed = funcInfo.AllowedTypesForAll;
 
-                if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
-                {
-                    string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
-                    string posText = i switch { 0 => "first", 1 => "second", 2 => "third", _ => $"{i + 1}th" };
-                    return new ValidationResult(failures: [
-                        new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
-                    ]);
-                }
+    //            if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
+    //            {
+    //                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
+    //                string posText = i switch { 0 => "first", 1 => "second", 2 => "third", _ => $"{i + 1}th" };
+    //                return new ValidationResult(failures: [
+    //                    new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
+    //                ]);
+    //            }
 
-                resolved[i] = t;
-            }
+    //            resolved[i] = t;
+    //        }
 
-            // Centralized string constraints (values + formats + positional/last/all)
-            var strCheck = funcInfo.ValidateStringConstraints(args);
-            if (!strCheck.IsValid) return strCheck;
+    //        // Centralized string constraints (values + formats + positional/last/all)
+    //        var strCheck = funcInfo.ValidateStringConstraints(args);
+    //        if (!strCheck.IsValid) return strCheck;
 
-            return resolved;
-        }
+    //        return resolved;
+    //    }
 
-        // Min/Max arity path
-        if (funcInfo.MinArgumentsCount.HasValue && funcInfo.MaxArgumentsCount.HasValue)
-        {
-            var minCount = funcInfo.MinArgumentsCount.Value;
-            var maxCount = funcInfo.MaxArgumentsCount.Value;
+    //    // Min/Max arity path
+    //    if (funcInfo.MinArgumentsCount.HasValue && funcInfo.MaxArgumentsCount.HasValue)
+    //    {
+    //        var minCount = funcInfo.MinArgumentsCount.Value;
+    //        var maxCount = funcInfo.MaxArgumentsCount.Value;
 
-            ArgumentOutOfRangeException.ThrowIfNegative(minCount);
-            ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, minCount);
+    //        ArgumentOutOfRangeException.ThrowIfNegative(minCount);
+    //        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, minCount);
 
-            if (args.Length < minCount || args.Length > maxCount)
-            {
-                if (minCount == maxCount)
-                    return new ValidationResult(failures: [
-                        new("arguments", $"{funcInfo.Name} requires exactly {minCount} argument{(minCount == 1 ? "" : "s")}.")
-                    ]);
-                return new ValidationResult(failures: [
-                    new("arguments", $"{funcInfo.Name} requires between {minCount} and {maxCount} arguments.")
-                ]);
-            }
+    //        if (args.Length < minCount || args.Length > maxCount)
+    //        {
+    //            if (minCount == maxCount)
+    //                return new ValidationResult(failures: [
+    //                    new("arguments", $"{funcInfo.Name} requires exactly {minCount} argument{(minCount == 1 ? "" : "s")}.")
+    //                ]);
+    //            return new ValidationResult(failures: [
+    //                new("arguments", $"{funcInfo.Name} requires between {minCount} and {maxCount} arguments.")
+    //            ]);
+    //        }
 
-            if (args.Any(a => a is null))
-                return new ValidationResult(failures: [
-                    new("arguments", $"{funcInfo.Name} does not accept null arguments.")
-                ]);
+    //        if (args.Any(a => a is null))
+    //            return new ValidationResult(failures: [
+    //                new("arguments", $"{funcInfo.Name} does not accept null arguments.")
+    //            ]);
 
-            var resolvedTypes = new Type[args.Length];
-            for (int i = 0; i < args.Length; i++)
-            {
-                var t = args[i] is Type provided ? provided : args[i]!.GetType();
+    //        var resolvedTypes = new Type[args.Length];
+    //        for (int i = 0; i < args.Length; i++)
+    //        {
+    //            var t = args[i] is Type provided ? provided : args[i]!.GetType();
 
-                HashSet<Type>? allowed = null;
-                if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == args.Length - 1)
-                    allowed = funcInfo.AllowedTypesForLast;
-                else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
-                    allowed = funcInfo.AllowedTypesPerPosition[i];
-                else
-                    allowed = funcInfo.AllowedTypesForAll;
+    //            HashSet<Type>? allowed = null;
+    //            if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == args.Length - 1)
+    //                allowed = funcInfo.AllowedTypesForLast;
+    //            else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
+    //                allowed = funcInfo.AllowedTypesPerPosition[i];
+    //            else
+    //                allowed = funcInfo.AllowedTypesForAll;
 
-                if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
-                {
-                    string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
-                    string posText = ValidationHelpers.ToOrdinal(i + 1);
-                    return new ValidationResult(failures: [
-                        new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
-                    ]);
-                }
+    //            if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
+    //            {
+    //                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
+    //                string posText = ValidationHelpers.ToOrdinal(i + 1);
+    //                return new ValidationResult(failures: [
+    //                    new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
+    //                ]);
+    //            }
 
-                resolvedTypes[i] = t;
-            }
+    //            resolvedTypes[i] = t;
+    //        }
 
-            var strCheck = funcInfo.ValidateStringConstraints( args);
-            if (!strCheck.IsValid) return strCheck;
+    //        var strCheck = funcInfo.ValidateStringConstraints( args);
+    //        if (!strCheck.IsValid) return strCheck;
 
-            return resolvedTypes;
-        }
+    //        return resolvedTypes;
+    //    }
 
-        // Not properly configured
-        return new ValidationResult(failures: [
-            new("function", $"Function '{funcInfo.Name}' is not properly configured.")
-        ]);
-    }
+    //    // Not properly configured
+    //    return new ValidationResult(failures: [
+    //        new("function", $"Function '{funcInfo.Name}' is not properly configured.")
+    //    ]);
+    //}
 
 
     #region Virtual function hooks

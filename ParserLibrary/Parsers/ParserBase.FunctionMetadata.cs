@@ -27,23 +27,23 @@ public partial class ParserBase : IFunctionDescriptors
 
     //alternative implementation of validation using FunctionInformation metadata
 
-    bool IFunctionDescriptors.IsKnownFunctionWithFixedArgsCount(string functionName) =>
-        GetFunctionInformation(functionName) is { FixedArgumentsCount: > 0 };
+    //bool IFunctionDescriptors.IsKnownFunctionWithFixedArgsCount(string functionName) =>
+    //    GetFunctionInformation(functionName) is { FixedArgumentsCount: > 0 };
 
-    byte? IFunctionDescriptors.GetFunctionFixedArgCount(string functionName) =>
-        GetFunctionInformation(functionName)?.FixedArgumentsCount;
+    //byte? IFunctionDescriptors.GetFunctionFixedArgCount(string functionName) =>
+    //    GetFunctionInformation(functionName)?.FixedArgumentsCount;
 
-    bool IFunctionDescriptors.IsKnownFunctionWithVariableArgsCount(string functionName) =>
-        GetFunctionInformation(functionName) is { MinArgumentsCount: > 0 };
+    //bool IFunctionDescriptors.IsKnownFunctionWithVariableArgsCount(string functionName) =>
+    //    GetFunctionInformation(functionName) is { MinArgumentsCount: > 0 };
 
-    (byte, byte)? IFunctionDescriptors.GetFunctionMinMaxVariableArgCount(string functionName)
-    {
-        var f = GetFunctionInformation(functionName);
-        if (f is null) return null;
-        if (f.FixedArgumentsCount > 0) return null; //not a variable args function 
-        if (f.MinArgumentsCount is null || f.MaxArgumentsCount is null) return null;
-        return (f.MinArgumentsCount!.Value, f.MaxArgumentsCount!.Value);
-    }
+    //(byte, byte)? IFunctionDescriptors.GetFunctionMinMaxVariableArgCount(string functionName)
+    //{
+    //    var f = GetFunctionInformation(functionName);
+    //    if (f is null) return null;
+    //    if (f.FixedArgumentsCount > 0) return null; //not a variable args function 
+    //    if (f.MinArgumentsCount is null || f.MaxArgumentsCount is null) return null;
+    //    return (f.MinArgumentsCount!.Value, f.MaxArgumentsCount!.Value);
+    //}
 
     IList<byte>? IFunctionDescriptors.GetFunctionSyntaxesFixedArgCount(string functionName)
     {

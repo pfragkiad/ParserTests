@@ -80,9 +80,9 @@ public sealed class FunctionDefinitionDto
                 ? [.. src.Aliases.Distinct()]
                 : null,
 
-            MinArgumentsCount = src.MinArgumentsCount,
-            MaxArgumentsCount = src.MaxArgumentsCount,
-            FixedArgumentsCount = src.FixedArgumentsCount,
+            //MinArgumentsCount = src.MinArgumentsCount,
+            //MaxArgumentsCount = src.MaxArgumentsCount,
+            //FixedArgumentsCount = src.FixedArgumentsCount,
 
             Examples = src.Examples is { Count: > 0 }
                 ? [.. src.Examples.Select(e => new SyntaxExampleDto
@@ -92,29 +92,29 @@ public sealed class FunctionDefinitionDto
                 })]
                 : null,
 
-            // Types (names instead of Type)
-            AllowedTypesPerPosition = src.AllowedTypesPerPosition is { Count: > 0 }
-                ? [.. src.AllowedTypesPerPosition
-                    .Select((set, idx) => set is { Count: > 0 }
-                        ? new AllowedTypesPerPositionDto
-                        {
-                            Position = idx + 1, // 1-based
-                            Types = set.Select(TypeNameDisplay.GetDisplayTypeName)
-                                       .Distinct()
-                                       .ToList()
-                        }
-                        : null)
-                    .Where(x => x is not null)
-                    .Select(x => x!)]
-                : null,
+            //// Types (names instead of Type)
+            //AllowedTypesPerPosition = src.AllowedTypesPerPosition is { Count: > 0 }
+            //    ? [.. src.AllowedTypesPerPosition
+            //        .Select((set, idx) => set is { Count: > 0 }
+            //            ? new AllowedTypesPerPositionDto
+            //            {
+            //                Position = idx + 1, // 1-based
+            //                Types = set.Select(TypeNameDisplay.GetDisplayTypeName)
+            //                           .Distinct()
+            //                           .ToList()
+            //            }
+            //            : null)
+            //        .Where(x => x is not null)
+            //        .Select(x => x!)]
+            //    : null,
 
-            AllowedTypesForAll = src.AllowedTypesForAll is { Count: > 0 }
-                ? [.. src.AllowedTypesForAll.Select(TypeNameDisplay.GetDisplayTypeName)]
-                : null,
+            //AllowedTypesForAll = src.AllowedTypesForAll is { Count: > 0 }
+            //    ? [.. src.AllowedTypesForAll.Select(TypeNameDisplay.GetDisplayTypeName)]
+            //    : null,
 
-            AllowedTypesForLast = src.AllowedTypesForLast is { Count: > 0 }
-                ? [.. src.AllowedTypesForLast.Select(TypeNameDisplay.GetDisplayTypeName)]
-                : null,
+            //AllowedTypesForLast = src.AllowedTypesForLast is { Count: > 0 }
+            //    ? [.. src.AllowedTypesForLast.Select(TypeNameDisplay.GetDisplayTypeName)]
+            //    : null,
 
             // String values per position
             AllowedStringValuesPerPosition = src.AllowedStringValuesPerPosition is { Count: > 0 }

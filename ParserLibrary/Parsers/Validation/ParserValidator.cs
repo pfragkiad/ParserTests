@@ -371,19 +371,18 @@ public sealed class ParserValidator : IParserValidator
         int actual)
     {
         if (functionDescriptors is null) return;
-       
+
         int position = token.Index + 1;
 
         // Legacy sources
         int? fixedCount =
             functionDescriptors.GetCustomFunctionFixedArgCount(name) ??
-            functionDescriptors.GetMainFunctionFixedArgCount(name) ??
-            functionDescriptors.GetFunctionFixedArgCount(name);
+            functionDescriptors.GetMainFunctionFixedArgCount(name);
+        //?? functionDescriptors.GetFunctionFixedArgCount(name);
 
         int? minCountLegacy = functionDescriptors.GetMainFunctionMinVariableArgCount(name);
-        (int, int)? minMaxCount =
-            functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name) ??
-            functionDescriptors.GetFunctionMinMaxVariableArgCount(name);
+        (int, int)? minMaxCount = functionDescriptors.GetMainFunctionMinMaxVariableArgCount(name);
+        //?? functionDescriptors.GetFunctionMinMaxVariableArgCount(name);
 
         // Preferred: syntax-based (equivalent to FunctionInformation.GetExpectedArgumentsCountFromSyntaxes())
         IList<byte>? syntaxesFixedCounts = functionDescriptors.GetFunctionSyntaxesFixedArgCount(name);

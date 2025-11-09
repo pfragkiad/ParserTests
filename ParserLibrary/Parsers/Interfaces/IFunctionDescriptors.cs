@@ -9,15 +9,15 @@ public interface IFunctionDescriptors
     (byte, byte)? GetMainFunctionMinMaxVariableArgCount(string functionName);
 
 
-    //new implementation using FunctionInformation metadata
-    bool IsKnownFunctionWithFixedArgsCount(string functionName);
+    ////new implementation using FunctionInformation metadata
+    //bool IsKnownFunctionWithFixedArgsCount(string functionName);
 
-    byte? GetFunctionFixedArgCount(string functionName);
+    //byte? GetFunctionFixedArgCount(string functionName);
 
 
-    bool IsKnownFunctionWithVariableArgsCount(string functionName);
+    //bool IsKnownFunctionWithVariableArgsCount(string functionName);
 
-    (byte, byte)? GetFunctionMinMaxVariableArgCount(string functionName);
+    //(byte, byte)? GetFunctionMinMaxVariableArgCount(string functionName);
 
     IList<byte>? GetFunctionSyntaxesFixedArgCount(string functionName);
 

@@ -29,22 +29,22 @@ public abstract class FunctionCatalog : MetadataCatalogBase<FunctionInformation>
     public List<FunctionInformation> SearchFunctions(string searchTerm, StringComparison comparisonType)
         => SearchByNameOrDescription(searchTerm, comparisonType);
 
-    // for legacy argument count lookup
-    public Dictionary<string, byte> GetFunctionsWithFixedArgumentCount(StringComparer? comparer = null)
-    {
-        comparer ??= StringComparer.OrdinalIgnoreCase;
-        return GetAllCore()
-            .Where(fi => fi.FixedArgumentsCount.HasValue)
-            .ToDictionary(fi => fi.Name, fi => fi.FixedArgumentsCount!.Value, comparer);
-    }
+    //// for legacy argument count lookup
+    //public Dictionary<string, byte> GetFunctionsWithFixedArgumentCount(StringComparer? comparer = null)
+    //{
+    //    comparer ??= StringComparer.OrdinalIgnoreCase;
+    //    return GetAllCore()
+    //        .Where(fi => fi.FixedArgumentsCount.HasValue)
+    //        .ToDictionary(fi => fi.Name, fi => fi.FixedArgumentsCount!.Value, comparer);
+    //}
 
-    public Dictionary<string, (byte min, byte max)> GetFunctionsWithVariableArgumentCount(StringComparer? comparer = null)
-    {
-        comparer ??= StringComparer.OrdinalIgnoreCase;
-        return GetAllCore()
-            .Where(fi => fi.MinArgumentsCount.HasValue || fi.MaxArgumentsCount.HasValue)
-            .ToDictionary(fi => fi.Name, fi => (fi.MinArgumentsCount!.Value, fi.MaxArgumentsCount!.Value), comparer);
-    }
+    //public Dictionary<string, (byte min, byte max)> GetFunctionsWithVariableArgumentCount(StringComparer? comparer = null)
+    //{
+    //    comparer ??= StringComparer.OrdinalIgnoreCase;
+    //    return GetAllCore()
+    //        .Where(fi => fi.MinArgumentsCount.HasValue || fi.MaxArgumentsCount.HasValue)
+    //        .ToDictionary(fi => fi.Name, fi => (fi.MinArgumentsCount!.Value, fi.MaxArgumentsCount!.Value), comparer);
+    //}
 
     // Convenience helper for implementers
     protected FunctionInformation? FindFunctionInformation(string functionName, bool caseSensitive)

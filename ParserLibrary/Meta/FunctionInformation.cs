@@ -26,14 +26,14 @@ public class FunctionInformation : OperatorInformation
 
     //----------------------------------
     //TO BE REMOVED LATER
-    public byte? MinArgumentsCount { get; init; }
-    public byte? MaxArgumentsCount { get; init; }
-    public byte? FixedArgumentsCount { get; init; }
+    //public byte? MinArgumentsCount { get; init; }
+    //public byte? MaxArgumentsCount { get; init; }
+    //public byte? FixedArgumentsCount { get; init; }
 
-    // Types: ignored in JSON to avoid reflection graphs and schema collisions
-    [JsonIgnore] public IReadOnlyList<HashSet<Type>>? AllowedTypesPerPosition { get; init; }
-    [JsonIgnore] public HashSet<Type>? AllowedTypesForAll { get; init; }
-    [JsonIgnore] public HashSet<Type>? AllowedTypesForLast { get; init; }
+    //// Types: ignored in JSON to avoid reflection graphs and schema collisions
+    //[JsonIgnore] public IReadOnlyList<HashSet<Type>>? AllowedTypesPerPosition { get; init; }
+    //[JsonIgnore] public HashSet<Type>? AllowedTypesForAll { get; init; }
+    //[JsonIgnore] public HashSet<Type>? AllowedTypesForLast { get; init; }
 
     //----------------------------------
 
@@ -50,54 +50,52 @@ public class FunctionInformation : OperatorInformation
 
     [JsonIgnore] public List<FunctionSyntax>? Syntaxes { get; init; }
 
-    public ExpectedFunctionArgumentsCount GetExpectedArgumentsCountFromSyntaxes()
+    public ExpectedFunctionArgumentsCount? GetExpectedArgumentsCountFromSyntaxes()
     {
         // Prefer syntax-based discovery when syntaxes exist
-        if (Syntaxes is { Count: > 0 })
+        if (Syntaxes is not { Count: > 0 }) return null;
+
+
+        // Collect distinct fixed arities from fixed signatures (0 included for zero-arg syntaxes)
+        var fixedCounts = Syntaxes
+            .Where(s => s.InputsFixed is not null)
+            .Select(s => s.InputsFixed!.Count)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+
+        // Compute minimum total argument count among dynamic signatures:
+        // minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + MinVariableArgumentsCount
+        int? minDynamicTotal = null;
+        foreach (var s in Syntaxes)
         {
-            // Collect distinct fixed arities from fixed signatures (0 included for zero-arg syntaxes)
-            var fixedCounts = Syntaxes
-                .Where(s => s.InputsFixed is not null)
-                .Select(s => s.InputsFixed!.Count)
-                .Distinct()
-                .OrderBy(c => c)
-                .ToList();
+            if (!s.InputsDynamic.HasValue) continue;
+            var dyn = s.InputsDynamic.Value;
 
-            // Compute minimum total argument count among dynamic signatures:
-            // minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + MinVariableArgumentsCount
-            int? minDynamicTotal = null;
-            foreach (var s in Syntaxes)
-            {
-                if (!s.InputsDynamic.HasValue) continue;
-                var dyn = s.InputsDynamic.Value;
+            var hasFirst = dyn.FirstInputType is { Count: > 0 };
+            var hasLast = dyn.LastInputType is { Count: > 0 };
 
-                var hasFirst = dyn.FirstInputType is { Count: > 0 };
-                var hasLast = dyn.LastInputType is { Count: > 0 };
-
-                int minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + dyn.MinVariableArgumentsCount;
-                if (minDynamicTotal is null || minTotal < minDynamicTotal)
-                    minDynamicTotal = minTotal;
-            }
-
-            return new ExpectedFunctionArgumentsCount
-            {
-                FixedCounts = fixedCounts.Count > 0 ? fixedCounts : null,
-                MinCount = minDynamicTotal
-            };
+            int minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + dyn.MinVariableArgumentsCount;
+            if (minDynamicTotal is null || minTotal < minDynamicTotal)
+                minDynamicTotal = minTotal;
         }
-
-        // Legacy fallback (to be removed later): use legacy Min/Fixed values
-        List<int>? legacyFixed = null;
-        if (FixedArgumentsCount.HasValue)
-            legacyFixed = new List<int> { FixedArgumentsCount.Value };
-
-        int? legacyMin = MinArgumentsCount.HasValue ? MinArgumentsCount.Value : (int?)null;
 
         return new ExpectedFunctionArgumentsCount
         {
-            FixedCounts = legacyFixed,
-            MinCount = legacyMin
+            FixedCounts = fixedCounts.Count > 0 ? fixedCounts : null,
+            MinCount = minDynamicTotal
         };
+
+        //// Legacy fallback (to be removed later): use legacy Min/Fixed values
+        //List<int>? legacyFixed = null;
+        //if (FixedArgumentsCount.HasValue)
+        //    legacyFixed = new List<int> { FixedArgumentsCount.Value };
+        //int? legacyMin = MinArgumentsCount.HasValue ? MinArgumentsCount.Value : (int?)null;
+        //return new ExpectedFunctionArgumentsCount
+        //{
+        //    FixedCounts = legacyFixed,
+        //    MinCount = legacyMin
+        //};
     }
 
 
