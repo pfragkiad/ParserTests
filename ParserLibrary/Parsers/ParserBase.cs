@@ -42,6 +42,10 @@ public partial class ParserBase : Tokenizer, IParser
     //optional catalog for function metadata
     public FunctionCatalog? FunctionCatalog { get; set; } 
 
+    public BinaryOperatorCatalog? BinaryOperatorCatalog { get; set; }
+
+    public UnaryOperatorCatalog? UnaryOperatorCatalog { get; set; }
+
     //optional for additional information passed to formulas in addition to arguments (e.g. number of decimals)
     public ParserContext? Context  { get; set; } 
 
@@ -807,141 +811,8 @@ public partial class ParserBase : Tokenizer, IParser
 
     #endregion
 
-    #region Functions
 
-
-
-    //protected Result<Type[], ValidationResult> ValidateArgumentTypes
-    //(FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
-    //{
-    //    // Prefer the new syntax-based validation when syntaxes are declared
-    //    if (funcInfo.Syntaxes is { Count: > 0 })
-    //        return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
-
-    //    // Fallback to legacy per-position/global constraints when no syntaxes exist
-    //    return GetFunctionArgumentTypesOld(funcInfo, args, allowParentTypes);
-    //}
-
-    //[Obsolete]
-    //protected Result<Type[], ValidationResult> GetFunctionArgumentTypesOld //temporary - to be removed
-    //    (FunctionInformation funcInfo, object?[] args, bool allowParentTypes = true)
-    //{
-    //    // Prefer new syntax-based validation
-    //    if (funcInfo.Syntaxes is { Count: > 0 })
-    //        return funcInfo.ValidateArgumentTypesLegacy(args, allowParentTypes);
-
-    //    // Fixed arity path
-    //    if (funcInfo.FixedArgumentsCount.HasValue)
-    //    {
-    //        var fixedCount = funcInfo.FixedArgumentsCount.Value;
-
-    //        if (args.Length != fixedCount)
-    //            return new ValidationResult(failures: [
-    //                new("arguments", $"{funcInfo.Name} requires exactly {fixedCount} argument{(fixedCount == 1 ? "" : "s")}.")
-    //            ]);
-
-    //        if (args.Any(a => a is null))
-    //            return new ValidationResult(failures: [
-    //                new("arguments", $"{funcInfo.Name} does not accept null arguments.")
-    //            ]);
-
-    //        var resolved = new Type[fixedCount];
-    //        for (int i = 0; i < fixedCount; i++)
-    //        {
-    //            var t = args[i] is Type provided ? provided : args[i]!.GetType();
-
-    //            // Allowed types come only from FunctionInformation
-    //            HashSet<Type>? allowed = null;
-    //            if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == fixedCount - 1)
-    //                allowed = funcInfo.AllowedTypesForLast;
-    //            else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
-    //                allowed = funcInfo.AllowedTypesPerPosition[i];
-    //            else
-    //                allowed = funcInfo.AllowedTypesForAll;
-
-    //            if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
-    //            {
-    //                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
-    //                string posText = i switch { 0 => "first", 1 => "second", 2 => "third", _ => $"{i + 1}th" };
-    //                return new ValidationResult(failures: [
-    //                    new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
-    //                ]);
-    //            }
-
-    //            resolved[i] = t;
-    //        }
-
-    //        // Centralized string constraints (values + formats + positional/last/all)
-    //        var strCheck = funcInfo.ValidateStringConstraints(args);
-    //        if (!strCheck.IsValid) return strCheck;
-
-    //        return resolved;
-    //    }
-
-    //    // Min/Max arity path
-    //    if (funcInfo.MinArgumentsCount.HasValue && funcInfo.MaxArgumentsCount.HasValue)
-    //    {
-    //        var minCount = funcInfo.MinArgumentsCount.Value;
-    //        var maxCount = funcInfo.MaxArgumentsCount.Value;
-
-    //        ArgumentOutOfRangeException.ThrowIfNegative(minCount);
-    //        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, minCount);
-
-    //        if (args.Length < minCount || args.Length > maxCount)
-    //        {
-    //            if (minCount == maxCount)
-    //                return new ValidationResult(failures: [
-    //                    new("arguments", $"{funcInfo.Name} requires exactly {minCount} argument{(minCount == 1 ? "" : "s")}.")
-    //                ]);
-    //            return new ValidationResult(failures: [
-    //                new("arguments", $"{funcInfo.Name} requires between {minCount} and {maxCount} arguments.")
-    //            ]);
-    //        }
-
-    //        if (args.Any(a => a is null))
-    //            return new ValidationResult(failures: [
-    //                new("arguments", $"{funcInfo.Name} does not accept null arguments.")
-    //            ]);
-
-    //        var resolvedTypes = new Type[args.Length];
-    //        for (int i = 0; i < args.Length; i++)
-    //        {
-    //            var t = args[i] is Type provided ? provided : args[i]!.GetType();
-
-    //            HashSet<Type>? allowed = null;
-    //            if (funcInfo.AllowedTypesForLast is { Count: > 0 } && i == args.Length - 1)
-    //                allowed = funcInfo.AllowedTypesForLast;
-    //            else if (funcInfo.AllowedTypesPerPosition is not null && i < funcInfo.AllowedTypesPerPosition.Count)
-    //                allowed = funcInfo.AllowedTypesPerPosition[i];
-    //            else
-    //                allowed = funcInfo.AllowedTypesForAll;
-
-    //            if (allowed is not null && allowed.Count > 0 && !allowed.Any(exp => TypeHelpers.TypeMatches(t, exp, allowParentTypes)))
-    //            {
-    //                string allowedStr = string.Join(", ", allowed.Select(x => x.Name));
-    //                string posText = ValidationHelpers.ToOrdinal(i + 1);
-    //                return new ValidationResult(failures: [
-    //                    new("arguments", $"{funcInfo.Name} function allowed types for the {posText} argument are [{allowedStr}], got {t.Name}.")
-    //                ]);
-    //            }
-
-    //            resolvedTypes[i] = t;
-    //        }
-
-    //        var strCheck = funcInfo.ValidateStringConstraints( args);
-    //        if (!strCheck.IsValid) return strCheck;
-
-    //        return resolvedTypes;
-    //    }
-
-    //    // Not properly configured
-    //    return new ValidationResult(failures: [
-    //        new("function", $"Function '{funcInfo.Name}' is not properly configured.")
-    //    ]);
-    //}
-
-
-    #region Virtual function hooks
+    #region Functions mgmt via Catalog
 
     public virtual FunctionInformation? GetFunctionInformation(string functionName)
     {
@@ -982,21 +853,137 @@ public partial class ParserBase : Tokenizer, IParser
         if(f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateAndCalc(args, Context);
     }
-
-
-
     #endregion
 
-    #endregion
 
-    #region Operators
+    #region Operators mgmt via Cataloag
+
+    // Binary operator info via catalog
     public virtual BinaryOperatorInformation? GetBinaryOperatorInformation(string operatorName)
     {
-        return null;
+        return BinaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive);
     }
 
+    // Unary operator info by kind (explicit)
+    public virtual UnaryOperatorInformation? GetUnaryOperatorInformation(string operatorName, UnaryOperatorKind kind)
+    {
+        return UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, kind);
+    }
+
+    // Helper: attempt to resolve unary operator information by using token patterns first,
+    // then trying both prefix/postfix lookup in the catalog as fallback.
+    private UnaryOperatorInformation? ResolveUnaryOperatorInfoForName(string operatorName)
+    {
+        UnaryOperatorInformation? info = null;
+
+        if (_patterns.UnaryOperatorDictionary.TryGetValue(operatorName, out var uoPattern))
+        {
+            var kind = uoPattern.Prefix ? UnaryOperatorKind.Prefix : UnaryOperatorKind.Postfix;
+            info = UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, kind);
+            if (info is not null) return info;
+        }
+
+        // Fallback: try prefix then postfix
+        info = UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, UnaryOperatorKind.Prefix)
+               ?? UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, UnaryOperatorKind.Postfix);
+
+        return info;
+    }
+
+    // Catalog-backed binary operator validation
+    public virtual ValidationResult ValidateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.Validate(leftArg, rightArg);
+    }
+
+    // Catalog-backed unary operator validation
+    public virtual ValidationResult ValidateUnaryOperator(string operatorName, object? arg)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.Validate(arg);
+    }
+
+    // Return operand types for binary operator (catalog-backed)
+    public virtual Result<(Type, Type), ValidationResult> GetBinaryOperatorOperandTypes(string operatorName, object? leftArg, object? rightArg)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+
+        var r = info.ValidateOperands(leftArg, rightArg, allowParentTypes: true);
+        if (r.IsFailure) return r.Error!;
+        return (r.Value!.LeftType, r.Value!.RightType);
+    }
+
+    // Return operand type for unary operator (catalog-backed)
+    public virtual Result<Type, ValidationResult> GetUnaryOperatorOperandType(string operatorName, object? arg)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+
+        var r = info.ValidateOperand(arg, allowParentTypes: true);
+        if (r.IsFailure) return r.Error!;
+        return r.Value!.OperandType;
+    }
+
+    // Catalog-backed validate + evaluate (binary)
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ValidateAndCalc(leftArg, rightArg, Context);
+    }
+
+    // Catalog-backed validate + evaluate (unary)
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateUnaryOperator(string operatorName, object? arg)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ValidateAndCalc(arg, Context);
+    }
+
+    // Catalog-backed resolve output type (binary)
+    public virtual Result<Type, ValidationResult> ResolveBinaryOperatorType(string operatorName, object? leftArg, object? rightArg)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ResolveOutputType(leftArg, rightArg);
+    }
+
+    // Catalog-backed resolve output type (unary)
+    public virtual Result<Type, ValidationResult> ResolveUnaryOperatorType(string operatorName, object? arg)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ResolveOutputType(arg);
+    }
+
+    // Added two catalog-backed helpers for retrieving operator syntax matches (binary + unary).
+    // These mirror GetFunctionSyntax and forward to BinaryOperatorInformation/UnaryOperatorInformation.
+    public virtual Result<BinaryOperatorSyntaxMatch, ValidationResult> GetBinaryOperatorSyntax(string operatorName, object? leftArg, object? rightArg)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ValidateOperands(leftArg, rightArg, allowParentTypes: true);
+    }
+
+    public virtual Result<UnaryOperatorSyntaxMatch, ValidationResult> GetUnaryOperatorSyntax(string operatorName, object? arg)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return info.ValidateOperand(arg, allowParentTypes: true);
+    }
+
+    #endregion
+
+
+    #region Operators
 
     // Back-compat overload: default to allowing parent types (same policy as functions/unary)
+
+    //to be removed
     protected Result<(Type, Type), ValidationResult> GetBinaryOperatorArgumentTypes(
         string operatorName,
         object? leftArg,
@@ -1035,6 +1022,7 @@ public partial class ParserBase : Tokenizer, IParser
         ]);
     }
 
+    //to be removed
     protected Result<Type, ValidationResult> GetUnaryOperatorArgumentType(
         string operatorName,
         object? arg,
@@ -1060,51 +1048,10 @@ public partial class ParserBase : Tokenizer, IParser
             return actual;
 
         string allowedStr = string.Join(", ", allowedOperandType.Select(x => x.Name));
-        return new ValidationResult(failures: [
-            new ValidationFailure(
+        return ValidationHelpers.FailureResult(
             "operands",
-            $"{operatorName} operator allowed operand types are [{allowedStr}], got {actual.Name}.")
-        ]);
-    }
-
-    public virtual ValidationResult ValidateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-    public virtual ValidationResult ValidateUnaryOperator(string operatorName, object? arg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-    public virtual Result<(Type, Type), ValidationResult> GetBinaryOperatorOperandTypes(string operatorName, object? leftArg, object? rightArg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-    public virtual Result<Type, ValidationResult> GetUnaryOperatorOperandType(string operatorName, object? arg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-
-    public virtual Result<object?, ValidationResult> ValidateAndEvaluateBinaryOperator(string operatorName, object? leftArg, object? rightArg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-    public virtual Result<object?, ValidationResult> ValidateAndEvaluateUnaryOperator(string operatorName, object? arg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-
-    public virtual Result<Type, ValidationResult> ResolveBinaryOperatorType(string operatorName, object? leftArg, object? rightArg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
-    }
-    public virtual Result<Type, ValidationResult> ResolveUnaryOperatorType(string operatorName, object? arg)
-    {
-        return ValidationHelpers.UnknownOperatorResult(operatorName);
+            $"{operatorName} operator allowed operand types are [{allowedStr}], got {actual.Name}.", actual.Name
+        );
     }
 
     #endregion

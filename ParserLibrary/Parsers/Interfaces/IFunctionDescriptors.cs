@@ -3,12 +3,16 @@ namespace ParserLibrary.Parsers.Interfaces;
 public interface IFunctionDescriptors
 {
     byte? GetCustomFunctionFixedArgCount(string functionName);
- 
+
+    #region Legacy main function descriptors (to be removed later)
+
     byte? GetMainFunctionFixedArgCount(string functionName);
     
     byte? GetMainFunctionMinVariableArgCount(string functionName);
 
     (byte, byte)? GetMainFunctionMinMaxVariableArgCount(string functionName);
+
+    #endregion
 
 
     ////new implementation using FunctionInformation metadata
