@@ -8,6 +8,14 @@ using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
+public abstract class ParserContext
+{ 
+    public ParserBase? ParentParser { get; set; }
+
+    public abstract string OriginalFormula { get; }
+}
+
+
 public partial class ParserBase : Tokenizer, IParser
 {
 
@@ -31,9 +39,11 @@ public partial class ParserBase : Tokenizer, IParser
         CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
     }
 
-    public FunctionCatalog? FunctionCatalog { get; set; } //optional catalog for function metadata
+    //optional catalog for function metadata
+    public FunctionCatalog? FunctionCatalog { get; set; } 
 
-
+    //optional for additional information passed to formulas in addition to arguments (e.g. number of decimals)
+    public ParserContext? Context  { get; set; } 
 
 
     public virtual Dictionary<string, object?> Constants => [];
@@ -82,14 +92,29 @@ public partial class ParserBase : Tokenizer, IParser
         if (nameAndParams.Length != 2 || !nameAndParams[1].EndsWith(')'))
             throw new ArgumentException("Invalid function header format.");
 
-        var name = nameAndParams[0].Trim();
+        var functionName = nameAndParams[0].Trim();
 
         var paramList = nameAndParams[1][..^1]
             .Split(_options.TokenPatterns.ArgumentSeparator,
                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        CustomFunctions[name] = (paramList, body);
+        RegisterFunction(functionName, paramList, body);
     }
+
+    public void RegisterFunction(string functionName, string[] paramList, string body)
+    {
+        CustomFunctions[functionName] = (paramList, body);
+    }
+
+    public string RegisterTempFunction(string[] paramList, string body)
+    {
+        string functionName = GetTempVariableName("TF_");
+        CustomFunctions[functionName] = (paramList, body);
+        return functionName; //return the name in order to remove it later after temporary use
+    }
+
+    public bool UnregisterFunction(string functionName) =>
+        CustomFunctions.Remove(functionName);
 
     #endregion
 
@@ -920,34 +945,56 @@ public partial class ParserBase : Tokenizer, IParser
 
     public virtual FunctionInformation? GetFunctionInformation(string functionName)
     {
-        return null;
+        return FunctionCatalog?.GetFunctionInformation(functionName, _patterns.CaseSensitive);
     }
 
     public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
     {
-        return ValidationHelpers.UnknownFunctionResult(functionName);
-    }
-
-    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
-    {
-        return ValidationHelpers.UnknownFunctionResult(functionName);
-    }
-
-    public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
-    {
-        return ValidationHelpers.UnknownFunctionResult(functionName);
+        FunctionInformation? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return f.Validate(args);
     }
 
     public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
-        return ValidationHelpers.UnknownFunctionResult(functionName);
+        FunctionInformation? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return f.ResolveOutputType(args);
     }
+
+    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
+    {
+        FunctionInformation? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return f.ValidateArgumentTypesLegacy(args, allowParentTypes: true);
+    }
+
+    public virtual Result<SyntaxMatch, ValidationResult> GetFunctionSyntax(string functionName, object?[] args)
+    {
+        FunctionInformation? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return f.ValidateArgumentTypes(args, allowParentTypes: true);
+    }
+
+    public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
+    {
+        FunctionInformation? f = GetFunctionInformation(functionName);
+        if(f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return f.ValidateAndCalc(args, Context);
+    }
+
+
 
     #endregion
 
     #endregion
 
     #region Operators
+    public virtual BinaryOperatorInformation? GetBinaryOperatorInformation(string operatorName)
+    {
+        return null;
+    }
+
 
     // Back-compat overload: default to allowing parent types (same policy as functions/unary)
     protected Result<(Type, Type), ValidationResult> GetBinaryOperatorArgumentTypes(
@@ -957,15 +1004,15 @@ public partial class ParserBase : Tokenizer, IParser
         HashSet<(Type, Type)> allowedOperandTypes,
         bool allowParentTypes = true)
     {
-        // Nulls not allowed
-        if (leftArg is null || rightArg is null)
-            return new ValidationResult(failures: [
-                new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
-            ]);
+        //// Nulls not allowed
+        //if (leftArg is null || rightArg is null)
+        //    return new ValidationResult(failures: [
+        //        new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
+        //    ]);
 
         // Resolve operand types (support passing Type directly)
-        Type leftType = leftArg is Type lt ? lt : leftArg.GetType();
-        Type rightType = rightArg is Type rt ? rt : rightArg.GetType();
+        Type leftType = leftArg is Type lt ? lt : leftArg?.GetType() ?? typeof(object);
+        Type rightType = rightArg is Type rt ? rt : rightArg?.GetType() ?? typeof(object);
 
         // If no constraints provided, accept any types
         if (allowedOperandTypes is null || allowedOperandTypes.Count == 0)

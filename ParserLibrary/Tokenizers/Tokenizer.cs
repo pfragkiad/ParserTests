@@ -875,6 +875,12 @@ public class Tokenizer : ITokenizer
         return _tokenizerValidator.CheckParentheses(expression);
     }
 
+    public static string GetTempVariableName(string prefix = "")
+    {
+        string name = Guid.NewGuid().ToString().Replace("-", "");
+        return prefix + name;
+    }
+
     // Public string-based overloads: added optional checkParentheses guard (default false)
     public VariableNamesCheckResult CheckVariableNames(
         string expression,

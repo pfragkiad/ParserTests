@@ -25,6 +25,11 @@ public interface IParser : ITokenizer
     /// </summary>
     void RegisterFunction(string definition);
 
+    void RegisterFunction(string functionName, string[] paramList, string body);
+
+    bool UnregisterFunction(string functionName);
+
+
     // ---------------- Expression trees ----------------
 
     /// <summary>

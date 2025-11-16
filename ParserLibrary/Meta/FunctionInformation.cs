@@ -38,17 +38,17 @@ public class FunctionInformation : OperatorInformation
     //----------------------------------
 
     // String values (0-based keys internally)
-    [JsonIgnore] public Dictionary<int, HashSet<string>>? AllowedStringValuesPerPosition { get; init; }
+    public Dictionary<int, HashSet<string>>? AllowedStringValuesPerPosition { get; init; }
     public HashSet<string>? AllowedStringValuesForAll { get; init; }
     public HashSet<string>? AllowedStringValuesForLast { get; init; }
 
-    [JsonIgnore] public Dictionary<int, HashSet<string>>? AllowedStringFormatsPerPosition { get; init; }
+    public Dictionary<int, HashSet<string>>? AllowedStringFormatsPerPosition { get; init; }
     public HashSet<string>? AllowedStringFormatsForAll { get; init; }
     public HashSet<string>? AllowedStringFormatsForLast { get; init; }
 
 
 
-    [JsonIgnore] public List<FunctionSyntax>? Syntaxes { get; init; }
+    public List<FunctionSyntax>? Syntaxes { get; init; }
 
     public ExpectedFunctionArgumentsCount? GetExpectedArgumentsCountFromSyntaxes()
     {
@@ -100,7 +100,6 @@ public class FunctionInformation : OperatorInformation
 
 
 
-    [JsonIgnore]
     public Func<object?[], Result<SyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
 
     public Result<Type, ValidationResult> ResolveOutputType(object?[] args)
@@ -158,11 +157,11 @@ public class FunctionInformation : OperatorInformation
     {
         // Require syntaxes to be present
         if (Syntaxes is null || Syntaxes.Count == 0)
-            return ValidationHelpers.GetFailureResult("function", $"Function '{Name}' has no declared syntaxes.", null);
+            return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no declared syntaxes.", null);
 
         // No nulls in arguments
         if (args.Any(a => a is null))
-            return ValidationHelpers.GetFailureResult("arguments", $"{Name} does not accept null arguments.", null);
+            return ValidationHelpers.FailureResult("arguments", $"{Name} does not accept null arguments.", null);
 
         // Resolve argument types (support passing Type directly)
         var resolved = new Type[args.Length];
@@ -203,7 +202,7 @@ public class FunctionInformation : OperatorInformation
         }
 
         // Nothing matched
-        return ValidationHelpers.GetFailureResult("arguments", $"{Name} arguments do not match any declared syntax.", null);
+        return ValidationHelpers.FailureResult("arguments", $"{Name} arguments do not match any declared syntax.", null);
     }
 
     public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later
@@ -234,7 +233,7 @@ public class FunctionInformation : OperatorInformation
                 if (!allowedValues.Contains(strArg, StringComparer.OrdinalIgnoreCase))
                 {
                     string posText = ValidationHelpers.ToOrdinal(i + 1);
-                    return ValidationHelpers.GetFailureResult(
+                    return ValidationHelpers.FailureResult(
                         "arguments",
                         $"{Name} function allowed string values for the {posText} argument are [{string.Join(", ", allowedValues)}], got '{strArg}'.",
                         strArg);
@@ -258,7 +257,7 @@ public class FunctionInformation : OperatorInformation
                 if (!matches)
                 {
                     string posText = ValidationHelpers.ToOrdinal(i + 1);
-                    return ValidationHelpers.GetFailureResult(
+                    return ValidationHelpers.FailureResult(
                         "arguments",
                         $"{Name} function allowed string formats for the {posText} argument are [{string.Join(", ", allowedFormats)}], got '{strArg}'.",
                         strArg);

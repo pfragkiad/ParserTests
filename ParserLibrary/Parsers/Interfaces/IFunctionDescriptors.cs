@@ -3,7 +3,9 @@ namespace ParserLibrary.Parsers.Interfaces;
 public interface IFunctionDescriptors
 {
     byte? GetCustomFunctionFixedArgCount(string functionName);
+ 
     byte? GetMainFunctionFixedArgCount(string functionName);
+    
     byte? GetMainFunctionMinVariableArgCount(string functionName);
 
     (byte, byte)? GetMainFunctionMinMaxVariableArgCount(string functionName);

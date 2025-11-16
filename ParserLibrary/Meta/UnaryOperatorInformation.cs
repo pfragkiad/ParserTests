@@ -40,7 +40,7 @@ public sealed class UnaryOperatorInformation : OperatorInformation
 
         var syn = match.Value!.MatchedSyntax;
         if (syn.Calc is null)
-            return ValidationHelpers.GetFailureResult("operator", $"Operator '{Name}' is not executable (no Calc).", null);
+            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc).", null);
 
         return syn.Calc([operand], context);
     }
@@ -51,10 +51,10 @@ public sealed class UnaryOperatorInformation : OperatorInformation
     public Result<UnaryOperatorSyntaxMatch, ValidationResult> ValidateOperand(object? operand, bool allowParentTypes = true)
     {
         if (Syntaxes is null || Syntaxes.Count == 0)
-            return ValidationHelpers.GetFailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
+            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
 
         if (operand is null)
-            return ValidationHelpers.GetFailureResult("operands", $"{Name} operator does not accept null operands.", null);
+            return ValidationHelpers.FailureResult("operands", $"{Name} operator does not accept null operands.", null);
 
         var t = operand is Type tt ? tt : operand.GetType();
 
@@ -83,6 +83,6 @@ public sealed class UnaryOperatorInformation : OperatorInformation
             return match;
         }
 
-        return ValidationHelpers.GetFailureResult("operands", $"{Name} operator operand does not match any declared syntax.", null);
+        return ValidationHelpers.FailureResult("operands", $"{Name} operator operand does not match any declared syntax.", null);
     }
 }

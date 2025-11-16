@@ -28,7 +28,7 @@ public static class ValidationHelpers
         return new ValidationFailure(propertyName, errorMessage);
     }
 
-    public static ValidationResult GetFailureResult(string propertyName, string? errorMessage, object? attemptedValue)
+    public static ValidationResult FailureResult(string propertyName, string? errorMessage, object? attemptedValue)
     {
         ValidationFailure f = GetFailure(propertyName, errorMessage, attemptedValue);
         return new ValidationResult([f]);

@@ -19,11 +19,11 @@ public sealed class BinaryOperatorSyntax
     // Multiple examples for this syntax
     public string[]? Examples { get; init; }
 
-    // args: [left, right]; context: optional runtime context
-    public Func<object?[], object?, object?>? Calc { get; init; }
+    // args: left, right; context: optional runtime context
+    public Func<object?, object?, object?, object?>? Calc { get; init; }
 
     // Per-syntax validation hook (runs after type matching)
-    public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
+    public Func<object?, object?, ValidationResult>? AdditionalValidation { get; init; }
 
     public bool IsMatch(Type left, Type right, bool allowParentTypes)
     {
