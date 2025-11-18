@@ -9,7 +9,7 @@ using ParserLibrary.Tokenizers.Interfaces;
 namespace ParserLibrary.Parsers;
 
 public abstract class ParserContext
-{ 
+{
     public ParserBase? ParentParser { get; set; }
 
     public abstract string OriginalFormula { get; }
@@ -40,14 +40,14 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     //optional catalog for function metadata
-    public FunctionCatalog? FunctionCatalog { get; set; } 
+    public CatalogBase<FunctionInformation>? FunctionCatalog { get; set; }
 
-    public BinaryOperatorCatalog? BinaryOperatorCatalog { get; set; }
+    public CatalogBase<BinaryOperatorInformation>? BinaryOperatorCatalog { get; set; }
 
-    public UnaryOperatorCatalog? UnaryOperatorCatalog { get; set; }
+    public CatalogBase<UnaryOperatorInformation>? UnaryOperatorCatalog { get; set; }
 
     //optional for additional information passed to formulas in addition to arguments (e.g. number of decimals)
-    public ParserContext? Context  { get; set; } 
+    public ParserContext? Context { get; set; }
 
 
     public virtual Dictionary<string, object?> Constants => [];
@@ -816,7 +816,7 @@ public partial class ParserBase : Tokenizer, IParser
 
     public virtual FunctionInformation? GetFunctionInformation(string functionName)
     {
-        return FunctionCatalog?.GetFunctionInformation(functionName, _patterns.CaseSensitive);
+        return FunctionCatalog?.Get(functionName);
     }
 
     public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
@@ -850,7 +850,7 @@ public partial class ParserBase : Tokenizer, IParser
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
     {
         FunctionInformation? f = GetFunctionInformation(functionName);
-        if(f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateAndCalc(args, Context);
     }
     #endregion
@@ -861,33 +861,21 @@ public partial class ParserBase : Tokenizer, IParser
     // Binary operator info via catalog
     public virtual BinaryOperatorInformation? GetBinaryOperatorInformation(string operatorName)
     {
-        return BinaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive);
+        return BinaryOperatorCatalog?.Get(operatorName);
     }
 
     // Unary operator info by kind (explicit)
-    public virtual UnaryOperatorInformation? GetUnaryOperatorInformation(string operatorName, UnaryOperatorKind kind)
+    public virtual UnaryOperatorInformation? GetUnaryOperatorInformation(string operatorName)
     {
-        return UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, kind);
+        return UnaryOperatorCatalog?.Get(operatorName);
     }
 
     // Helper: attempt to resolve unary operator information by using token patterns first,
     // then trying both prefix/postfix lookup in the catalog as fallback.
     private UnaryOperatorInformation? ResolveUnaryOperatorInfoForName(string operatorName)
     {
-        UnaryOperatorInformation? info = null;
-
-        if (_patterns.UnaryOperatorDictionary.TryGetValue(operatorName, out var uoPattern))
-        {
-            var kind = uoPattern.Prefix ? UnaryOperatorKind.Prefix : UnaryOperatorKind.Postfix;
-            info = UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, kind);
-            if (info is not null) return info;
-        }
-
-        // Fallback: try prefix then postfix
-        info = UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, UnaryOperatorKind.Prefix)
-               ?? UnaryOperatorCatalog?.GetOperatorInformation(operatorName, _patterns.CaseSensitive, UnaryOperatorKind.Postfix);
-
-        return info;
+        if (!_patterns.UnaryOperatorDictionary.ContainsKey(operatorName)) return null;
+        return UnaryOperatorCatalog?.Get(operatorName);
     }
 
     // Catalog-backed binary operator validation

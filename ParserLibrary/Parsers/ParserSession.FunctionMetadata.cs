@@ -58,11 +58,7 @@ public partial class ParserSessionBase : IFunctionDescriptors
         if(CustomFunctions.ContainsKey(functionName)) return true;
         if (FunctionCatalog is null) return false;
 
-        //check also in the catalog functions
-        var allCatalogFunctionNames =
-            FunctionCatalog.GetAllFunctions().Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        
-        return !allCatalogFunctionNames.Contains(functionName);
+        return FunctionCatalog.Get(functionName) is not null;
     }
 
     #endregion
