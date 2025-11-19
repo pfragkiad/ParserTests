@@ -91,5 +91,59 @@ public class Tree<T> where T : notnull
         NodeDictionary = dict;
     }
     #endregion
+
+
+    #region Navigation
+    /// <summary>
+    /// Returns all ancestor nodes of the specified node (excluding the node itself).
+    /// </summary>
+    /// <param name="node">Target node.</param>
+    /// <param name="rootFirst">If true the list is ordered root->parent; otherwise parent->root.</param>
+    public List<Node<T>> GetAncestors(Node<T> node, bool rootFirst = false)
+    {
+        var ancestors = new List<Node<T>>();
+        if (Root is null || node is null) return ancestors;
+        if (node == Root) return ancestors;
+
+        bool found = TryCollectAncestors(Root, node, ancestors);
+        if (!found) return []; // node not in this tree
+        if (rootFirst) ancestors.Reverse();
+        return ancestors;
+    }
+
+    // Depth-first search: when target found, unwind adding parents.
+    private bool TryCollectAncestors(Node<T> current, Node<T> target, List<Node<T>> acc)
+    {
+        if (current == target) return true;
+
+        // Left
+        if (current.Left is Node<T> l && TryCollectAncestors(l, target, acc))
+        {
+            acc.Add(current);
+            return true;
+        }
+
+        // Right
+        if (current.Right is Node<T> r && TryCollectAncestors(r, target, acc))
+        {
+            acc.Add(current);
+            return true;
+        }
+
+        // Other collection
+        if (current.Other != null)
+        {
+            foreach (var o in current.Other)
+            {
+                if (o is Node<T> on && TryCollectAncestors(on, target, acc))
+                {
+                    acc.Add(current);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    #endregion
 }
 
