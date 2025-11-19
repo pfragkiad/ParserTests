@@ -20,7 +20,7 @@ public sealed class BinaryOperatorInformation : OperatorInformation
 
     public Result<Type, ValidationResult> ResolveOutputType(object? left, object? right, bool allowParentTypes = true)
     {
-        var res = ValidateOperands(left, right, allowParentTypes);
+        var res = GetValidSyntax(left, right, allowParentTypes);
         if (res.IsFailure) return res.Error!;
         return res.Value!.MatchedSyntax.OutputType;
     }
@@ -28,7 +28,7 @@ public sealed class BinaryOperatorInformation : OperatorInformation
     public Result<object?, ValidationResult> ValidateAndCalc(object? left, object?
         right, object? context = null, bool allowParentTypes = true)
     {
-        var match = ValidateOperands(left, right, allowParentTypes);
+        var match = GetValidSyntax(left, right, allowParentTypes);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
@@ -39,20 +39,16 @@ public sealed class BinaryOperatorInformation : OperatorInformation
     }
 
     public ValidationResult Validate(object? left, object? right, bool allowParentTypes = true)
-        => ValidateOperands(left, right, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
+        => GetValidSyntax(left, right, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
-    public Result<BinaryOperatorSyntaxMatch, ValidationResult> ValidateOperands(object? left, object? right, bool allowParentTypes = true)
+    public Result<BinaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? left, object? right, bool allowParentTypes = true)
     {
         if (Syntaxes is null || Syntaxes.Count == 0)
             return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
 
-        // Nulls not allowed
-        if (left is null || right is null)
-            return ValidationHelpers.FailureResult("operands", $"{Name} operator does not accept null operands.", null);
-
         // Resolve types (support passing Type directly)
-        var leftType = left is Type lt ? lt : left.GetType();
-        var rightType = right is Type rt ? rt : right.GetType();
+        var leftType = GetArgumentType(left);
+        var rightType = GetArgumentType(right);
 
         foreach (var syn in Syntaxes)
         {

@@ -28,14 +28,14 @@ public sealed class UnaryOperatorInformation : OperatorInformation
 
     public Result<Type, ValidationResult> ResolveOutputType(object? operand, bool allowParentTypes = true)
     {
-        var res = ValidateOperand(operand, allowParentTypes);
+        var res = GetValidSyntax(operand, allowParentTypes);
         if (res.IsFailure) return res.Error!;
         return res.Value!.MatchedSyntax.OutputType;
     }
 
     public Result<object?, ValidationResult> ValidateAndCalc(object? operand, object? context = null, bool allowParentTypes = true)
     {
-        var match = ValidateOperand(operand, allowParentTypes);
+        var match = GetValidSyntax(operand, allowParentTypes);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
@@ -46,17 +46,14 @@ public sealed class UnaryOperatorInformation : OperatorInformation
     }
 
     public ValidationResult Validate(object? operand, bool allowParentTypes = true)
-        => ValidateOperand(operand, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
+        => GetValidSyntax(operand, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
-    public Result<UnaryOperatorSyntaxMatch, ValidationResult> ValidateOperand(object? operand, bool allowParentTypes = true)
+    public Result<UnaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? operand, bool allowParentTypes = true)
     {
         if (Syntaxes is null || Syntaxes.Count == 0)
             return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
 
-        if (operand is null)
-            return ValidationHelpers.FailureResult("operands", $"{Name} operator does not accept null operands.", null);
-
-        var t = operand is Type tt ? tt : operand.GetType();
+        var t = GetArgumentType(operand);
 
         foreach (var syn in Syntaxes)
         {

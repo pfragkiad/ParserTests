@@ -900,7 +900,7 @@ public partial class ParserBase : Tokenizer, IParser
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
 
-        var r = info.ValidateOperands(leftArg, rightArg, allowParentTypes: true);
+        var r = info.GetValidSyntax(leftArg, rightArg, allowParentTypes: true);
         if (r.IsFailure) return r.Error!;
         return (r.Value!.LeftType, r.Value!.RightType);
     }
@@ -911,7 +911,7 @@ public partial class ParserBase : Tokenizer, IParser
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
 
-        var r = info.ValidateOperand(arg, allowParentTypes: true);
+        var r = info.GetValidSyntax(arg, allowParentTypes: true);
         if (r.IsFailure) return r.Error!;
         return r.Value!.OperandType;
     }
@@ -954,14 +954,14 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ValidateOperands(leftArg, rightArg, allowParentTypes: true);
+        return info.GetValidSyntax(leftArg, rightArg, allowParentTypes: true);
     }
 
     public virtual Result<UnaryOperatorSyntaxMatch, ValidationResult> GetUnaryOperatorSyntax(string operatorName, object? arg)
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ValidateOperand(arg, allowParentTypes: true);
+        return info.GetValidSyntax(arg, allowParentTypes: true);
     }
 
     #endregion

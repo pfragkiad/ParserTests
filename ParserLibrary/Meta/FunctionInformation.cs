@@ -143,7 +143,7 @@ public class FunctionInformation : OperatorInformation
         // Resolve argument types (support passing Type directly) for the return payload
         var resolved = new Type[args.Length];
         for (int i = 0; i < args.Length; i++)
-            resolved[i] = args[i] is Type t ? t : args[i]!.GetType();
+            resolved[i] = GetArgumentType(args[i]);
 
         return new SyntaxMatch
         {
@@ -159,14 +159,10 @@ public class FunctionInformation : OperatorInformation
         if (Syntaxes is null || Syntaxes.Count == 0)
             return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no declared syntaxes.", null);
 
-        // No nulls in arguments
-        if (args.Any(a => a is null))
-            return ValidationHelpers.FailureResult("arguments", $"{Name} does not accept null arguments.", null);
-
         // Resolve argument types (support passing Type directly)
         var resolved = new Type[args.Length];
         for (int i = 0; i < args.Length; i++)
-            resolved[i] = args[i] is Type t ? t : args[i]!.GetType();
+            resolved[i] = GetArgumentType(args[i]);
 
         // Try to match any syntax
         foreach (var syn in Syntaxes)

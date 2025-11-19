@@ -1,4 +1,6 @@
-﻿namespace ParserLibrary.Meta;
+﻿using System.Threading.Channels;
+
+namespace ParserLibrary.Meta;
 
 public class OperatorInformation
 {
@@ -13,5 +15,13 @@ public class OperatorInformation
 
     public string? Description { get; init; }
     public IList<SyntaxExample>? Examples { get; init; }
+
+
+    public static Type GetArgumentType(object? o)
+    {
+        if (o is null) return typeof(object);
+        if (o is Type t) return t;
+        return o.GetType();
+    }
 
 }
