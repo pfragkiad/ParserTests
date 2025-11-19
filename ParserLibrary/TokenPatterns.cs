@@ -128,13 +128,15 @@ public class TokenPatterns //NOT records here!
         get => _operators;
         set
         {
+            var comparer = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
             _operators = value ?? [];
-            _operatorDictionary = _operators.ToDictionary(op => op.Name, op => op);
+            _operatorDictionary = _operators.ToDictionary(op => op.Name, op => op, comparer);
 
             if (_unary.Count > 0)
             {
                 _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
-                _sameNameUnaryAndBinaryOperators = [.. _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys)];
+                _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), comparer);
             }
         }
     }
@@ -148,15 +150,17 @@ public class TokenPatterns //NOT records here!
         get => _unary;
         set
         {
+            var comparer = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
             _unary = value ?? [];
-            _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op);
-            _prefixUnaryNames = [.. _unary.Where(uo => uo.Prefix).Select(uo => uo.Name)];
-            _postfixUnaryNames = [.. _unary.Where(uo => !uo.Prefix).Select(uo => uo.Name)];
+            _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op, comparer);
+            _prefixUnaryNames = new HashSet<string>( _unary.Where(uo => uo.Prefix).Select(uo => uo.Name), comparer);
+            _postfixUnaryNames = new HashSet<string>( _unary.Where(uo => !uo.Prefix).Select(uo => uo.Name), comparer);
 
             if (_operators.Count > 0)
             {
                 _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
-                _sameNameUnaryAndBinaryOperators = [.. _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys)];
+                _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), comparer);
             }
         }
     }

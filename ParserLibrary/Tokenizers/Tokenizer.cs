@@ -38,6 +38,7 @@ public class Tokenizer : ITokenizer
 
         var identifierOptions = _patterns.CaseSensitive ? RegexOptions.Compiled : RegexOptions.Compiled | RegexOptions.IgnoreCase;
         var literalOptions = identifierOptions; // case sensitivity rule is shared
+        var operatorOptions = identifierOptions; // FIX: make operators follow CaseSensitive too
 
         _identifierRegex = new Regex(_patterns.GetIdentifierPattern(), identifierOptions);
         _identifierGroupNames = _patterns.IdentifierNames;
@@ -65,13 +66,13 @@ public class Tokenizer : ITokenizer
         // Precompile per-operator regexes (binary & same-name unary/binary). Process longer names first.
         _operatorRegexes = [.. (_patterns.Operators ?? [])
             .OrderByDescending(o => o.Name.Length)
-            .Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), RegexOptions.Compiled)))];
+            .Select(o => (op: o, regex: new Regex(Regex.Escape(o.Name), operatorOptions)))];
 
         // Precompile unique unary operator regexes (those not sharing name with binary operators) — longer first too
         _uniqueUnaryOperatorRegexes = _patterns.UniqueUnaryOperators is { Count: > 0 }
                 ? [.. _patterns.UniqueUnaryOperators
             .OrderByDescending(u => u.Name.Length)
-            .Select(u => (op: u, regex: new Regex(Regex.Escape(u.Name), RegexOptions.Compiled)))]
+            .Select(u => (op: u, regex: new Regex(Regex.Escape(u.Name), operatorOptions)))]
                 : [];
         // ---- Lightweight single-pass precomputations (non-regex operator matching) ----
         _operatorNamesByLenDesc = [.. (_patterns.Operators ?? [])
