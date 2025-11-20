@@ -2,7 +2,7 @@
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public class SyntaxMatch
 {

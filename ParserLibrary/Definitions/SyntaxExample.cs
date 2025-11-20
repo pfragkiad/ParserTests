@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Meta;
+﻿namespace ParserLibrary.Definitions;
 
 public readonly struct SyntaxExample
 {

@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using ParserLibrary.Parsers;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public sealed class BinaryOperatorDefinitionDto
 {

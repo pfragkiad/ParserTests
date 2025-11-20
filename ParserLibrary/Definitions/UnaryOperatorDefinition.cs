@@ -4,7 +4,7 @@ using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
 using System.Linq;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public enum UnaryOperatorKind : byte
 {

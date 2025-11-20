@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Channels;
 using ParserLibrary.Parsers;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public class OperatorDefinition
 {

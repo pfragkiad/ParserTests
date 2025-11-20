@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Linq;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 // Generic catalog base reusable for Function/Unary/Binary catalogs.
 // Provides reflection-based enumeration and name/description search.

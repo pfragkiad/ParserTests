@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using ParserLibrary.Parsers;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 // Root DTO replacing custom converter output
 public sealed class FunctionDefinitionDto

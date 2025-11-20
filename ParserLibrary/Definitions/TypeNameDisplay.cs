@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public static class TypeNameDisplay
 {

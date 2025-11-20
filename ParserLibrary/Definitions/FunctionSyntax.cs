@@ -3,7 +3,7 @@ using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 
 public readonly struct InputsDynamic

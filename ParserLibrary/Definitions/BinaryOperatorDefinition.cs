@@ -1,11 +1,9 @@
 using CustomResultError;
 using FluentValidation.Results;
-using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
-using System.Linq;
 
-namespace ParserLibrary.Meta;
+namespace ParserLibrary.Definitions;
 
 public sealed class BinaryOperatorDefinition : OperatorDefinition
 {

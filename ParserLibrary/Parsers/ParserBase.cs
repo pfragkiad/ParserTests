@@ -1,6 +1,6 @@
 ﻿using CustomResultError;
 using FluentValidation.Results;
-using ParserLibrary.Meta;
+using ParserLibrary.Definitions;
 using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Helpers;
 using ParserLibrary.Parsers.Interfaces;
