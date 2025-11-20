@@ -3,10 +3,11 @@ using FluentValidation.Results;
 using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace ParserLibrary.Meta;
 
-public sealed class BinaryOperatorInformation : OperatorInformation
+public sealed class BinaryOperatorDefinition : OperatorDefinition
 {
     // Allowed operand type pairs. Ignored in JSON; the converter emits display type names.
     [JsonIgnore]
@@ -76,7 +77,23 @@ public sealed class BinaryOperatorInformation : OperatorInformation
             return match;
         }
 
-        return ValidationHelpers.FailureResult("operands", $"{Name} operator operands do not match any declared syntax.", null);
+        // Build detailed diagnostic similar to FunctionInformation
+        var resolvedNames = $"({FormatTypeName(leftType)}, {FormatTypeName(rightType)})";
+
+        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        {
+            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+            var left = FormatTypeSet(syn.LeftTypes);
+            var right = FormatTypeSet(syn.RightTypes);
+            return $"  {scenarioPart}Binary: ({left}, {right}) -> {FormatTypeName(syn.OutputType)}";
+        });
+
+        string message =
+            $"{Name} operator operands do not match any declared syntax." +
+            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+        return ValidationHelpers.FailureResult("operands", message, resolvedNames);
     }
 
     // New: instance mapper to DTO (mirrors FunctionInformation pattern)

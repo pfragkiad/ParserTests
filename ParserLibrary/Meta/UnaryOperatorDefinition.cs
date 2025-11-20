@@ -2,6 +2,7 @@ using CustomResultError;
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace ParserLibrary.Meta;
 
@@ -11,7 +12,7 @@ public enum UnaryOperatorKind : byte
     Postfix = 2
 }
 
-public sealed class UnaryOperatorInformation : OperatorInformation
+public sealed class UnaryOperatorDefinition : OperatorDefinition
 {
     // Unary placement kind
     public UnaryOperatorKind Kind { get; init; }
@@ -80,6 +81,21 @@ public sealed class UnaryOperatorInformation : OperatorInformation
             return match;
         }
 
-        return ValidationHelpers.FailureResult("operands", $"{Name} operator operand does not match any declared syntax.", null);
+        // Build detailed diagnostic similar to FunctionInformation
+        var resolvedNames = FormatTypeName(t);
+
+        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        {
+            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+            var operandTypes = FormatTypeSet(syn.OperandTypes);
+            return $"  {scenarioPart}Unary: ({operandTypes}) -> {FormatTypeName(syn.OutputType)}";
+        });
+
+        string message =
+            $"{Name} operator operand does not match any declared syntax." +
+            $"{Environment.NewLine}Provided type: [{resolvedNames}]" +
+            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+        return ValidationHelpers.FailureResult("operands", message, resolvedNames);
     }
 }

@@ -1,8 +1,6 @@
 ﻿using CustomResultError;
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 
 namespace ParserLibrary.Meta;
 
@@ -19,23 +17,10 @@ public class ExpectedFunctionArgumentsCount
     public int? MinCount { get; init; }
 }
 
-public class FunctionInformation : OperatorInformation
+public class FunctionDefinition : OperatorDefinition
 {
 
     public bool IsCustomFunction { get; init; } = false;
-
-    //----------------------------------
-    //TO BE REMOVED LATER
-    //public byte? MinArgumentsCount { get; init; }
-    //public byte? MaxArgumentsCount { get; init; }
-    //public byte? FixedArgumentsCount { get; init; }
-
-    //// Types: ignored in JSON to avoid reflection graphs and schema collisions
-    //[JsonIgnore] public IReadOnlyList<HashSet<Type>>? AllowedTypesPerPosition { get; init; }
-    //[JsonIgnore] public HashSet<Type>? AllowedTypesForAll { get; init; }
-    //[JsonIgnore] public HashSet<Type>? AllowedTypesForLast { get; init; }
-
-    //----------------------------------
 
     // String values (0-based keys internally)
     public Dictionary<int, HashSet<string>>? AllowedStringValuesPerPosition { get; init; }
@@ -64,8 +49,6 @@ public class FunctionInformation : OperatorInformation
             .OrderBy(c => c)
             .ToList();
 
-        // Compute minimum total argument count among dynamic signatures:
-        // minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + MinVariableArgumentsCount
         int? minDynamicTotal = null;
         foreach (var s in Syntaxes)
         {
@@ -75,7 +58,7 @@ public class FunctionInformation : OperatorInformation
             var hasFirst = dyn.FirstInputType is { Count: > 0 };
             var hasLast = dyn.LastInputType is { Count: > 0 };
 
-            int minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + dyn.MinVariableArgumentsCount;
+            int minTotal = (hasFirst ? 1 : 0) + (hasLast ? 1 : 0) + dyn.MinMiddleArgumentsCount;
             if (minDynamicTotal is null || minTotal < minDynamicTotal)
                 minDynamicTotal = minTotal;
         }
@@ -86,16 +69,6 @@ public class FunctionInformation : OperatorInformation
             MinCount = minDynamicTotal
         };
 
-        //// Legacy fallback (to be removed later): use legacy Min/Fixed values
-        //List<int>? legacyFixed = null;
-        //if (FixedArgumentsCount.HasValue)
-        //    legacyFixed = new List<int> { FixedArgumentsCount.Value };
-        //int? legacyMin = MinArgumentsCount.HasValue ? MinArgumentsCount.Value : (int?)null;
-        //return new ExpectedFunctionArgumentsCount
-        //{
-        //    FixedCounts = legacyFixed,
-        //    MinCount = legacyMin
-        //};
     }
 
 
@@ -198,7 +171,49 @@ public class FunctionInformation : OperatorInformation
         }
 
         // Nothing matched
-        return ValidationHelpers.FailureResult("arguments", $"{Name} arguments do not match any declared syntax.", null);
+        // Nothing matched: build detailed diagnostic
+        var resolvedNames = resolved.Length == 0
+            ? "<no arguments>"
+            : string.Join(", ", resolved.Select(TypeNameDisplay.GetDisplayTypeName));
+
+        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        {
+            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+            if (syn.InputsFixed is { Count: > 0 })
+            {
+                var fixedParts = syn.InputsFixed!
+                    .Select(set => set.Count == 1
+                        ? TypeNameDisplay.GetDisplayTypeName(set.First())
+                        : "[" + string.Join("|", set.Select(TypeNameDisplay.GetDisplayTypeName)) + "]")
+                    .ToArray();
+                return $"  {scenarioPart}Fixed: ({string.Join(", ", fixedParts)}) -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+            else if (syn.InputsDynamic.HasValue)
+            {
+                var dyn = syn.InputsDynamic.Value;
+                string first = dyn.FirstInputType is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.FirstInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                string middle = dyn.MiddleInputTypes is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.MiddleInputTypes.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                string last = dyn.LastInputType is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.LastInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                return $"  {scenarioPart}Dynamic: first={first}, middle={middle}* (min {dyn.MinMiddleArgumentsCount}), last={last} -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+            else
+            {
+                return $"  {scenarioPart}Empty -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+        });
+
+        string message =
+            $"{Name} arguments do not match any declared syntax." +
+            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+        return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
     }
 
     public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later

@@ -22,7 +22,7 @@ public sealed class BinaryOperatorDefinitionDto
     public List<BinaryOperatorSyntaxDto>? Syntaxes { get; init; }
 
     // Factory mapper from BinaryOperatorInformation
-    public static BinaryOperatorDefinitionDto From(BinaryOperatorInformation src)
+    public static BinaryOperatorDefinitionDto From(BinaryOperatorDefinition src)
     {
         return new BinaryOperatorDefinitionDto
         {
@@ -97,6 +97,6 @@ public sealed class BinaryOperatorSyntaxDto
 // Optional convenience extension
 public static class BinaryOperatorDefinitionDtoExtensions
 {
-    public static BinaryOperatorDefinitionDto ToDefinitionDto(this BinaryOperatorInformation src)
+    public static BinaryOperatorDefinitionDto ToDefinitionDto(this BinaryOperatorDefinition src)
         => BinaryOperatorDefinitionDto.From(src);
 }

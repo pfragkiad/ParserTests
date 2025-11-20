@@ -68,7 +68,7 @@ public sealed class FunctionDefinitionDto
     public List<FunctionSyntaxDto>? Syntaxes { get; init; }
 
     // Factory mapper from FunctionInformation
-    public static FunctionDefinitionDto From(FunctionInformation src)
+    public static FunctionDefinitionDto From(FunctionDefinition src)
     {
         return new FunctionDefinitionDto
         {
@@ -194,7 +194,7 @@ public sealed class FunctionDefinitionDto
             var first = dyn.Value.FirstInputType;
             var last = dyn.Value.LastInputType;
             var middle = dyn.Value.MiddleInputTypes;
-            var minVar = dyn.Value.MinVariableArgumentsCount;
+            var minVar = dyn.Value.MinMiddleArgumentsCount;
 
             var hasFirst = first is { Count: > 0 };
             var hasLast = last is { Count: > 0 };
@@ -311,6 +311,6 @@ public sealed class InputsDynamicDto
 // Optional convenience extension
 public static class FunctionDefinitionDtoExtensions
 {
-    public static FunctionDefinitionDto ToDefinitionDto(this FunctionInformation src)
+    public static FunctionDefinitionDto ToDefinitionDto(this FunctionDefinition src)
         => FunctionDefinitionDto.From(src);
 }

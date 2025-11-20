@@ -25,7 +25,7 @@ public sealed class UnaryOperatorDefinitionDto
     public List<UnaryOperatorSyntaxDto>? Syntaxes { get; init; }
 
     // Factory mapper from UnaryOperatorInformation
-    public static UnaryOperatorDefinitionDto From(UnaryOperatorInformation src)
+    public static UnaryOperatorDefinitionDto From(UnaryOperatorDefinition src)
     {
         return new UnaryOperatorDefinitionDto
         {
@@ -93,6 +93,6 @@ public sealed class UnaryOperatorSyntaxDto
 
 public static class UnaryOperatorDefinitionDtoExtensions
 {
-    public static UnaryOperatorDefinitionDto ToDefinitionDto(this UnaryOperatorInformation src)
+    public static UnaryOperatorDefinitionDto ToDefinitionDto(this UnaryOperatorDefinition src)
         => UnaryOperatorDefinitionDto.From(src);
 }

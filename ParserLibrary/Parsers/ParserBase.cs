@@ -40,11 +40,11 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     //optional catalog for function metadata
-    public CatalogBase<FunctionInformation>? FunctionCatalog { get; set; }
+    public CatalogBase<FunctionDefinition>? FunctionCatalog { get; set; }
 
-    public CatalogBase<BinaryOperatorInformation>? BinaryOperatorCatalog { get; set; }
+    public CatalogBase<BinaryOperatorDefinition>? BinaryOperatorCatalog { get; set; }
 
-    public CatalogBase<UnaryOperatorInformation>? UnaryOperatorCatalog { get; set; }
+    public CatalogBase<UnaryOperatorDefinition>? UnaryOperatorCatalog { get; set; }
 
     //optional for additional information passed to formulas in addition to arguments (e.g. number of decimals)
     public ParserContext? Context { get; set; }
@@ -814,42 +814,42 @@ public partial class ParserBase : Tokenizer, IParser
 
     #region Functions mgmt via Catalog
 
-    public virtual FunctionInformation? GetFunctionInformation(string functionName)
+    public virtual FunctionDefinition? GetFunctionInformation(string functionName)
     {
         return FunctionCatalog?.Get(functionName);
     }
 
     public virtual ValidationResult ValidateFunction(string functionName, object?[] args)
     {
-        FunctionInformation? f = GetFunctionInformation(functionName);
+        FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.Validate(args);
     }
 
     public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
-        FunctionInformation? f = GetFunctionInformation(functionName);
+        FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ResolveOutputType(args);
     }
 
     public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
     {
-        FunctionInformation? f = GetFunctionInformation(functionName);
+        FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateArgumentTypesLegacy(args, allowParentTypes: true);
     }
 
     public virtual Result<SyntaxMatch, ValidationResult> GetFunctionSyntax(string functionName, object?[] args)
     {
-        FunctionInformation? f = GetFunctionInformation(functionName);
+        FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateArgumentTypes(args, allowParentTypes: true);
     }
 
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
     {
-        FunctionInformation? f = GetFunctionInformation(functionName);
+        FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateAndCalc(args, Context);
     }
@@ -859,20 +859,20 @@ public partial class ParserBase : Tokenizer, IParser
     #region Operators mgmt via Cataloag
 
     // Binary operator info via catalog
-    public virtual BinaryOperatorInformation? GetBinaryOperatorInformation(string operatorName)
+    public virtual BinaryOperatorDefinition? GetBinaryOperatorInformation(string operatorName)
     {
         return BinaryOperatorCatalog?.Get(operatorName);
     }
 
     // Unary operator info by kind (explicit)
-    public virtual UnaryOperatorInformation? GetUnaryOperatorInformation(string operatorName)
+    public virtual UnaryOperatorDefinition? GetUnaryOperatorInformation(string operatorName)
     {
         return UnaryOperatorCatalog?.Get(operatorName);
     }
 
     // Helper: attempt to resolve unary operator information by using token patterns first,
     // then trying both prefix/postfix lookup in the catalog as fallback.
-    private UnaryOperatorInformation? ResolveUnaryOperatorInfoForName(string operatorName)
+    private UnaryOperatorDefinition? ResolveUnaryOperatorInfoForName(string operatorName)
     {
         if (!_patterns.UnaryOperatorDictionary.ContainsKey(operatorName)) return null;
         return UnaryOperatorCatalog?.Get(operatorName);

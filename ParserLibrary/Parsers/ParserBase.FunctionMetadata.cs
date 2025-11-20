@@ -73,7 +73,7 @@ public partial class ParserBase : IFunctionDescriptors
         foreach (var syn in f.Syntaxes)
         {
             if (syn.InputsDynamic is not null)
-                result.Add((byte)syn.InputsDynamic!.Value.MinVariableArgumentsCount);
+                result.Add((byte)syn.InputsDynamic!.Value.MinMiddleArgumentsCount);
         }
         return result.Count > 0 ? result.Min() : null;
     }

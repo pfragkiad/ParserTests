@@ -16,7 +16,7 @@ public readonly struct InputsDynamic
 
     //should be used only if different from InputsDynamic
     public HashSet<Type>? LastInputType { get; init; }
-    public byte MinVariableArgumentsCount { get; init; }
+    public byte MinMiddleArgumentsCount { get; init; }
 
 }
 
@@ -104,7 +104,7 @@ public class FunctionSyntax
                 FirstInputType = firstInputTypes,
                 MiddleInputTypes = middleInputTypes,
                 LastInputType = lastInputTypes,
-                MinVariableArgumentsCount = minVariableArgsCount
+                MinMiddleArgumentsCount = minVariableArgsCount
             },
             OutputType = outputType,
             Examples = examples,
@@ -143,7 +143,7 @@ public class FunctionSyntax
         var hasFirst = dyn.FirstInputType is not null;
         var hasLast = dyn.LastInputType is not null;
         var middleSet = dyn.MiddleInputTypes; // can be empty
-        var minVar = dyn.MinVariableArgumentsCount;
+        var minVar = dyn.MinMiddleArgumentsCount;
 
         // Boundary feasibility
         if (hasFirst && resolved.Length < 1)
