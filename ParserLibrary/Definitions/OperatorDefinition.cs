@@ -1,10 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Channels;
-using ParserLibrary.Parsers;
-
-namespace ParserLibrary.Definitions;
+﻿namespace ParserLibrary.Definitions;
 
 public class OperatorDefinition
 {

@@ -6,12 +6,6 @@ using System.Linq;
 
 namespace ParserLibrary.Definitions;
 
-public enum UnaryOperatorKind : byte
-{
-    Prefix = 1,
-    Postfix = 2
-}
-
 public sealed class UnaryOperatorDefinition : OperatorDefinition
 {
     // Unary placement kind

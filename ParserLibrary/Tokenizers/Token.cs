@@ -1,18 +1,6 @@
 ﻿namespace ParserLibrary.Tokenizers;
 using System.Text.RegularExpressions;
 
-public enum TokenType
-{
-    Literal,
-    Identifier,
-    Operator,
-    OperatorUnary,
-    OpenParenthesis,
-    Function,
-    ClosedParenthesis,
-    ArgumentSeparator
-}
-
 public class Token : IComparable<Token>
 {
 

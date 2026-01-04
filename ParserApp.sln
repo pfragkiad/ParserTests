@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserNugetTests", "ParserN
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserTests.Common", "ParserTests.Common\ParserTests.Common.csproj", "{376F38F6-614B-473B-9B0F-23F544449B0B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserTests", "ParserTests\ParserTests.csproj", "{13CADF19-2BA8-88CC-282A-CF4BE5BEBA80}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{376F38F6-614B-473B-9B0F-23F544449B0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{376F38F6-614B-473B-9B0F-23F544449B0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{376F38F6-614B-473B-9B0F-23F544449B0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{13CADF19-2BA8-88CC-282A-CF4BE5BEBA80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{13CADF19-2BA8-88CC-282A-CF4BE5BEBA80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{13CADF19-2BA8-88CC-282A-CF4BE5BEBA80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{13CADF19-2BA8-88CC-282A-CF4BE5BEBA80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -197,8 +197,8 @@ internal class Program
         var i1 = new Item { Name = "item1", Value = 10 };
         var i2 = new Item { Name = "item2", Value = 5 };
 
-        //string expression = "item1 + 5 + 6 + 7.0 + item2";
-        string expression = "(item1*3 +1) + 7.0 + 2.5 + 2*item2";
+        string expression = "item1 + 5 + 6 + 7.0 + item2*10";
+        //string expression = "(item1*3 +1) + 7.0 + 2.5 + 2*item2";
         var variables = new Dictionary<string, object?>
         {
             { "item1", i1 },
@@ -287,6 +287,8 @@ internal class Program
         Console.WriteLine($"\nNon all-numeric operations: Before = {optimizationResult.NonAllNumericBefore}, After = {optimizationResult.NonAllNumericAfter}, " +
                    $"Improvement = {optimizationResult.Improvement}");
 
+
+        Console.WriteLine($"Optimized Tree Expression: {optimizedTree.GetExpressionString(parser.TokenizerOptions)}");
         // Optional: show difference only if improved
         if (optimizationResult.Improvement > 0)
             Console.WriteLine("Optimization reduced mixed (numeric + non-numeric) operations.");

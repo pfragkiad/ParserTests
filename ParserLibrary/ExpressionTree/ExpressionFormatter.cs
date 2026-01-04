@@ -113,10 +113,11 @@ public static class ExpressionFormatter
 
         if (childOp.Name == parent.Name)
         {
+            // Only associative operators can safely omit parens
             if (!IsAssociative(parent.Name) && isRight) return true;
             return false;
         }
-        return false;
+        return true;
     }
 
     private static bool NeedsParentParens(Operator current, Operator parent, bool isRightChild)

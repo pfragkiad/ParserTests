@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="ParserLibrary.Tokenizers.Tokenizer" Collapsed="true">
+    <Position X="4.25" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BIAFAAAQQQCAAMBAAAqAsCQsIkSCIAAAIgSgAAAgAAI=</HashCode>
+      <FileName>Tokenizers\Tokenizer.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="ParserLibrary.Parsers.ParserBase" Collapsed="true">
+    <Position X="4.25" Y="5.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AgQmIUYAIojUMkEoAQSAOkBgrAmCoEigQCmZIWDgCW8=</HashCode>
+      <FileName>Parsers\ParserBase.Compile.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="ParserLibrary.Parsers.ParserSessionBase" Collapsed="true">
+    <Position X="4.25" Y="6.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AgAAAEBABDDQBAIAQQCACiAoAEASACAQBASAjoAFAGI=</HashCode>
+      <FileName>Parsers\ParserSession.FunctionMetadata.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="ParserLibrary.Parsers.Common.DoubleParser" Collapsed="true">
+    <Position X="7" Y="5.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAgQAAAAAAAAQAAAABAAAAAgAgAAAgAAAAACAA=</HashCode>
+      <FileName>Parsers\Common\DoubleParser.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Parsers.Common.DoubleParserSession" Collapsed="true">
+    <Position X="7" Y="6.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAgQAAAAAAAAQAAAABAAAAAgAgAAAgAAAAACAA=</HashCode>
+      <FileName>Parsers\Common\DoubleParserSession.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.ExpressionTree.Node&lt;T&gt;" Collapsed="true">
+    <Position X="14.5" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>ABAAAAAIAAAAAAAAAIgAEAEQAKCAAAAIAAAgABAAgAA=</HashCode>
+      <FileName>ExpressionTree\Node.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.ExpressionTree.NodeBase" Collapsed="true">
+    <Position X="14.5" Y="3.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BAAAAAAAAAAEAAAEAAAAEABAAAAAAAAAGACACAAAAAQ=</HashCode>
+      <FileName>ExpressionTree\NodeBase.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.ExpressionTree.TokenTree" Collapsed="true">
+    <Position X="12.5" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>NgAYBAggAIAgAAAAAQoEEADAASAAYYDAAEAIEQGAgAA=</HashCode>
+      <FileName>ExpressionTree\TokenTree.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.ExpressionTree.Tree&lt;T&gt;" Collapsed="true">
+    <Position X="12.5" Y="3.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAQABAQAAAAAgCAEAAAAEARACIAQABAAAAAAAAAEAAQ=</HashCode>
+      <FileName>ExpressionTree\Tree.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Definitions.FunctionDefinition" Collapsed="true">
+    <Position X="1.5" Y="2.25" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAACiAAARBAAIJEBIEAAAAAACAAACAAACACAA=</HashCode>
+      <FileName>Definitions\FunctionDefinition.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Definitions.OperatorDefinition" Collapsed="true">
+    <Position X="3.75" Y="0.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAACAAAIAAAgAAAEAAEAAAQAAQAAAAAAAAACQAAAAAE=</HashCode>
+      <FileName>Definitions\OperatorDefinition.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Definitions.BinaryOperatorDefinition" Collapsed="true">
+    <Position X="3.75" Y="2.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAACAAABAIAIIABAEAAAAAAAAAAAAAAAICAA=</HashCode>
+      <FileName>Definitions\BinaryOperatorDefinition.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Definitions.UnaryOperatorDefinition" Collapsed="true">
+    <Position X="6.25" Y="2.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAADAAABAAgIAABAEAAAAAAAAAAAAAAAACAA=</HashCode>
+      <FileName>Definitions\UnaryOperatorDefinition.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.ExpressionTree.ExpressionFormatter" Collapsed="true">
+    <Position X="17.5" Y="1.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAACAAAAAAAEAAAAYAgAAgAAAAAAAAAAABAAAQ=</HashCode>
+      <FileName>ExpressionTree\ExpressionFormatter.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Definitions.CatalogBase&lt;TInfo&gt;" Collapsed="true">
+    <Position X="20.5" Y="3" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQAAAAAABAAAABBAAAAAAEAAAAAAAAgAAgAAAAAAAAQ=</HashCode>
+      <FileName>Definitions\CatalogBase.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Parsers.Common.Vector3Parser" Collapsed="true">
+    <Position X="1.75" Y="5.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAAAAAgACAIAAIAAABAAAAAgAgAAAgAAAAAAIg=</HashCode>
+      <FileName>Parsers\Common\Vector3Parser.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="ParserLibrary.Parsers.Common.Vector3ParserSession" Collapsed="true">
+    <Position X="1.75" Y="6.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAAAAAgACAIAAIAAABAAAAAgAgAAAgAAAAAAIg=</HashCode>
+      <FileName>Parsers\Common\Vector3ParserSession.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
