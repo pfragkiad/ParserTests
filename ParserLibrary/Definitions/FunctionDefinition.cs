@@ -209,7 +209,7 @@ public class FunctionDefinition : OperatorDefinition
         });
 
         string message =
-            $"{Name} arguments do not match any declared syntax." +
+            $"'{Name}' arguments do not match any declared syntax." +
             $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
             $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
 

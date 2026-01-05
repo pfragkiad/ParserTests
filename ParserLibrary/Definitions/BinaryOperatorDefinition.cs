@@ -87,7 +87,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
         });
 
         string message =
-            $"{Name} operator operands do not match any declared syntax." +
+            $"'{Name}' operator operands do not match any declared syntax." +
             $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
             $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
 
