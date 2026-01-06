@@ -67,8 +67,25 @@ public partial class ParserBase
                 }
 
                 // 2) Build the body tree
-                var bodyPostfix = GetPostfixTokens(def.Body);
-                var bodyTree = GetExpressionTree(bodyPostfix);
+                // 2) Build the body tree (add context if parsing fails)
+                List<Token> bodyPostfix;
+                TokenTree bodyTree;
+
+                try
+                {
+                    bodyPostfix = GetPostfixTokens(def.Body);
+                    bodyTree = GetExpressionTree(bodyPostfix);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to expand CustomFunction '{functionName}'. " +
+                        $"Body: '{def.Body}'. " +
+                        $"CallSite: '{tok.Text}'. " +
+                        "The function body likely contains unbalanced parentheses or invalid syntax.",
+                        ex);
+                }
+
                 var bodyRoot = (Node<Token>)bodyTree.Root;
 
                 // 3) Substitute each parameter (identifiers only) with the corresponding argument subtree
