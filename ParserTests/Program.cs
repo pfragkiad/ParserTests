@@ -443,7 +443,7 @@ internal class Program
         Console.WriteLine();
 
         var tree2 = parser.GetExpressionTree(expr2);
-        var result2 = tree2.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+        CompressionResult result2 = tree2.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
         Console.WriteLine($"Substitutions found: {result2.SubstitutionCount}");
         Console.WriteLine();
         result2.PrintFull(tree2);

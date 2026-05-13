@@ -240,7 +240,10 @@ public static class ParserApp
                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
                ParserValidator = sp.GetRequiredService<IParserValidator>(),
                LambdaExpressionFactory = sp.GetRequiredService<LambdaExpressionFactory>()
-           });
+           })
+           // Scoped: one resolver per request — guarantees unique temp names across
+           // the main expression and any lambda sub-compressions in the same request.
+           .AddScoped<ITempVariableNameResolver, TempVariableNameResolver>();
     }
 
     private static IServiceCollection AddParserSupportServices(this IServiceCollection services, string key)
@@ -282,7 +285,10 @@ public static class ParserApp
                  ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key),
                  LambdaExpressionFactory = provider.GetRequiredKeyedService<LambdaExpressionFactory>(key)
              };
-         });
+         })
+         // Scoped: one resolver per request — guarantees unique temp names across
+         // the main expression and any lambda sub-compressions in the same request.
+         .AddScoped<ITempVariableNameResolver, TempVariableNameResolver>();
     }
 
 

@@ -20,18 +20,27 @@ public partial class TokenTree
     /// Minimum subtree depth (height) to be eligible — prevents extracting single-token leaves
     /// (default 1 means at least one operator/function node with children).
     /// </param>
+    /// <param name="nextTempVarName">
+    /// Optional factory that returns the next unique temp variable name to use, given the
+    /// current set of names already present in the plan.  When <c>null</c>, an internal
+    /// counter starting at 1 is used (<c>_T1</c>, <c>_T2</c>, …).
+    /// Supply a delegate backed by <see cref="ITempVariableNameResolver"/> to guarantee
+    /// uniqueness across the whole parser session (e.g. when lambda compressions and the
+    /// outer expression share the same variable dictionary).
+    /// </param>
     /// <returns>A <see cref="CompressionResult"/> with the ordered plan and compressed expression.</returns>
     public CompressionResult Compress(
         TokenPatterns patterns,
         string tempVarPrefix = "_T",
         int minOccurrences = 2,
-        int minDepth = 1)
+        int minDepth = 1,
+        Func<ICollection<string>, string>? nextTempVarName = null)
     {
         // Work on a deep clone so the original tree is untouched.
         var workTree = DeepCloneTyped();
 
         var plan = new List<CompressionEntry>();
-        int counter = 1;
+        int counter = 1; // used only when nextTempVarName is null
 
         // Maps each temp var name back to its fully-expanded original expression
         // (no temp vars), used to populate OriginalExpression in later plan entries.
@@ -84,8 +93,11 @@ public partial class TokenTree
 
             if (best is null) break; // nothing more to extract
 
-            // 4. Assign temp variable name.
-            string tempVar = $"{tempVarPrefix}{counter++}";
+            // 4. Assign temp variable name — use the external resolver when provided so
+            //    the caller can guarantee cross-session uniqueness (e.g. lambda vs outer expr).
+            string tempVar = nextTempVarName is not null
+                ? nextTempVarName(originalByTemp.Keys)
+                : $"{tempVarPrefix}{counter++}";
 
             // 5. Collect all nodes that carry this expression (could be >1 occurrence).
             var targets = exprMap
