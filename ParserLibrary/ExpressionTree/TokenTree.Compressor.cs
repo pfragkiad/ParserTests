@@ -166,6 +166,10 @@ public partial class TokenTree
         if (node.IsLeaf) return;
         if (node.Value is null || node.Value.IsNull) return;
 
+        // ArgumentSeparator nodes are structural glue inside function argument lists;
+        // they cannot be evaluated in isolation, so skip them.
+        if (node.Value.TokenType == TokenType.ArgumentSeparator) return;
+
         string expr = ExpressionFormatter.Format(node, patterns);
         exprMap[node] = expr;
     }
