@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ParserLibrary.Definitions;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Parsers.Validation;
@@ -20,8 +21,6 @@ public static class ParserApp
         target.Version = source.Version;
         target.TokenPatterns = source.TokenPatterns; // shallow copy; deep clone if you mutate later
     }
-
-
 
     public static IServiceCollection AddTokenizerOptions(
         this IServiceCollection services,
@@ -208,9 +207,9 @@ public static class ParserApp
 
     #endregion
 
-    #region Parser validators
+    #region Parser support services
 
-    private static IServiceCollection AddParserValidators(this IServiceCollection services)
+    private static IServiceCollection AddParserSupportServices(this IServiceCollection services)
     {
         return services
            .AddSingleton<ITokenizerValidator>(sp =>
@@ -228,16 +227,23 @@ public static class ParserApp
                var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
                return new ParserValidator(logger, patterns);
            })
+           .AddSingleton(sp =>
+           {
+               var opts = sp.GetRequiredService<IOptions<TokenizerOptions>>().Value;
+               var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+               return new LambdaExpressionFactory(patterns);
+           })
            // ADDED: ParserServices bundle (singleton)
            .AddSingleton<ParserServices>(sp => new ParserServices
            {
                Options = sp.GetRequiredService<IOptions<TokenizerOptions>>(),
                TokenizerValidator = sp.GetRequiredService<ITokenizerValidator>(),
-               ParserValidator = sp.GetRequiredService<IParserValidator>()
+               ParserValidator = sp.GetRequiredService<IParserValidator>(),
+               LambdaExpressionFactory = sp.GetRequiredService<LambdaExpressionFactory>()
            });
     }
 
-    private static IServiceCollection AddParserValidators(this IServiceCollection services, string key)
+    private static IServiceCollection AddParserSupportServices(this IServiceCollection services, string key)
     {
         return services
          .AddKeyedSingleton<ITokenizerValidator>(key, (provider, _) =>
@@ -257,6 +263,13 @@ public static class ParserApp
              var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
              return new ParserValidator(logger, patterns);
          })
+         .AddKeyedSingleton<LambdaExpressionFactory>(key, (provider, _) =>
+         {
+             var monitor = provider.GetRequiredService<IOptionsMonitor<TokenizerOptions>>();
+             var opts = monitor.Get(key);
+             var patterns = opts.TokenPatterns ?? TokenizerOptions.Default.TokenPatterns;
+             return new LambdaExpressionFactory(patterns);
+         })
          // ADDED: ParserServices bundle (keyed singleton)
          .AddKeyedSingleton<ParserServices>(key, (provider, _) =>
          {
@@ -266,7 +279,8 @@ public static class ParserApp
              {
                  Options = Options.Create(opts),
                  TokenizerValidator = provider.GetRequiredKeyedService<ITokenizerValidator>(key),
-                 ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key)
+                 ParserValidator = provider.GetRequiredKeyedService<IParserValidator>(key),
+                 LambdaExpressionFactory = provider.GetRequiredKeyedService<LambdaExpressionFactory>(key)
              };
          });
     }
@@ -284,7 +298,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(context, tokenizerSectionPath)
-            .AddParserValidators();
+            .AddParserSupportServices();
     }
 
     public static IServiceCollection AddParserDependencies(
@@ -293,7 +307,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(options)
-            .AddParserValidators();
+            .AddParserSupportServices();
     }
 
     // Keyed: AddParser — register keyed IParserValidator and pass via factory
@@ -305,7 +319,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(configuration, key, tokenizerSectionPath)
-            .AddParserValidators(key);
+            .AddParserSupportServices(key);
     }
 
     // Keyed: AddParser with in-memory options
@@ -316,7 +330,7 @@ public static class ParserApp
     {
         return services
             .AddTokenizerOptions(key, options)
-            .AddParserValidators(key);
+            .AddParserSupportServices(key);
     }
 
     #endregion

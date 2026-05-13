@@ -1,7 +1,10 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using ParserLibrary.Definitions;
 using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
+using ParserLibrary.Tokenizers;
 
 namespace ParserUnitTests;
 
@@ -95,6 +98,52 @@ public class UnitTestParserBase
         Assert.Equal(80, result);
     }
 
+    [Fact]
+    public void LambdaExpressionFactory_UsesConfiguredTokenPatterns()
+    {
+        var options = new TokenizerOptions
+        {
+            Version = "1.0",
+            TokenPatterns = new TokenPatterns
+            {
+                CaseSensitive = false,
+                Identifier = "[A-Za-z_]\\w*",
+                Literal = "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
+                OpenParenthesis = '(',
+                CloseParenthesis = ')',
+                ArgumentSeparator = ';',
+                LambdaArrow = "->",
+                Unary = [new() { Name = "-", Priority = 3, Prefix = true }],
+                Operators =
+                [
+                    new() { Name = "+", Priority = 1 },
+                    new() { Name = "*", Priority = 2 }
+                ]
+            }
+        };
 
-  
+        using var app = ParserApp.GetParserApp<DoubleParser>(options);
+        var factory = app.Services.GetRequiredService<LambdaExpressionFactory>();
+
+        var lambda = factory.TryParse("x;y->x+y");
+
+        Assert.NotNull(lambda);
+        Assert.Equal(["x", "y"], lambda!.ParamList);
+        Assert.Equal("x+y", lambda.Body);
+    }
+
+    [Fact]
+    public void DefaultTokenizer_RecognizesLambdaAsNamedLiteral()
+    {
+        using var app = ParserApp.GetTokenizerApp(TokenizerOptions.Default);
+        var tokenizer = app.GetTokenizer();
+
+        var tokens = tokenizer.GetInfixTokens("map(a, (x, y) => x + y)");
+        var lambdaToken = Assert.Single(tokens.Where(t => t.CaptureGroup == "lambda"));
+
+        Assert.Equal(TokenType.Literal, lambdaToken.TokenType);
+        Assert.Equal("(x, y) => x + y", lambdaToken.Text);
+    }
+
+
 }

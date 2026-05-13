@@ -26,10 +26,44 @@ public class TokenizerOptions
             {
                 CaseSensitive = false,
                 Identifier = "[A-Za-z_]\\w*",
-                Literal = "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b",
+                NamedLiterals =
+                [
+                    new()
+                    {
+                        Name = "lambda",
+                        Value =
+                        """
+                        (?x)
+                        (?<lambda>
+                            (?<lambdaParams>
+                                \(\s*[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*\s*\)
+                            | [A-Za-z_]\w*
+                            )
+                            \s*=>\s*
+                            (?<lambdaBody>
+                            (?>
+                                "(?:[^"\\]|\\.)*"
+                                | '(?:[^'\\]|\\.)*'
+                                | \((?<p>)
+                                | \)(?<-p>)
+                                | (?(p)[^)]|[^,)])
+                            )*
+                            (?(p)(?!))
+                            )
+                        )
+                        (?=\s*(?:,|\)))
+                        """
+                    },
+                    new()
+                    {
+                        Name = "number",
+                        Value = "\\b(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\b"
+                    }
+                ],
                 OpenParenthesis = '(',
                 CloseParenthesis = ')',
                 ArgumentSeparator = ',',
+                LambdaArrow = "=>",
                 Unary =
                 [
                     new() { Name = "-", Priority = 3, Prefix = true },

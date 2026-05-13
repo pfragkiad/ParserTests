@@ -109,6 +109,8 @@ public class TokenPatterns //NOT records here!
 
     public char ArgumentSeparator { get; set; } = ',';
 
+    public string LambdaArrow { get; set; } = "=>";
+
     //This is a special operator with the lowest priority.
     public Operator ArgumentSeparatorOperator =>
         new()

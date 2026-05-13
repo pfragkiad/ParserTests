@@ -8,14 +8,14 @@
     <Company>Pavlos Fragkiadoulakis</Company>
     <Description>Parser Library that can be customized for multiple data types (double, complex, vector, matrices, chords or whatever you want). Functions can be defined with multiple arguments, postfix and prefix multiple operators etc.
 Documentation and examples are being added currently. See README.</Description>
-    <Version>3.11.10</Version>
+    <Version>3.12.1</Version>
     <Authors>Pavlos Fragkiadoulakis</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>(c) 2022-2026 Paulus Stuff</Copyright>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageTags>expression builder; binary tree; complex; vector3d; vector</PackageTags>
-    <AssemblyVersion>3.11.10</AssemblyVersion>
-    <FileVersion>3.11.10</FileVersion>
+    <AssemblyVersion>3.12.1</AssemblyVersion>
+    <FileVersion>3.12.1</FileVersion>
   </PropertyGroup>
 
 	<ItemGroup>
@@ -40,11 +40,11 @@ Documentation and examples are being added currently. See README.</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentValidation" Version="12.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
     <PackageReference Include="OneOf" Version="3.0.271" />
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="CustomResultError" Version="1.4.0" />
   </ItemGroup>
   

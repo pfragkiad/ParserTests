@@ -412,6 +412,84 @@ internal class Program
 
         
     }
+    private static void CompressionExample()
+    {
+        Console.WriteLine("=== Expression Compressor Example ===");
+        Console.WriteLine();
+
+        var parser = ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        // ── Example 1: single repeated subexpression ──────────────────────────
+        // (a+b*c) appears 4 times; the compressor should extract it into _T1.
+        string expr1 = "(a+b*c) * (a+b*c) + sin(a+b*c) / (a+b*c)";
+        Console.WriteLine($"Expression 1: {expr1}");
+        Console.WriteLine();
+
+        var tree1 = parser.GetExpressionTree(expr1);
+        var result1 = tree1.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+        Console.WriteLine($"Substitutions found: {result1.SubstitutionCount}");
+        Console.WriteLine();
+        result1.PrintFull(tree1);
+
+        // ── Example 2: nested repeated subexpressions ─────────────────────────
+        // Both  (x+y)  and  sin(x+y)+cos(x+y)  are repeated → two temp vars expected.
+        Console.WriteLine();
+        Console.WriteLine("=== Nested Repeated Subexpressions ===");
+        Console.WriteLine();
+
+        string expr2 = "(sin(x+y)+cos(x+y)) * (sin(x+y)+cos(x+y)) + (sin(x+y)+cos(x+y)) / (x+y) + tan(x+y)";
+        Console.WriteLine($"Expression 2: {expr2}");
+        Console.WriteLine();
+
+        var tree2 = parser.GetExpressionTree(expr2);
+        var result2 = tree2.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+        Console.WriteLine($"Substitutions found: {result2.SubstitutionCount}");
+        Console.WriteLine();
+        result2.PrintFull(tree2);
+
+        // ── Example 3: multi-level nesting — higher AND lower level repeats ────
+        //
+        // Anatomy of this expression:
+        //
+        //   LOW-LEVEL  atoms : p*q  (10×)  and  p*q+r  (10×)
+        //   MID-LEVEL  trig  : cos(p*q+r)  (4×)  and  sin(p*q+r)  (4×)
+        //   MID-LEVEL  block : sin(p*q+r)*cos(p*q+r)  — 4 occurrences:
+        //                        · twice inside sqrt(...)
+        //                        · twice standalone
+        //   HIGH-LEVEL wrap  : sqrt(sin(p*q+r)*cos(p*q+r))  — 2 occurrences
+        //
+        //   Compression runs shallowest-first (bottom-up evaluation order):
+        //     _T1 = p*q                              [low,  10 occurrences]
+        //     _T2 = p*q+r   →  _T1+r                [low,  10 occurrences]
+        //     _T3 = cos(p*q+r)  →  cos(_T2)         [mid,   4 occurrences]
+        //     _T4 = sin(p*q+r)  →  sin(_T2)         [mid,   4 occurrences]
+        //     _T5 = sin*cos  →  _T4*_T3             [mid,   4 occurrences]
+        //     _T6 = sqrt(_T5)                        [high,  2 occurrences]
+        //
+        //   Compressed result: _T6*_T6 + _T5 + _T5 + tan(_T2)/_T2
+        //
+        //   withCalculation:false  → each line shows only raw source variables (easy to audit)
+        //   withCalculation:true   → each line uses previously defined temp vars (ready to evaluate)
+        Console.WriteLine();
+        Console.WriteLine("=== Multi-Level Nested Repeated Subexpressions ===");
+        Console.WriteLine();
+
+        string expr3 =
+            "sqrt(sin(p*q+r)*cos(p*q+r)) * sqrt(sin(p*q+r)*cos(p*q+r))" +
+            " + sin(p*q+r)*cos(p*q+r) + sin(p*q+r)*cos(p*q+r)" +
+            " + tan(p*q+r) / (p*q+r)";
+
+        Console.WriteLine($"Expression 3: {expr3}");
+        Console.WriteLine();
+
+        var tree3 = parser.GetExpressionTree(expr3);
+        var result3 = tree3.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+        Console.WriteLine($"Substitutions found: {result3.SubstitutionCount}");
+        Console.WriteLine();
+        result3.PrintFull(tree3);
+    }
+
     private static void Main(string[] args)
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -425,8 +503,10 @@ internal class Program
 
         //ItemOperatorTests();
 
-        ItemParserTests();
+        //ItemParserTests();
         //SimpleFunctionTests();
+
+        CompressionExample();
 
         //CheckTypeTests();
 

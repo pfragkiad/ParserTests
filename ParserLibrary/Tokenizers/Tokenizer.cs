@@ -355,6 +355,19 @@ public class Tokenizer : ITokenizer
             // Skip whitespace
             if (char.IsWhiteSpace(c)) { i++; continue; }
 
+            // Literal via regex at current index only (DO THIS BEFORE PARENTHESES/IDENTIFIER)
+            if (LooksLikeLiteralStart(span, i))
+            {
+                var m = _literalRegex.Match(expression, i);
+                if (m.Success && m.Index == i)
+                {
+                    string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
+                    tokens.Add(new Token(TokenType.Literal, m.Value, i, group));
+                    i += m.Length;
+                    continue;
+                }
+            }
+
             // Parentheses & argument separators
             if (c == _patterns.OpenParenthesis)
             {
@@ -389,19 +402,6 @@ public class Tokenizer : ITokenizer
                 {
                     tokens.Add(new Token(TokenType.Operator, expression.Substring(i, blen), i));
                     i += blen;
-                    continue;
-                }
-            }
-
-            // Literal via regex at current index only (DO THIS BEFORE IDENTIFIER)
-            if (LooksLikeLiteralStart(span, i))
-            {
-                var m = _literalRegex.Match(expression, i);
-                if (m.Success && m.Index == i)
-                {
-                    string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
-                    tokens.Add(new Token(TokenType.Literal, m.Value, i, group));
-                    i += m.Length;
                     continue;
                 }
             }
@@ -459,6 +459,8 @@ public class Tokenizer : ITokenizer
     {
         char c = s[i];
         if (char.IsDigit(c) || c == '"' || c == '\'') return true;
+        if (c == '(') return true;
+        if (char.IsLetter(c) || c == '_' || c == '$') return true;
         if (c == '.' && i + 1 < s.Length && char.IsDigit(s[i + 1])) return true;
 
         //SOS: check for preceding dot for properties like .Property (which should be considered a 'literal' )
