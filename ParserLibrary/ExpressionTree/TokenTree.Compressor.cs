@@ -28,16 +28,24 @@ public partial class TokenTree
     /// uniqueness across the whole parser session (e.g. when lambda compressions and the
     /// outer expression share the same variable dictionary).
     /// </param>
+    /// <param name="keepOriginalTree">
+    /// When <c>false</c> (default) the method works on a deep clone, leaving this tree intact.
+    /// When <c>true</c> the method mutates <b>this</b> tree in place — no clone is made, which
+    /// is significantly faster for large trees.  Use this when you no longer need the original
+    /// tree after compression (e.g. you parsed it solely to compress it).
+    /// </param>
     /// <returns>A <see cref="CompressionResult"/> with the ordered plan and compressed expression.</returns>
     public CompressionResult Compress(
         TokenPatterns patterns,
         string tempVarPrefix = "_T",
         int minOccurrences = 2,
         int minDepth = 1,
-        Func<ICollection<string>, string>? nextTempVarName = null)
+        Func<ICollection<string>, string>? nextTempVarName = null,
+        bool keepOriginalTree = true,
+        bool compressConstantOnlySubtrees = false)
     {
-        // Work on a deep clone so the original tree is untouched.
-        var workTree = DeepCloneTyped();
+        // Either clone or work in place depending on the flag.
+        var workTree = keepOriginalTree ? DeepCloneTyped() : this;
 
         var plan = new List<CompressionEntry>();
         int counter = 1; // used only when nextTempVarName is null
@@ -77,6 +85,11 @@ public partial class TokenTree
                 if (rep is null) continue;
                 int depth = rep.GetHeight() - 1; // height-1 ~ edge depth
                 if (depth < minDepth) continue;
+
+                // Skip pure constant-arithmetic subtrees (no identifier and no function
+                // call) when the caller has not opted in to compressing them.
+                // e.g. -1, 1/3 are skipped, but halfhourly(0) or -_T1 are kept.
+                if (!compressConstantOnlySubtrees && !SubtreeIsCompressible(rep)) continue;
 
                 bool better = depth < bestDepth
                     || (depth == bestDepth && kvp.Value > bestCount)
@@ -232,6 +245,31 @@ public partial class TokenTree
                 }
             }
         }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> when the subtree rooted at <paramref name="node"/> is worth
+    /// compressing even when <c>compressConstantOnlySubtrees</c> is <c>false</c>.
+    /// A subtree qualifies when it contains at least one <see cref="TokenType.Identifier"/>
+    /// (variable reference) or at least one <see cref="TokenType.Function"/> node (function
+    /// call). Pure constant/literal arithmetic — e.g. <c>-1</c>, <c>1/3</c> — returns
+    /// <c>false</c>, while <c>halfhourly(0)</c> or <c>-_T1</c> return <c>true</c>.
+    /// </summary>
+    private static bool SubtreeIsCompressible(Node<Token> node)
+    {
+        if (node.Value is not null &&
+            (node.Value.TokenType == TokenType.Identifier ||
+             node.Value.TokenType == TokenType.Function))
+            return true;
+
+        if (node.Left is Node<Token> l && SubtreeIsCompressible(l)) return true;
+        if (node.Right is Node<Token> r && SubtreeIsCompressible(r)) return true;
+
+        if (node.Other is not null)
+            foreach (var child in node.Other.OfType<Node<Token>>())
+                if (SubtreeIsCompressible(child)) return true;
 
         return false;
     }

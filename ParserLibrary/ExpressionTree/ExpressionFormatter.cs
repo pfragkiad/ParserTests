@@ -75,8 +75,10 @@ public static class ExpressionFormatter
             var childExpr = FormatNode(child, null, false, patterns, fmt);
             if (child.Value is Token ct && (ct.TokenType == TokenType.Operator || ct.TokenType == TokenType.Function))
                 childExpr = $"({childExpr})";
-            // No spaces for unary
-            return uop.Prefix ? $"{uop.Name}{childExpr}" : $"{childExpr}{uop.Name}";
+            // Word unary operators (e.g. 'not') always get a space between operator and operand
+            bool isWordUnary = uop.Name.Length > 1 && uop.Name.All(char.IsLetter);
+            string sep = isWordUnary ? " " : "";
+            return uop.Prefix ? $"{uop.Name}{sep}{childExpr}" : $"{childExpr}{sep}{uop.Name}";
         }
 
         if (hasLeft && hasRight && opDict.TryGetValue(token.Text, out var bop))
@@ -93,7 +95,9 @@ public static class ExpressionFormatter
             bool needSelfParens = parentOp != null && NeedsParentParens(bop, parentOp, isRightChild);
 
             //we prevent spaces if the operator is the period independent of the user selection
-            string opSep = fmt.SpacesAroundBinaryOperators && bop.Name != "." ? " " : "";
+            //we force spaces for word operators (e.g. 'and', 'or') so they are never concatenated with adjacent identifiers
+            bool isWordOperator = bop.Name.Length > 1 && bop.Name.All(char.IsLetter);
+            string opSep = (fmt.SpacesAroundBinaryOperators || isWordOperator) && bop.Name != "." ? " " : "";
             var combined = $"{leftExpr}{opSep}{bop.Name}{opSep}{rightExpr}";
             return needSelfParens ? $"({combined})" : combined;
         }
@@ -299,16 +303,29 @@ public static class ExpressionFormatter
 
                 if (prefix || postfix)
                 {
-                    // No spaces for unary (both prefix and postfix)
-                    TrimEndSpace();
-                    sb.Append(text);
+                    bool isWordUnaryOp = text.Length > 1 && text.All(char.IsLetter);
+                    if (postfix)
+                    {
+                        // postfix word operator: space before the operator token
+                        TrimEndSpace();
+                        if (isWordUnaryOp && sb.Length > 0) sb.Append(' ');
+                        sb.Append(text);
+                    }
+                    else
+                    {
+                        // prefix: emit operator, space follows before operand naturally
+                        TrimEndSpace();
+                        sb.Append(text);
+                        if (isWordUnaryOp) sb.Append(' ');
+                    }
                     continue;
                 }
 
                 // Binary formatting
                 if (binary || nameInBinary)
                 {
-                    if (fmt.SpacesAroundBinaryOperators)
+                    bool isWordOp = text.Length > 1 && text.All(char.IsLetter);
+                    if (fmt.SpacesAroundBinaryOperators || isWordOp)
                     {
                         TrimEndSpace();
                         if (sb.Length > 0 && sb[^1] != ' ') sb.Append(' ');

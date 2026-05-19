@@ -484,10 +484,68 @@ internal class Program
         Console.WriteLine();
 
         var tree3 = parser.GetExpressionTree(expr3);
-        var result3 = tree3.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        // Print the original tree BEFORE compressing in-place (keepOriginalTree: false mutates this tree).
+        Console.WriteLine($"  Original  ({tree3.Count} nodes, height {tree3.GetHeight()}):");
+        tree3.Print(PrintType.Vertical);
+
+        // keepOriginalTree: false — no clone, tree3 itself is mutated (faster for large trees).
+        // Because tree3 is already printed above, we pass null as originalTree to PrintFull
+        // to skip the redundant original-tree section.
+        var result3 = tree3.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
         Console.WriteLine($"Substitutions found: {result3.SubstitutionCount}");
         Console.WriteLine();
-        result3.PrintFull(tree3);
+
+        // tree3 is now the compressed tree (same object as result3.CompressedTree).
+        Console.WriteLine($"  Compressed ({tree3.Count} nodes, height {tree3.GetHeight()}):");
+        tree3.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (original, without substitution) ---");
+        Console.WriteLine(result3.GetPlanText(withCalculation: false));
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result3.GetPlanText(withCalculation: true));
+
+        // ── Example 4: same as Example 3 but with numeric literals 1, 2, 3 ────
+        //
+        // Because the parser constant-folds 1*2 into 2 before compression,
+        // the low-level atom (1*2) is never seen as a repeated subexpression.
+        // Only 4 substitutions survive (vs 6 with symbolic variables):
+        //   _T1 = 1*2+3  (folded form)
+        //   _T2 = cos(_T1)
+        //   _T3 = sin(_T1)
+        //   _T4 = _T3*_T2
+        Console.WriteLine();
+        Console.WriteLine("=== Multi-Level Nested Repeated Subexpressions (literals 1, 2, 3) ===");
+        Console.WriteLine();
+
+        string expr4 =
+            "sqrt(sin(1*2+3)*cos(1*2+3)) * sqrt(sin(1*2+3)*cos(1*2+3))" +
+            " + sin(1*2+3)*cos(1*2+3) + sin(1*2+3)*cos(1*2+3)" +
+            " + tan(1*2+3) / (1*2+3)";
+
+        Console.WriteLine($"Expression 4: {expr4}");
+        Console.WriteLine();
+
+        var tree4 = parser.GetExpressionTree(expr4);
+
+        Console.WriteLine($"  Original  ({tree4.Count} nodes, height {tree4.GetHeight()}):");
+        tree4.Print(PrintType.Vertical);
+
+        var result4 = tree4.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false, compressConstantOnlySubtrees: true);
+        Console.WriteLine($"Substitutions found: {result4.SubstitutionCount}");
+        Console.WriteLine();
+
+        Console.WriteLine($"  Compressed ({tree4.Count} nodes, height {tree4.GetHeight()}):");
+        tree4.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (original, without substitution) ---");
+        Console.WriteLine(result4.GetPlanText(withCalculation: false));
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result4.GetPlanText(withCalculation: true));
     }
 
     private static void Main(string[] args)
