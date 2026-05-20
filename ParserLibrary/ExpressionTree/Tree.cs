@@ -81,7 +81,7 @@ public class Tree<T> where T : notnull
     // Rebuilds NodeDictionary to match the current tree structure.
     public void RebuildNodeDictionaryFromStructure()
     {
-        if (Root is null) { NodeDictionary = []; return; }
+        if (Root is null) { NodeDictionary = []; ParentMap = null; return; }
 
         var dict = new Dictionary<T, Node<T>>();
         foreach (var n in Root.PostOrderNodes().Cast<Node<T>>())
@@ -89,6 +89,49 @@ public class Tree<T> where T : notnull
             if (n.Value is T v) dict[v] = n;
         }
         NodeDictionary = dict;
+
+        // Keep parent map in sync when it was previously built.
+        if (ParentMap is not null) BuildParentMap();
+    }
+    #endregion
+
+    #region Parent map
+    /// <summary>
+    /// Maps each node to its parent node (<c>null</c> for the root).
+    /// Populated on demand by <see cref="BuildParentMap"/> and kept in sync by
+    /// <see cref="RebuildNodeDictionaryFromStructure"/>.
+    /// </summary>
+    public Dictionary<Node<T>, Node<T>?>? ParentMap { get; private set; }
+
+    /// <summary>
+    /// Builds (or rebuilds) the <see cref="ParentMap"/> from the current tree structure.
+    /// O(n) traversal; call once after tree construction and after structural changes.
+    /// </summary>
+    public Dictionary<Node<T>, Node<T>?> BuildParentMap()
+    {
+        var map = new Dictionary<Node<T>, Node<T>?>();
+        if (Root is not null)
+            BuildParentMapRecursive(Root, null, map);
+        ParentMap = map;
+        return map;
+    }
+
+    private static void BuildParentMapRecursive(
+        Node<T> node,
+        Node<T>? parent,
+        Dictionary<Node<T>, Node<T>?> map)
+    {
+        map[node] = parent;
+
+        if (node.Left is Node<T> l)
+            BuildParentMapRecursive(l, node, map);
+
+        if (node.Right is Node<T> r)
+            BuildParentMapRecursive(r, node, map);
+
+        if (node.Other is not null)
+            foreach (var child in node.Other.OfType<Node<T>>())
+                BuildParentMapRecursive(child, node, map);
     }
     #endregion
 
@@ -96,53 +139,25 @@ public class Tree<T> where T : notnull
     #region Navigation
     /// <summary>
     /// Returns all ancestor nodes of the specified node (excluding the node itself).
+    /// Requires <see cref="ParentMap"/> to be built via <see cref="BuildParentMap"/> first.
     /// </summary>
     /// <param name="node">Target node.</param>
     /// <param name="rootFirst">If true the list is ordered root->parent; otherwise parent->root.</param>
     public List<Node<T>> GetAncestors(Node<T> node, bool rootFirst = false)
     {
         var ancestors = new List<Node<T>>();
-        if (Root is null || node is null) return ancestors;
-        if (node == Root) return ancestors;
+        if (Root is null || node is null || ParentMap is null) return ancestors;
 
-        bool found = TryCollectAncestors(Root, node, ancestors);
-        if (!found) return []; // node not in this tree
+        var current = node;
+        while (ParentMap.TryGetValue(current, out var parent) && parent is not null)
+        {
+            ancestors.Add(parent);
+            current = parent;
+        }
+
+        // ancestors is built parent->root; reverse if rootFirst is requested
         if (rootFirst) ancestors.Reverse();
         return ancestors;
-    }
-
-    // Depth-first search: when target found, unwind adding parents.
-    private bool TryCollectAncestors(Node<T> current, Node<T> target, List<Node<T>> acc)
-    {
-        if (current == target) return true;
-
-        // Left
-        if (current.Left is Node<T> l && TryCollectAncestors(l, target, acc))
-        {
-            acc.Add(current);
-            return true;
-        }
-
-        // Right
-        if (current.Right is Node<T> r && TryCollectAncestors(r, target, acc))
-        {
-            acc.Add(current);
-            return true;
-        }
-
-        // Other collection
-        if (current.Other != null)
-        {
-            foreach (var o in current.Other)
-            {
-                if (o is Node<T> on && TryCollectAncestors(on, target, acc))
-                {
-                    acc.Add(current);
-                    return true;
-                }
-            }
-        }
-        return false;
     }
     #endregion
 }

@@ -707,7 +707,7 @@ public partial class ParserSessionBase : ParserBase, IParserSession
     // Simplified, incremental compile. Builds infix/postfix if missing.
     // Builds tree and optimizes only when optimizationMode == ParserInference.
     // Note that Validate always Resets - so if it is called before Compile then reset should be false in this context.
-    public ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false)
+    public ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false, bool buildParentMap = false)
     {
         if (string.IsNullOrWhiteSpace(_expression))
             return new ParserCompilationResult { InfixTokens = [], PostfixTokens = [], Tree = TokenTree.Empty };
@@ -716,7 +716,10 @@ public partial class ParserSessionBase : ParserBase, IParserSession
 
         // occurs after validation only (validation forces the tree build)
         if (!optimize && _tree is not null)
+        {
+            if (buildParentMap && _tree.ParentMap is null) _tree.BuildParentMap();
             return new ParserCompilationResult() { Tree = _tree, InfixTokens = _infixTokens, PostfixTokens = _postfixTokens };
+        }
 
         LastValidationState = ParserValidationStage.None;
         LastException = null;
@@ -768,6 +771,7 @@ public partial class ParserSessionBase : ParserBase, IParserSession
             {
                 _tree = GetExpressionTree(_postfixTokens);
                 _nodeDictionary = _tree.NodeDictionary;
+                if (buildParentMap) _tree.BuildParentMap();
                 State = ParserSessionState.TreeBuilt;
             }
             catch (Exception ex)

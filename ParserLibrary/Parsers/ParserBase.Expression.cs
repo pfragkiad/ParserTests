@@ -44,6 +44,14 @@ public partial class ParserBase
         var newDict = BuildNodeDictionary(newRoot);
         return new TokenTree { Root = newRoot, NodeDictionary = newDict };
     }
+    public void ExpandCustomFunctionsInPlace(TokenTree tree, int maxDepth = 10)
+    {
+        if (tree.Root?.Value is not Token) return;
+
+        var newRoot = ExpandNode((Node<Token>)tree.Root, 0, _options.TokenPatterns, maxDepth);
+        tree.Root = newRoot;
+        tree.NodeDictionary = BuildNodeDictionary(newRoot);
+    }
 
     private Node<Token> ExpandNode(Node<Token> node, int depth, TokenPatterns patterns, int maxDepth)
     {

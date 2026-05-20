@@ -64,10 +64,15 @@ public partial class TokenTree
             var exprMap = new Dictionary<Node<Token>, string>();
             BuildExpressionMap(workTree.Root, exprMap, patterns);
 
-            // 2. Count occurrences of each expression string across the tree.
-            var frequency = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var expr in exprMap.Values)
-                frequency[expr] = frequency.TryGetValue(expr, out int c) ? c + 1 : 1;
+            // 2. Build an inverted index: expr string → all nodes that produce it.
+            //    This replaces two separate O(n) linear scans later with O(1) lookups.
+            var byExpr = new Dictionary<string, List<Node<Token>>>(StringComparer.Ordinal);
+            foreach (var kvp in exprMap)
+            {
+                if (!byExpr.TryGetValue(kvp.Value, out var list))
+                    byExpr[kvp.Value] = list = [];
+                list.Add(kvp.Key);
+            }
 
             // 3. Find candidates: repeated non-leaf subtrees with enough occurrences and depth.
             //    Pick the SHALLOWEST (smallest height) candidate first — innermost atoms before
@@ -77,12 +82,12 @@ public partial class TokenTree
             int bestDepth = int.MaxValue;
             int bestCount = 0;
 
-            foreach (var kvp in frequency)
+            foreach (var kvp in byExpr)
             {
-                if (kvp.Value < minOccurrences) continue;
+                int count = kvp.Value.Count;
+                if (count < minOccurrences) continue;
 
-                var rep = exprMap.FirstOrDefault(e => e.Value == kvp.Key).Key;
-                if (rep is null) continue;
+                var rep = kvp.Value[0];
                 int depth = rep.GetHeight() - 1; // height-1 ~ edge depth
                 if (depth < minDepth) continue;
 
@@ -92,14 +97,14 @@ public partial class TokenTree
                 if (!compressConstantOnlySubtrees && !SubtreeIsCompressible(rep)) continue;
 
                 bool better = depth < bestDepth
-                    || (depth == bestDepth && kvp.Value > bestCount)
-                    || (depth == bestDepth && kvp.Value == bestCount
+                    || (depth == bestDepth && count > bestCount)
+                    || (depth == bestDepth && count == bestCount
                         && string.Compare(kvp.Key, best, StringComparison.Ordinal) < 0);
 
                 if (better)
                 {
                     bestDepth = depth;
-                    bestCount = kvp.Value;
+                    bestCount = count;
                     best = kvp.Key;
                 }
             }
@@ -112,24 +117,26 @@ public partial class TokenTree
                 ? nextTempVarName(originalByTemp.Keys)
                 : $"{tempVarPrefix}{counter++}";
 
-            // 5. Collect all nodes that carry this expression (could be >1 occurrence).
-            var targets = exprMap
-                .Where(e => e.Value == best)
-                .Select(e => e.Key)
-                .ToList();
+            // 5. All nodes carrying this expression are already collected in the inverted index.
+            var targets = byExpr[best];
 
             // 6. Record the plan entry.
-            //    SubstitutedExpression = 'best' as-is (contains any earlier temp vars).
-            //    OriginalExpression    = 'best' with all temp var references expanded back
-            //                           to their original raw-variable forms, so the reader
-            //                           can audit each step without chasing temp var definitions.
-            string originalExpr = BackExpand(best, originalByTemp);
+            //    SubstitutedSubtree is normalized so that dependencies on previously
+            //    introduced temp vars appear as Identifier leaves (e.g. _T1, _T2).
+            //    SubstitutedExpression is then formatted from this normalized subtree
+            //    to keep string/tree representations aligned.
+            var substitutedSubtree = NormalizeSubstitutedSubtree(targets[0].DeepClone(), plan, patterns);
+            string substitutedExpr = ExpressionFormatter.Format(substitutedSubtree, patterns);
+
+            // OriginalExpression always shows the fully expanded raw expression.
+            string originalExpr = BackExpand(substitutedExpr, originalByTemp);
             originalByTemp[tempVar] = originalExpr;
 
             plan.Add(new CompressionEntry(
                 TempVariable: tempVar,
                 OriginalExpression: originalExpr,
-                SubstitutedExpression: best,
+                SubstitutedExpression: substitutedExpr,
+                SubstitutedSubtree: substitutedSubtree,
                 OccurrenceCount: targets.Count
             ));
 
@@ -189,7 +196,8 @@ public partial class TokenTree
 
     /// <summary>
     /// Replaces <paramref name="target"/> in the working tree with a new leaf node carrying
-    /// <paramref name="tempToken"/>.  Handles Left, Right and Other child slots.
+    /// <paramref name="tempToken"/>.  Uses the pre-built <see cref="Tree{T}.ParentMap"/> when
+    /// available (O(1) parent lookup); falls back to a DFS walk otherwise.
     /// </summary>
     private static void ReplaceNodeInPlace(TokenTree tree, Node<Token> target, Token tempToken)
     {
@@ -201,8 +209,37 @@ public partial class TokenTree
             return;
         }
 
-        // Walk the tree to find the parent of target.
+        // Fast path: use the parent map built at compile time (or by BuildParentMap()).
+        if (tree.ParentMap is { } pm && pm.TryGetValue(target, out var parent) && parent is not null)
+        {
+            ReplaceChildSlot(parent, target, tempToken);
+            return;
+        }
+
+        // Fallback: walk the tree to find the parent of target.
         ReplaceChild(tree.Root, target, tempToken);
+    }
+
+    /// <summary>
+    /// Replaces <paramref name="target"/> in one of <paramref name="parent"/>'s child slots
+    /// with a new leaf node. Does not recurse — the slot must be a direct child of
+    /// <paramref name="parent"/>.
+    /// </summary>
+    private static void ReplaceChildSlot(Node<Token> parent, Node<Token> target, Token tempToken)
+    {
+        if (parent.Left == target) { parent.Left = new Node<Token>(tempToken); return; }
+        if (parent.Right == target) { parent.Right = new Node<Token>(tempToken); return; }
+        if (parent.Other is not null)
+        {
+            for (int i = 0; i < parent.Other.Count; i++)
+            {
+                if (parent.Other[i] == target)
+                {
+                    parent.Other[i] = new Node<Token>(tempToken);
+                    return;
+                }
+            }
+        }
     }
 
     private static bool ReplaceChild(Node<Token> current, Node<Token> target, Token tempToken)
@@ -272,6 +309,53 @@ public partial class TokenTree
                 if (SubtreeIsCompressible(child)) return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// Replaces inside <paramref name="subtree"/> each previously-extracted expression
+    /// with the corresponding temp-variable Identifier leaf.
+    /// </summary>
+    private static Node<Token> NormalizeSubstitutedSubtree(
+        Node<Token> subtree,
+        IReadOnlyList<CompressionEntry> plan,
+        TokenPatterns patterns)
+    {
+        if (plan.Count == 0) return subtree;
+
+        var byExpr = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in plan)
+            byExpr[entry.SubstitutedExpression] = entry.TempVariable;
+
+        int nextTempIndex = int.MaxValue;
+
+        Node<Token> Rewrite(Node<Token> node)
+        {
+            if (node.IsLeaf || node.Value is null || node.Value.IsNull)
+                return node;
+
+            if (node.Left is Node<Token> l)
+                node.Left = Rewrite(l);
+            if (node.Right is Node<Token> r)
+                node.Right = Rewrite(r);
+            if (node.Other is not null)
+            {
+                for (int i = 0; i < node.Other.Count; i++)
+                {
+                    if (node.Other[i] is Node<Token> o)
+                        node.Other[i] = Rewrite(o);
+                }
+            }
+
+            string expr = ExpressionFormatter.Format(node, patterns);
+            if (byExpr.TryGetValue(expr, out var tempVar))
+            {
+                return new Node<Token>(new Token(TokenType.Identifier, tempVar, nextTempIndex--));
+            }
+
+            return node;
+        }
+
+        return Rewrite(subtree);
     }
 
     /// <summary>

@@ -15,6 +15,10 @@ public sealed record CompressionEntry(
     /// but uses previously defined temp variables for deeper levels.
     /// </summary>
     string SubstitutedExpression,
+    /// <summary>
+    /// A deep-cloned subtree for this expression in substituted form, ready for fast evaluation.
+    /// </summary>
+    Node<Token> SubstitutedSubtree,
     /// <summary>How many times this subexpression appeared in the tree.</summary>
     int OccurrenceCount
 );

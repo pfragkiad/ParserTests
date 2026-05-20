@@ -126,7 +126,7 @@ public interface IParserSession : IParser
     UnexpectedOperatorOperandsCheckResult CheckAdjacentOperands();
     ParserValidationReport Validate(VariableNamesOptions? nameOptions = null, bool earlyReturnOnErrors = false);
 
-    ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false);
+    ParserCompilationResult Compile(bool reset = false, bool optimize = false, bool forceTreeBuild = false, bool buildParentMap = false);
     List<string> GetIdentifierNames(string captureGroup, bool excludeConstantNames = true);
     List<string> GetIdentifierNames();
     List<string> GetFunctionNames();

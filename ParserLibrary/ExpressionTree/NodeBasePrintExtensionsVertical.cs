@@ -287,6 +287,7 @@ public static class NodeBasePrintExtensionsVertical
 
     private static string BuildVerticalTree(List<NodeInfo> nodeInfos, Dictionary<NodeBase, NodeBase> parentMap, int leftOffset)
     {
+        var map = nodeInfos.ToDictionary(n => n.Node, n => n);
         var levelGroups = nodeInfos.GroupBy(n => n.Level).OrderBy(g => g.Key).ToList();
         var grid = new Dictionary<(int row, int col), char>();
 
@@ -305,7 +306,7 @@ public static class NodeBasePrintExtensionsVertical
             foreach (var nodeInfo in levelGroup)
             {
                 if (nodeInfo.Children.Count > 0)
-                    DrawConnections(grid, nodeInfo, nodeInfos, nodeRow);
+                    DrawConnections(grid, nodeInfo, map, nodeRow);
             }
         }
 
@@ -322,9 +323,9 @@ public static class NodeBasePrintExtensionsVertical
             grid[(row, startCol + i)] = nodeText[i];
     }
 
-    private static void DrawConnections(Dictionary<(int row, int col), char> grid, NodeInfo parentNode, List<NodeInfo> allNodes, int parentRow)
+    private static void DrawConnections(Dictionary<(int row, int col), char> grid, NodeInfo parentNode, Dictionary<NodeBase, NodeInfo> map, int parentRow)
     {
-        var children = allNodes.Where(n => parentNode.Children.Contains(n.Node)).ToList();
+        var children = parentNode.Children.Select(c => map[c]).ToList();
         if (children.Count == 0) return;
 
         int parentCol = parentNode.CenterColumn;

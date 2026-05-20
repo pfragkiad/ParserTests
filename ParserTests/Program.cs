@@ -412,6 +412,24 @@ internal class Program
 
         
     }
+    private static void PrintSubstitutedSubtrees(CompressionResult result, string title)
+    {
+        Console.WriteLine($"--- Substituted Subtrees ({title}) ---");
+
+        if (result.Plan.Count == 0)
+        {
+            Console.WriteLine("(none)");
+            return;
+        }
+
+        foreach (var entry in result.Plan)
+        {
+            Console.WriteLine($"{entry.TempVariable} = {entry.SubstitutedExpression}");
+            entry.SubstitutedSubtree.Print(PrintType.Vertical);
+            Console.WriteLine();
+        }
+    }
+
     private static void CompressionExample()
     {
         Console.WriteLine("=== Expression Compressor Example ===");
@@ -431,6 +449,7 @@ internal class Program
         Console.WriteLine($"Substitutions found: {result1.SubstitutionCount}");
         Console.WriteLine();
         result1.PrintFull(tree1);
+        PrintSubstitutedSubtrees(result1, "Expression 1");
 
         // ── Example 2: nested repeated subexpressions ─────────────────────────
         // Both  (x+y)  and  sin(x+y)+cos(x+y)  are repeated → two temp vars expected.
@@ -447,6 +466,7 @@ internal class Program
         Console.WriteLine($"Substitutions found: {result2.SubstitutionCount}");
         Console.WriteLine();
         result2.PrintFull(tree2);
+        PrintSubstitutedSubtrees(result2, "Expression 2");
 
         // ── Example 3: multi-level nesting — higher AND lower level repeats ────
         //
@@ -506,6 +526,7 @@ internal class Program
         Console.WriteLine(result3.GetPlanText(withCalculation: false));
         Console.WriteLine("--- Plan (substituted, evaluation order) ---");
         Console.WriteLine(result3.GetPlanText(withCalculation: true));
+        PrintSubstitutedSubtrees(result3, "Expression 3");
 
         // ── Example 4: same as Example 3 but with numeric literals 1, 2, 3 ────
         //
@@ -546,6 +567,7 @@ internal class Program
         Console.WriteLine(result4.GetPlanText(withCalculation: false));
         Console.WriteLine("--- Plan (substituted, evaluation order) ---");
         Console.WriteLine(result4.GetPlanText(withCalculation: true));
+        PrintSubstitutedSubtrees(result4, "Expression 4");
     }
 
     private static void Main(string[] args)

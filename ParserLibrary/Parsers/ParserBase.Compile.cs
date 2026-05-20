@@ -92,6 +92,10 @@ public partial class ParserBase
             {
                 tree = GetExpressionTree(postfix!);
 
+                // Build parent map immediately after tree construction when requested.
+                if (options.BuildParentMap)
+                    tree.BuildParentMap();
+
                 // Optimization (optional)
                 if (optimizationMode != ExpressionOptimizationMode.None && tree is not null)
                 {
