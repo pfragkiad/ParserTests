@@ -36,6 +36,162 @@ public class Tree<T> where T : notnull
         NodeDictionary.Count(e => e.Value.Left is null && e.Value.Right is null);
     public int Count => NodeDictionary.Count;
 
+    public void ReplaceNode(Node<T> target, Node<T> replacement)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(replacement);
+        if (Root is null) throw new InvalidOperationException("Cannot replace nodes in a tree with a null root.");
+
+        if (!ReplaceNodeCore(target, replacement))
+            throw new InvalidOperationException("The target node was not found in this tree.");
+
+        RebuildNodeDictionaryFromStructure();
+    }
+
+    public void ReplaceNode(Node<T> target, Tree<T> replacementTree)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(replacementTree);
+        if (replacementTree.Root is null)
+            throw new InvalidOperationException("Cannot replace with a tree that has a null root.");
+
+        ReplaceNode(target, replacementTree.Root.DeepClone());
+    }
+
+    /// <param name="ownReplacementRoot">
+    /// When <see langword="true"/> the replacement tree's root is grafted directly
+    /// into this tree (no clone). The caller must not use <paramref name="replacementTree"/>
+    /// afterwards. When <see langword="false"/> (default) a deep clone is inserted, leaving
+    /// <paramref name="replacementTree"/> intact.
+    /// </param>
+    public void ReplaceNode(Node<T> target, Tree<T> replacementTree, bool ownReplacementRoot)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(replacementTree);
+        if (replacementTree.Root is null)
+            throw new InvalidOperationException("Cannot replace with a tree that has a null root.");
+
+        Node<T> incoming = ownReplacementRoot ? replacementTree.Root : replacementTree.Root.DeepClone();
+        ReplaceNode(target, incoming);
+    }
+
+    public int ReplaceAllNodes(Predicate<T> criteria, Node<T> replacement)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentNullException.ThrowIfNull(replacement);
+
+        var targets = GetMatchingNodes(criteria);
+        foreach (var target in targets)
+            ReplaceNode(target, replacement.DeepClone());
+
+        return targets.Count;
+    }
+
+    public int ReplaceAllNodes(Predicate<T> criteria, Tree<T> replacementTree)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentNullException.ThrowIfNull(replacementTree);
+        if (replacementTree.Root is null)
+            throw new InvalidOperationException("Cannot replace with a tree that has a null root.");
+
+        // Pass the root directly; the Node<T> overload clones it for each replacement position.
+        return ReplaceAllNodes(criteria, replacementTree.Root);
+    }
+
+    public int ReplaceAllNodesAndRebuildOnce(Predicate<T> criteria, Node<T> replacement)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentNullException.ThrowIfNull(replacement);
+
+        var targets = GetMatchingNodes(criteria);
+        if (targets.Count == 0) return 0;
+
+        foreach (var target in targets)
+        {
+            if (!ReplaceNodeCore(target, replacement.DeepClone()))
+                throw new InvalidOperationException("The target node was not found in this tree.");
+        }
+
+        RebuildNodeDictionaryFromStructure();
+        return targets.Count;
+    }
+
+    public int ReplaceAllNodesAndRebuildOnce(Predicate<T> criteria, Tree<T> replacementTree)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentNullException.ThrowIfNull(replacementTree);
+        if (replacementTree.Root is null)
+            throw new InvalidOperationException("Cannot replace with a tree that has a null root.");
+
+        // Pass the root directly; the Node<T> overload clones it for each replacement position.
+        return ReplaceAllNodesAndRebuildOnce(criteria, replacementTree.Root);
+    }
+
+    private List<Node<T>> GetMatchingNodes(Predicate<T> criteria)
+    {
+        if (Root is null) return [];
+
+        return Root.PostOrderNodes()
+            .Cast<Node<T>>()
+            .Where(n => n.Value is T value && criteria(value))
+            .ToList();
+    }
+
+    private bool ReplaceNodeCore(Node<T> target, Node<T> replacement)
+    {
+        if (ReferenceEquals(target, Root))
+        {
+            Root = replacement;
+            return true;
+        }
+
+        return ReplaceNodeRecursive(Root, target, replacement);
+    }
+
+    private static bool ReplaceNodeRecursive(Node<T> current, Node<T> target, Node<T> replacement)
+    {
+        if (current.Left is Node<T> left)
+        {
+            if (ReferenceEquals(left, target))
+            {
+                current.Left = replacement;
+                return true;
+            }
+
+            if (ReplaceNodeRecursive(left, target, replacement)) return true;
+        }
+
+        if (current.Right is Node<T> right)
+        {
+            if (ReferenceEquals(right, target))
+            {
+                current.Right = replacement;
+                return true;
+            }
+
+            if (ReplaceNodeRecursive(right, target, replacement)) return true;
+        }
+
+        if (current.Other is not null)
+        {
+            for (int i = 0; i < current.Other.Count; i++)
+            {
+                if (current.Other[i] is Node<T> other)
+                {
+                    if (ReferenceEquals(other, target))
+                    {
+                        current.Other[i] = replacement;
+                        return true;
+                    }
+
+                    if (ReplaceNodeRecursive(other, target, replacement)) return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public static int MinimumNodesCount(int height) => height + 1;
     public static int MaximumNodesCount(int height) => (1 << height) - 1;
 

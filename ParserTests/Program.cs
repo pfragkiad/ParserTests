@@ -570,6 +570,38 @@ internal class Program
         PrintSubstitutedSubtrees(result4, "Expression 4");
     }
 
+    private static void TreeReplacementDemo()
+    {
+        var parser = ParserApp.GetDefaultParser();
+
+        Console.WriteLine("=== Tree replacement demo ===");
+
+        var tree = parser.GetExpressionTree("a+b");
+        Console.WriteLine("Original tree:");
+        tree.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        var replacementTree = parser.GetExpressionTree("m*n");
+        Console.WriteLine("Replacement subtree:");
+        replacementTree.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        tree.ReplaceNode((Node<Token>)tree.Root.Right!, replacementTree);
+        Console.WriteLine("Tree after replacing b with the subtree above:");
+        tree.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        var tree2 = parser.GetExpressionTree("a+b+a");
+        Console.WriteLine("Original tree for replace-all:");
+        tree2.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        var replacementNode = new Node<Token>(new Token(TokenType.Identifier, "x", 0));
+        int replacedCount = tree2.ReplaceAllNodesAndRebuildOnce(t => t.Text == "a", replacementNode);
+        Console.WriteLine($"Replaced {replacedCount} node(s) with x:");
+        tree2.Print(PrintType.Vertical);
+    }
+
     private static void Main(string[] args)
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -586,7 +618,8 @@ internal class Program
         //ItemParserTests();
         //SimpleFunctionTests();
 
-        CompressionExample();
+        TreeReplacementDemo();
+        //CompressionExample();
 
         //CheckTypeTests();
 
