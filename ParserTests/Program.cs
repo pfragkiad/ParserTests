@@ -445,10 +445,23 @@ internal class Program
         Console.WriteLine();
 
         var tree1 = parser.GetExpressionTree(expr1);
-        var result1 = tree1.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        Console.WriteLine($"  Original  ({tree1.Count} nodes, height {tree1.GetHeight()}):");
+        tree1.Print(PrintType.Vertical);
+
+        var result1 = tree1.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
         Console.WriteLine($"Substitutions found: {result1.SubstitutionCount}");
         Console.WriteLine();
-        result1.PrintFull(tree1);
+
+        Console.WriteLine($"  Compressed ({tree1.Count} nodes, height {tree1.GetHeight()}):");
+        tree1.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (original, without substitution) ---");
+        Console.WriteLine(result1.GetPlanText(withCalculation: false));
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result1.GetPlanText(withCalculation: true));
         PrintSubstitutedSubtrees(result1, "Expression 1");
 
         // ── Example 2: nested repeated subexpressions ─────────────────────────
@@ -462,10 +475,23 @@ internal class Program
         Console.WriteLine();
 
         var tree2 = parser.GetExpressionTree(expr2);
-        CompressionResult result2 = tree2.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        Console.WriteLine($"  Original  ({tree2.Count} nodes, height {tree2.GetHeight()}):");
+        tree2.Print(PrintType.Vertical);
+
+        CompressionResult result2 = tree2.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
         Console.WriteLine($"Substitutions found: {result2.SubstitutionCount}");
         Console.WriteLine();
-        result2.PrintFull(tree2);
+
+        Console.WriteLine($"  Compressed ({tree2.Count} nodes, height {tree2.GetHeight()}):");
+        tree2.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (original, without substitution) ---");
+        Console.WriteLine(result2.GetPlanText(withCalculation: false));
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result2.GetPlanText(withCalculation: true));
         PrintSubstitutedSubtrees(result2, "Expression 2");
 
         // ── Example 3: multi-level nesting — higher AND lower level repeats ────
@@ -568,6 +594,110 @@ internal class Program
         Console.WriteLine("--- Plan (substituted, evaluation order) ---");
         Console.WriteLine(result4.GetPlanText(withCalculation: true));
         PrintSubstitutedSubtrees(result4, "Expression 4");
+
+        // ── Example 5: ShouldSkipAssociativeLadder — ladder vs non-ladder ─────
+        //
+        // ShouldSkipAssociativeLadder suppresses extraction of a repeated subtree when it
+        // appears as the dominant operand in an associative chain (+, OR, AND, &):
+        //
+        //   Criteria (all must hold):
+        //     1. Root of the candidate subtree is an associative operator.
+        //     2. The flattened operand list has ≥ 3 leaves.
+        //     3. At most 2 distinct leaf expressions.
+        //     4. The most frequent leaf appears ≥ (total leaves − 1) times.
+        //
+        // ── 5a. Pure ladder (skipped) ──────────────────────────────────────────
+        //   sin(x+y) + sin(x+y) + sin(x+y) + sin(x+y)
+        //   Operands: [sin(x+y), sin(x+y), sin(x+y), sin(x+y)]
+        //   distinct=1, maxCount=4, total=4  → 1≤2 AND 4≥3  → SKIP → 0 substitutions
+        //
+        // ── 5b. Near-ladder (also skipped) ────────────────────────────────────
+        //   sin(x+y) + sin(x+y) + sin(x+y) + cos(x+y)
+        //   Operands: [sin(x+y)×3, cos(x+y)×1]
+        //   distinct=2, maxCount=3, total=4  → 2≤2 AND 3≥3  → SKIP → 0 substitutions
+        //
+        // ── 5c. Non-ladder contrast (compressed) ──────────────────────────────
+        //   (sin(x+y) + cos(x+y)) * (sin(x+y) + cos(x+y))
+        //   The top-level operator is *, not +, so ShouldSkipAssociativeLadder is false.
+        //   x+y  → _T1   (2 occurrences)
+        //   sin(x+y)+cos(x+y)  →  sin(_T1)+cos(_T1)  → _T2  (2 occurrences)
+        //   Compressed result: _T2*_T2
+        Console.WriteLine();
+        Console.WriteLine("=== ShouldSkipAssociativeLadder Demo ===");
+        Console.WriteLine();
+
+        // 5a — pure ladder: all four operands identical → ladder guard fires, no substitution
+        string expr5a = "sin(x+y) + sin(x+y) + sin(x+y) + sin(x+y)";
+        Console.WriteLine($"Expression 5a (pure ladder): {expr5a}");
+        Console.WriteLine();
+
+        var tree5a = parser.GetExpressionTree(expr5a);
+
+        Console.WriteLine($"  Original  ({tree5a.Count} nodes, height {tree5a.GetHeight()}):");
+        tree5a.Print(PrintType.Vertical);
+
+        var result5a = tree5a.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
+        Console.WriteLine($"Substitutions found: {result5a.SubstitutionCount}");
+        Console.WriteLine();
+
+        Console.WriteLine($"  Compressed ({tree5a.Count} nodes, height {tree5a.GetHeight()}):");
+        tree5a.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result5a.SubstitutionCount == 0 ? "(no substitutions — ladder guard suppressed extraction)" : result5a.GetPlanText(withCalculation: true));
+        PrintSubstitutedSubtrees(result5a, "Expression 5a");
+
+        // 5b — near-ladder: 3 of 4 operands identical → ladder guard still fires
+        Console.WriteLine();
+        string expr5b = "sin(x+y) + sin(x+y) + sin(x+y) + cos(x+y)";
+        Console.WriteLine($"Expression 5b (near-ladder): {expr5b}");
+        Console.WriteLine();
+
+        var tree5b = parser.GetExpressionTree(expr5b);
+
+        Console.WriteLine($"  Original  ({tree5b.Count} nodes, height {tree5b.GetHeight()}):");
+        tree5b.Print(PrintType.Vertical);
+
+        var result5b = tree5b.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
+        Console.WriteLine($"Substitutions found: {result5b.SubstitutionCount}");
+        Console.WriteLine();
+
+        Console.WriteLine($"  Compressed ({tree5b.Count} nodes, height {tree5b.GetHeight()}):");
+        tree5b.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result5b.SubstitutionCount == 0 ? "(no substitutions — ladder guard suppressed extraction)" : result5b.GetPlanText(withCalculation: true));
+        PrintSubstitutedSubtrees(result5b, "Expression 5b");
+
+        // 5c — non-ladder: repeated sum appears under *, not + → ladder guard does NOT fire
+        Console.WriteLine();
+        string expr5c = "(sin(x+y) + cos(x+y)) * (sin(x+y) + cos(x+y))";
+        Console.WriteLine($"Expression 5c (non-ladder, compressed): {expr5c}");
+        Console.WriteLine();
+
+        var tree5c = parser.GetExpressionTree(expr5c);
+
+        Console.WriteLine($"  Original  ({tree5c.Count} nodes, height {tree5c.GetHeight()}):");
+        tree5c.Print(PrintType.Vertical);
+
+        var result5c = tree5c.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: false);
+        Console.WriteLine($"Substitutions found: {result5c.SubstitutionCount}");
+        Console.WriteLine();
+
+        Console.WriteLine($"  Compressed ({tree5c.Count} nodes, height {tree5c.GetHeight()}):");
+        tree5c.Print(PrintType.Vertical);
+        Console.WriteLine();
+
+        Console.WriteLine("--- Plan (original, without substitution) ---");
+        Console.WriteLine(result5c.GetPlanText(withCalculation: false));
+        Console.WriteLine("--- Plan (substituted, evaluation order) ---");
+        Console.WriteLine(result5c.GetPlanText(withCalculation: true));
+        PrintSubstitutedSubtrees(result5c, "Expression 5c");
     }
 
     private static void TreeReplacementDemo()
@@ -618,8 +748,8 @@ internal class Program
         //ItemParserTests();
         //SimpleFunctionTests();
 
-        TreeReplacementDemo();
-        //CompressionExample();
+        //TreeReplacementDemo();
+        CompressionExample();
 
         //CheckTypeTests();
 
