@@ -33,6 +33,14 @@ public partial class TokenTree
     /// When <c>false</c> (default), the method mutates <b>this</b> tree in place — no clone
     /// is made, which is significantly faster for large trees.
     /// </param>
+    /// <param name="forceFunctionNames">
+    /// Optional function names that must always be compressed when encountered, even when they
+    /// appear once. Matching respects <see cref="TokenPatterns.CaseSensitive"/>.
+    /// </param>
+    /// <param name="forceOperatorSymbols">
+    /// Optional operator symbols/text that must always be compressed when encountered, even when
+    /// they appear once. Matching respects <see cref="TokenPatterns.CaseSensitive"/>.
+    /// </param>
     /// <returns>A <see cref="CompressionResult"/> with the ordered plan and compressed expression.</returns>
     public CompressionResult Compress(
         TokenPatterns patterns,
@@ -41,17 +49,53 @@ public partial class TokenTree
         int minDepth = 1,
         Func<ICollection<string>, string>? nextTempVarName = null,
         bool keepOriginalTree = false,
-        bool compressConstantOnlySubtrees = false)
+        bool compressConstantOnlySubtrees = false,
+        IReadOnlyList<CompressionEntry>? existingEntries = null,
+        HashSet<string>? forcedFunctions = null,
+        HashSet<string>? forcedOperators = null)
     {
         // Either clone or work in place depending on the flag.
         var workTree = keepOriginalTree ? DeepCloneTyped() : this;
 
-        var plan = new List<CompressionEntry>();
+        var plan = existingEntries is null ? new List<CompressionEntry>() : [.. existingEntries];
         int counter = 1; // used only when nextTempVarName is null
 
         // Maps each temp var name back to its fully-expanded original expression
         // (no temp vars), used to populate OriginalExpression in later plan entries.
         var originalByTemp = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        // Canonical substituted-expression key -> already assigned temp variable.
+        var tempByExpressionKey = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var occurrenceByTemp = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        for (int i = 0; i < plan.Count; i++)
+        {
+            var entry = plan[i];
+            originalByTemp[entry.TempVariable] = entry.OriginalExpression;
+            tempByExpressionKey[NormalizeExpressionKey(entry.SubstitutedExpression, patterns)] = entry.TempVariable;
+            occurrenceByTemp[entry.TempVariable] = entry.OccurrenceCount;
+        }
+
+        void IncrementOccurrence(string tempVar, int delta)
+        {
+            if (delta <= 0) return;
+            if (!occurrenceByTemp.TryAdd(tempVar, delta))
+                occurrenceByTemp[tempVar] += delta;
+        }
+
+        if (nextTempVarName is null)
+        {
+            foreach (var entry in plan)
+            {
+                if (!entry.TempVariable.StartsWith(tempVarPrefix, StringComparison.Ordinal))
+                    continue;
+
+                string suffix = entry.TempVariable[tempVarPrefix.Length..];
+                if (int.TryParse(suffix, out int existingIndex) && existingIndex >= counter)
+                    counter = existingIndex + 1;
+            }
+        }
 
         // Iteratively extract the shallowest (innermost) repeated subtrees first so that
         // the plan is in natural bottom-up evaluation order: inner atoms before outer wrappers.
@@ -60,12 +104,35 @@ public partial class TokenTree
         while (true)
         {
             var analysis = AnalyzeTree(workTree.Root, patterns);
+
+            bool reusedExisting = false;
+            foreach (var kvp in analysis.Groups.OrderBy(k => k.Key, StringComparer.Ordinal))
+            {
+                if (!tempByExpressionKey.TryGetValue(kvp.Key, out string? existingTemp))
+                    continue;
+
+                var tempToken = new Token(TokenType.Identifier, existingTemp, int.MaxValue - counter);
+                foreach (var target in kvp.Value.Nodes)
+                    ReplaceNodeInPlace(workTree, target, tempToken);
+
+                IncrementOccurrence(existingTemp, kvp.Value.Nodes.Count);
+                reusedExisting = true;
+            }
+
+            if (reusedExisting)
+            {
+                workTree.RebuildNodeDictionaryFromStructure();
+                continue;
+            }
+
             var batchKeys = SelectBatchCandidates(
                 analysis.Groups,
                 minOccurrences,
                 minDepth,
                 compressConstantOnlySubtrees,
-                patterns);
+                patterns,
+                forcedFunctions ?? new HashSet<string>(),
+                forcedOperators ?? new HashSet<string>());
 
             if (batchKeys.Count == 0)
                 break;
@@ -99,6 +166,8 @@ public partial class TokenTree
                     SubstitutedSubtree: substitutedSubtree,
                     OccurrenceCount: group.Nodes.Count
                 ));
+                tempByExpressionKey[NormalizeExpressionKey(substitutedExpr, patterns)] = tempVar;
+                occurrenceByTemp[tempVar] = group.Nodes.Count;
 
                 // Replace every occurrence in the working tree with a leaf identifier node.
                 var tempToken = new Token(TokenType.Identifier, tempVar, int.MaxValue - counter);
@@ -117,9 +186,25 @@ public partial class TokenTree
 
         string compressedExpr = workTree.GetExpressionString(patterns, spacesAroundOperators: false);
 
+        var projectedPlan = new List<CompressionEntry>(plan.Count);
+        for (int i = 0; i < plan.Count; i++)
+        {
+            var entry = plan[i];
+            int totalOccurrences = occurrenceByTemp.TryGetValue(entry.TempVariable, out int count)
+                ? count
+                : entry.OccurrenceCount;
+
+            projectedPlan.Add(new CompressionEntry(
+                TempVariable: entry.TempVariable,
+                OriginalExpression: entry.OriginalExpression,
+                SubstitutedExpression: entry.SubstitutedExpression,
+                SubstitutedSubtree: entry.SubstitutedSubtree,
+                OccurrenceCount: totalOccurrences));
+        }
+
         return new CompressionResult
         {
-            Plan = plan,
+            Plan = projectedPlan,
             CompressedExpression = compressedExpr,
             CompressedTree = workTree
         };
@@ -200,9 +285,7 @@ public partial class TokenTree
         if (node.Value.TokenType == TokenType.ArgumentSeparator)
             return new NodeAnalysis(height, containsIdentifierOrFunction);
 
-        string key = ExpressionFormatter.Format(node, patterns);
-        if (!patterns.CaseSensitive)
-            key = key.ToUpperInvariant();
+        string key = FormatNodeExpressionKey(node, patterns);
 
         if (!groups.TryGetValue(key, out var group))
         {
@@ -215,6 +298,12 @@ public partial class TokenTree
         return new NodeAnalysis(height, containsIdentifierOrFunction);
     }
 
+    private static string FormatNodeExpressionKey(Node<Token> node, TokenPatterns patterns) =>
+        NormalizeExpressionKey(ExpressionFormatter.Format(node, patterns), patterns);
+
+    private static string NormalizeExpressionKey(string expression, TokenPatterns patterns) =>
+        patterns.CaseSensitive ? expression : expression.ToUpperInvariant();
+
     /// <summary>
     /// Selects all extractable candidates at the shallowest eligible depth.
     /// Stable ordering: higher occurrence count first, then structural key ordinal.
@@ -224,33 +313,40 @@ public partial class TokenTree
         int minOccurrences,
         int minDepth,
         bool compressConstantOnlySubtrees,
-        TokenPatterns patterns)
+        TokenPatterns patterns,
+        HashSet<string> forcedFunctionNames,
+        HashSet<string> forcedOperatorSymbols)
     {
         int bestDepth = int.MaxValue;
+        var eligible = new List<(string Key, CompressionGroup Group, bool IsForced)>();
 
         foreach (var kvp in groups)
         {
             var group = kvp.Value;
-            if (group.Nodes.Count < minOccurrences) continue;
-            if (group.Depth < minDepth) continue;
-            if (!compressConstantOnlySubtrees && !group.IsCompressible) continue;
+            bool isForced = IsForcedCandidate(group.Nodes[0], forcedFunctionNames, forcedOperatorSymbols, patterns);
+
+            if (!isForced)
+            {
+                if (group.Nodes.Count < minOccurrences) continue;
+                if (group.Depth < minDepth) continue;
+                if (!compressConstantOnlySubtrees && !group.IsCompressible) continue;
+                if (ShouldSkipAssociativeLadder(group.Nodes[0], patterns)) continue;
+            }
 
             if (group.Depth < bestDepth)
                 bestDepth = group.Depth;
+
+            eligible.Add((kvp.Key, group, isForced));
         }
 
         if (bestDepth == int.MaxValue)
             return [];
 
-        return groups
-            .Where(kvp =>
-                kvp.Value.Depth == bestDepth
-                && kvp.Value.Nodes.Count >= minOccurrences
-                && (compressConstantOnlySubtrees || kvp.Value.IsCompressible)
-                && !ShouldSkipAssociativeLadder(kvp.Value.Nodes[0], patterns))
-            .OrderByDescending(kvp => kvp.Value.Nodes.Count)
-            .ThenBy(kvp => kvp.Key, StringComparer.Ordinal)
-            .Select(kvp => kvp.Key)
+        return eligible
+            .Where(x => x.Group.Depth == bestDepth)
+            .OrderByDescending(x => x.Group.Nodes.Count)
+            .ThenBy(x => x.Key, StringComparer.Ordinal)
+            .Select(x => x.Key)
             .ToList();
     }
 
@@ -311,6 +407,26 @@ public partial class TokenTree
 
     private static string NormalizeCase(string text, bool caseSensitive) =>
         caseSensitive ? text : text.ToUpperInvariant();
+
+    private static bool IsForcedCandidate(
+        Node<Token> node,
+        HashSet<string> forcedFunctionNames,
+        HashSet<string> forcedOperatorSymbols,
+        TokenPatterns patterns)
+    {
+        if (node.Value is null)
+            return false;
+
+        var comparer = patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+        if (node.Value.TokenType == TokenType.Function && forcedFunctionNames is not null)
+            return forcedFunctionNames.Contains(node.Value.Text, comparer);
+
+        if (node.Value.TokenType == TokenType.Operator && forcedOperatorSymbols is not null)
+            return forcedOperatorSymbols.Contains(node.Value.Text, comparer);
+
+        return false;
+    }
 
     /// <summary>
     /// Replaces <paramref name="target"/> in the working tree with a new leaf node carrying

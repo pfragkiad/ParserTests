@@ -33,6 +33,8 @@ public sealed class CompressionResult
     /// </summary>
     public IReadOnlyList<CompressionEntry> Plan { get; init; } = [];
 
+    public bool IsCompressed => Plan.Count > 0;
+
     /// <summary>
     /// The final compressed expression string using temp variable names.
     /// </summary>

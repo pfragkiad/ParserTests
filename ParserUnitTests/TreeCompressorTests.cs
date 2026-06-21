@@ -1,3 +1,4 @@
+using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
 
 namespace ParserUnitTests;
@@ -34,5 +35,51 @@ public class TreeCompressorTests
         var result = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
 
         Assert.Equal(4, result.SubstitutionCount);
+    }
+
+    [Fact]
+    public void Compress_ForcedFunctionAndOperator_CompressesSingleOccurrences()
+    {
+        var parser = ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        string expr = "Sin(1)*2";
+
+        var tree = parser.GetExpressionTree(expr);
+        var result = tree.Compress(
+            patterns,
+            tempVarPrefix: "_T",
+            minOccurrences: 2,
+            forcedFunctions: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sin" },
+            forcedOperators: ["*"]);
+
+        Assert.Equal(2, result.SubstitutionCount);
+        Assert.Equal(1, result.Plan[0].OccurrenceCount);
+        Assert.Equal(1, result.Plan[1].OccurrenceCount);
+        Assert.Contains("Sin(", result.Plan[0].SubstitutedExpression, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("*", result.Plan[1].SubstitutedExpression, StringComparison.Ordinal);
+        Assert.Contains(result.Plan[0].TempVariable, result.Plan[1].SubstitutedExpression, StringComparison.Ordinal);
+        Assert.Equal(result.Plan[1].TempVariable, result.CompressedExpression);
+    }
+
+    [Fact]
+    public void Compress_ForcedFunction_RespectsCaseSensitivity()
+    {
+        var options = TokenizerOptions.Default;
+        options.TokenPatterns.CaseSensitive = true;
+
+        var parser = ParserApp.GetParser<DoubleParser>(options);
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        const string expr = "Sin(1)";
+
+        var tree = parser.GetExpressionTree(expr);
+        var result = tree.Compress(
+            patterns,
+            minOccurrences: 2,
+            forcedFunctions: ["sin"]);
+
+        Assert.Equal(0, result.SubstitutionCount);
+        Assert.Equal(expr, result.CompressedExpression);
     }
 }

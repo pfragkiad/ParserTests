@@ -69,9 +69,10 @@ public class Parser_DefaultParser_TreeAndAssociativityTests
 
         Assert.Equal(2, replacedCount);
         Assert.Equal("+", tree.Root.Value!.Text);
-        Assert.Equal("x", ((Node<Token>)tree.Root.Left!).Value!.Text);
-        Assert.Equal("+", ((Node<Token>)tree.Root.Right!).Value!.Text);
-        Assert.Equal("x", ((Node<Token>)((Node<Token>)tree.Root.Right!).Right!).Value!.Text);
+        Assert.Equal("+", ((Node<Token>)tree.Root.Left!).Value!.Text);
+        Assert.Equal("x", ((Node<Token>)tree.Root.Right!).Value!.Text);
+        Assert.Equal("x", ((Node<Token>)((Node<Token>)tree.Root.Left!).Left!).Value!.Text);
+        Assert.Equal("b", ((Node<Token>)((Node<Token>)tree.Root.Left!).Right!).Value!.Text);
         Assert.NotNull(tree.ParentMap);
         Assert.Equal(5, tree.Count);
 
@@ -80,6 +81,7 @@ public class Parser_DefaultParser_TreeAndAssociativityTests
 
         Assert.Equal(2, replacedCount2);
         Assert.Equal("*", tree2.Root.Value!.Text);
-        Assert.Equal("*", ((Node<Token>)tree2.Root.Right!).Value!.Text);
+        Assert.Equal("m", ((Node<Token>)tree2.Root.Left!).Value!.Text);
+        Assert.Equal("n", ((Node<Token>)tree2.Root.Right!).Value!.Text);
     }
 }
