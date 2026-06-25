@@ -416,13 +416,13 @@ internal class Program
     {
         Console.WriteLine($"--- Substituted Subtrees ({title}) ---");
 
-        if (result.Plan.Count == 0)
+        if (result.Entries.Count == 0)
         {
             Console.WriteLine("(none)");
             return;
         }
 
-        foreach (var entry in result.Plan)
+        foreach (var entry in result.Entries)
         {
             Console.WriteLine($"{entry.TempVariable} = {entry.SubstitutedExpression}");
             entry.SubstitutedSubtree.Print(PrintType.Vertical);

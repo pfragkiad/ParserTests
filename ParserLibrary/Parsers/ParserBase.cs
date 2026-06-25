@@ -321,13 +321,14 @@ public partial class ParserBase : Tokenizer, IParser
         var optimizerResult = GetOptimizedTree(tree, variables, false);
         var optimizedTree = optimizerResult.Tree;
 
-        return Evaluate(optimizedTree, variables, mergeConstants: true);
+        return Evaluate(optimizedTree.Root, variables, mergeConstants: true);
     }
 
 
     // -------- Tree-based evaluation (object) --------
-    protected virtual object? Evaluate(
-        TokenTree tree,
+    public virtual object? Evaluate(
+        //TokenTree tree,
+        Node<Token> root,
         Dictionary<string, object?>? variables,
         bool mergeConstants)
     {
@@ -338,7 +339,7 @@ public partial class ParserBase : Tokenizer, IParser
 
         //var postNodes = tree.Root.PostOrderNodes();
 
-        foreach (var nb in tree.Root.PostOrderNodes())
+        foreach (var nb in root.PostOrderNodes())
         {
             var node = (Node<Token>)nb;
             var token = node.Value!;
@@ -378,7 +379,7 @@ public partial class ParserBase : Tokenizer, IParser
             }
         }
 
-        return nodeValueDictionary[tree.Root];
+        return nodeValueDictionary[root];
     }
 
     // -------- Tree-based evaluation (type inference) --------

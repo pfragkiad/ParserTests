@@ -517,7 +517,7 @@ public partial class ParserSessionBase : ParserBase, IParserSession
         if (optimize) State = ParserSessionState.Optimized;
 
         var value = (_tree is not null)
-            ? Evaluate(_tree, _variables, mergeConstants: false)
+            ? Evaluate(_tree.Root, _variables, mergeConstants: false)
             : Evaluate(_postfixTokens, _variables, mergeConstants: false);
 
         State = ParserSessionState.Calculated;
@@ -537,7 +537,7 @@ public partial class ParserSessionBase : ParserBase, IParserSession
     public object? Evaluate()
     {
         var result = _tree is not null
-              ? Evaluate(_tree, _variables, mergeConstants: false)
+              ? Evaluate(_tree.Root, _variables, mergeConstants: false)
               : Evaluate(_postfixTokens, _variables, mergeConstants: false);
         State = ParserSessionState.Calculated;
         return result;

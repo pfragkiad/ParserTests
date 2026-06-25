@@ -54,12 +54,12 @@ public class TreeCompressorTests
             forcedOperators: ["*"]);
 
         Assert.Equal(2, result.SubstitutionCount);
-        Assert.Equal(1, result.Plan[0].OccurrenceCount);
-        Assert.Equal(1, result.Plan[1].OccurrenceCount);
-        Assert.Contains("Sin(", result.Plan[0].SubstitutedExpression, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("*", result.Plan[1].SubstitutedExpression, StringComparison.Ordinal);
-        Assert.Contains(result.Plan[0].TempVariable, result.Plan[1].SubstitutedExpression, StringComparison.Ordinal);
-        Assert.Equal(result.Plan[1].TempVariable, result.CompressedExpression);
+        Assert.Equal(1, result.Entries[0].OccurrenceCount);
+        Assert.Equal(1, result.Entries[1].OccurrenceCount);
+        Assert.Contains("Sin(", result.Entries[0].SubstitutedExpression, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("*", result.Entries[1].SubstitutedExpression, StringComparison.Ordinal);
+        Assert.Contains(result.Entries[0].TempVariable, result.Entries[1].SubstitutedExpression, StringComparison.Ordinal);
+        Assert.Equal(result.Entries[1].TempVariable, result.CompressedExpression);
     }
 
     [Fact]

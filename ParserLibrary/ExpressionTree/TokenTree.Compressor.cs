@@ -57,7 +57,18 @@ public partial class TokenTree
         // Either clone or work in place depending on the flag.
         var workTree = keepOriginalTree ? DeepCloneTyped() : this;
 
-        var plan = existingEntries is null ? new List<CompressionEntry>() : [.. existingEntries];
+        //force case-sensitive settings defined by TokenPatterns
+        if (forcedFunctions is null)
+            forcedFunctions = [];
+        else
+            forcedFunctions = new HashSet<string>(forcedFunctions, patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+
+        if (forcedOperators is null)
+            forcedOperators = [];
+        else
+            forcedOperators = new HashSet<string>(forcedOperators, patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+
+        List<CompressionEntry> plan = existingEntries is null ? [] : [.. existingEntries];
         int counter = 1; // used only when nextTempVarName is null
 
         // Maps each temp var name back to its fully-expanded original expression
@@ -97,6 +108,13 @@ public partial class TokenTree
             }
         }
 
+        if (workTree.ParentMap is null)
+            workTree.BuildParentMap();
+
+        var effectiveForcedFunctions = forcedFunctions ?? [];
+        var effectiveForcedOperators = forcedOperators ?? [];
+        bool structureMutated = false;
+
         // Iteratively extract the shallowest (innermost) repeated subtrees first so that
         // the plan is in natural bottom-up evaluation order: inner atoms before outer wrappers.
         // Each iteration performs one post-order analysis and then rewrites all eligible
@@ -117,13 +135,11 @@ public partial class TokenTree
 
                 IncrementOccurrence(existingTemp, kvp.Value.Nodes.Count);
                 reusedExisting = true;
+                structureMutated = true;
             }
 
             if (reusedExisting)
-            {
-                workTree.RebuildNodeDictionaryFromStructure();
                 continue;
-            }
 
             var batchKeys = SelectBatchCandidates(
                 analysis.Groups,
@@ -131,8 +147,8 @@ public partial class TokenTree
                 minDepth,
                 compressConstantOnlySubtrees,
                 patterns,
-                forcedFunctions ?? new HashSet<string>(),
-                forcedOperators ?? new HashSet<string>());
+                effectiveForcedFunctions,
+                effectiveForcedOperators);
 
             if (batchKeys.Count == 0)
                 break;
@@ -175,14 +191,15 @@ public partial class TokenTree
                     ReplaceNodeInPlace(workTree, target, tempToken);
 
                 anyReplacement = true;
+                structureMutated = true;
             }
 
             if (!anyReplacement)
                 break;
-
-            // Rebuild the dictionary once after the whole batch rewrite.
-            workTree.RebuildNodeDictionaryFromStructure();
         }
+
+        if (structureMutated)
+            workTree.RebuildNodeDictionaryFromStructure();
 
         string compressedExpr = workTree.GetExpressionString(patterns, spacesAroundOperators: false);
 
@@ -204,7 +221,7 @@ public partial class TokenTree
 
         return new CompressionResult
         {
-            Plan = projectedPlan,
+            Entries = projectedPlan,
             CompressedExpression = compressedExpr,
             CompressedTree = workTree
         };
@@ -446,8 +463,8 @@ public partial class TokenTree
         // Fast path: use the parent map built at compile time (or by BuildParentMap()).
         if (tree.ParentMap is { } pm && pm.TryGetValue(target, out var parent) && parent is not null)
         {
-            ReplaceChildSlot(parent, target, tempToken);
-            return;
+            if (ReplaceChildSlot(parent, target, tempToken))
+                return;
         }
 
         // Fallback: walk the tree to find the parent of target.
@@ -459,10 +476,10 @@ public partial class TokenTree
     /// with a new leaf node. Does not recurse — the slot must be a direct child of
     /// <paramref name="parent"/>.
     /// </summary>
-    private static void ReplaceChildSlot(Node<Token> parent, Node<Token> target, Token tempToken)
+    private static bool ReplaceChildSlot(Node<Token> parent, Node<Token> target, Token tempToken)
     {
-        if (parent.Left == target) { parent.Left = new Node<Token>(tempToken); return; }
-        if (parent.Right == target) { parent.Right = new Node<Token>(tempToken); return; }
+        if (parent.Left == target) { parent.Left = new Node<Token>(tempToken); return true; }
+        if (parent.Right == target) { parent.Right = new Node<Token>(tempToken); return true; }
         if (parent.Other is not null)
         {
             for (int i = 0; i < parent.Other.Count; i++)
@@ -470,10 +487,12 @@ public partial class TokenTree
                 if (parent.Other[i] == target)
                 {
                     parent.Other[i] = new Node<Token>(tempToken);
-                    return;
+                    return true;
                 }
             }
         }
+
+        return false;
     }
 
     private static bool ReplaceChild(Node<Token> current, Node<Token> target, Token tempToken)

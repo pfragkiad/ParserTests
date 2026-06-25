@@ -31,9 +31,9 @@ public sealed class CompressionResult
     /// <summary>
     /// Ordered list of subexpression assignments that must be evaluated in order.
     /// </summary>
-    public IReadOnlyList<CompressionEntry> Plan { get; init; } = [];
+    public IReadOnlyList<CompressionEntry> Entries { get; init; } = [];
 
-    public bool IsCompressed => Plan.Count > 0;
+    public bool IsCompressed => Entries.Count > 0;
 
     /// <summary>
     /// The final compressed expression string using temp variable names.
@@ -49,7 +49,7 @@ public sealed class CompressionResult
     /// <summary>
     /// Number of distinct repeated subexpressions that were extracted.
     /// </summary>
-    public int SubstitutionCount => Plan.Count;
+    public int SubstitutionCount => Entries.Count;
 
     // ── Display helpers ────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ public sealed class CompressionResult
     public string GetPlanText(bool withCalculation = true)
     {
         var sb = new StringBuilder();
-        foreach (var entry in Plan)
+        foreach (var entry in Entries)
         {
             string expr = withCalculation ? entry.SubstitutedExpression : entry.OriginalExpression;
             sb.AppendLine($"{entry.TempVariable} = {expr}   // occurrences: {entry.OccurrenceCount}");
