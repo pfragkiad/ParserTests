@@ -126,8 +126,9 @@ public class FunctionSyntax
             var expectedSet = InputsFixed[i];
             var actual = resolved[i];
 
-            // any expected type in the set that matches
-            if (!expectedSet.Any(exp => TypeHelpers.TypeMatches(actual, exp, allowParentTypes)))
+            // Use null-aware type matching to ensure that null (object) only matches
+            // syntaxes that explicitly declare object in their allowed types
+            if (!expectedSet.Any(exp => TypeHelpers.TypeMatchesWithNullAwareness(actual, exp, allowParentTypes)))
                 return false;
         }
 
@@ -154,18 +155,18 @@ public class FunctionSyntax
         int start = 0;
         int endExclusive = resolved.Length;
 
-        // Check first
+        // Check first (use null-aware matching)
         if (hasFirst)
         {
-            if (!dyn.FirstInputType!.Any(ft => TypeHelpers.TypeMatches(resolved[0], ft, allowParentTypes)))
+            if (!dyn.FirstInputType!.Any(ft => TypeHelpers.TypeMatchesWithNullAwareness(resolved[0], ft, allowParentTypes)))
                 return false;
             start = 1;
         }
 
-        // Check last
+        // Check last (use null-aware matching)
         if (hasLast)
         {
-            if (!dyn.LastInputType!.Any(lt => TypeHelpers.TypeMatches(resolved[^1], lt, allowParentTypes)))
+            if (!dyn.LastInputType!.Any(lt => TypeHelpers.TypeMatchesWithNullAwareness(resolved[^1], lt, allowParentTypes)))
                 return false;
             endExclusive = resolved.Length - 1;
         }
@@ -177,7 +178,7 @@ public class FunctionSyntax
         if (minVar > 0 && middleCount < minVar)
             return false;
 
-        // Validate middles: must all belong to MiddleInputTypes when there are middles
+        // Validate middles: must all belong to MiddleInputTypes when there are middles (use null-aware matching)
         if (middleCount > 0)
         {
             if (middleSet is null || middleSet.Count == 0)
@@ -186,8 +187,8 @@ public class FunctionSyntax
             for (int i = start; i < endExclusive; i++)
             {
                 var actualMid = resolved[i];
-                // any expected type that matches (supports inheritance if allowed)
-                if (!middleSet.Any(expectedMid => TypeHelpers.TypeMatches(actualMid, expectedMid, allowParentTypes)))
+                // Use null-aware matching: any expected type that matches (supports inheritance if allowed)
+                if (!middleSet.Any(expectedMid => TypeHelpers.TypeMatchesWithNullAwareness(actualMid, expectedMid, allowParentTypes)))
                     return false;
             }
         }

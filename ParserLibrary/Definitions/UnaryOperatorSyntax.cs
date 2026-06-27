@@ -25,7 +25,7 @@ public sealed class UnaryOperatorSyntax
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
 
     public bool IsMatch(Type operand, bool allowParentTypes)
-        => OperandTypes.Any(t => TypeHelpers.TypeMatches(operand, t, allowParentTypes));
+        => OperandTypes.Any(t => TypeHelpers.TypeMatchesWithNullAwareness(operand, t, allowParentTypes));
 }
 
 public sealed class UnaryOperatorSyntaxMatch

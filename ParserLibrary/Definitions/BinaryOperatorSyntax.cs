@@ -27,10 +27,12 @@ public sealed class BinaryOperatorSyntax
 
     public bool IsMatch(Type left, Type right, bool allowParentTypes)
     {
-        bool leftOk = LeftTypes.Any(t => TypeHelpers.TypeMatches(left, t, allowParentTypes));
+        // Use null-aware type matching to ensure that null (object) only matches
+        // syntaxes that explicitly declare object in their allowed types
+        bool leftOk = LeftTypes.Any(t => TypeHelpers.TypeMatchesWithNullAwareness(left, t, allowParentTypes));
         if (!leftOk) return false;
 
-        bool rightOk = RightTypes.Any(t => TypeHelpers.TypeMatches(right, t, allowParentTypes));
+        bool rightOk = RightTypes.Any(t => TypeHelpers.TypeMatchesWithNullAwareness(right, t, allowParentTypes));
         return rightOk;
     }
 }

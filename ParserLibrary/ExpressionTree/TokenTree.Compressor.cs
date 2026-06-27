@@ -75,8 +75,8 @@ public partial class TokenTree
         // (no temp vars), used to populate OriginalExpression in later plan entries.
         var originalByTemp = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        // Canonical substituted-expression key -> already assigned temp variable.
-        var tempByExpressionKey = new Dictionary<string, string>(StringComparer.Ordinal);
+        // Canonical structural key -> already assigned temp variable.
+        var tempByStructuralKey = new Dictionary<string, string>(StringComparer.Ordinal);
 
         var occurrenceByTemp = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -84,7 +84,12 @@ public partial class TokenTree
         {
             var entry = plan[i];
             originalByTemp[entry.TempVariable] = entry.OriginalExpression;
-            tempByExpressionKey[NormalizeExpressionKey(entry.SubstitutedExpression, patterns)] = entry.TempVariable;
+
+            string seedKey = entry.SubstitutedSubtree is not null
+                ? ComputeStructuralKey(entry.SubstitutedSubtree, patterns.CaseSensitive)
+                : NormalizeExpressionKey(entry.SubstitutedExpression, patterns);
+
+            tempByStructuralKey[seedKey] = entry.TempVariable;
             occurrenceByTemp[entry.TempVariable] = entry.OccurrenceCount;
         }
 
@@ -126,7 +131,7 @@ public partial class TokenTree
             bool reusedExisting = false;
             foreach (var kvp in analysis.Groups.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (!tempByExpressionKey.TryGetValue(kvp.Key, out string? existingTemp))
+                if (!tempByStructuralKey.TryGetValue(kvp.Key, out string? existingTemp))
                     continue;
 
                 var tempToken = new Token(TokenType.Identifier, existingTemp, int.MaxValue - counter);
@@ -182,7 +187,7 @@ public partial class TokenTree
                     SubstitutedSubtree: substitutedSubtree,
                     OccurrenceCount: group.Nodes.Count
                 ));
-                tempByExpressionKey[NormalizeExpressionKey(substitutedExpr, patterns)] = tempVar;
+                tempByStructuralKey[ComputeStructuralKey(substitutedSubtree, patterns.CaseSensitive)] = tempVar;
                 occurrenceByTemp[tempVar] = group.Nodes.Count;
 
                 // Replace every occurrence in the working tree with a leaf identifier node.
@@ -243,7 +248,8 @@ public partial class TokenTree
 
     private readonly record struct NodeAnalysis(
         int Height,
-        bool ContainsIdentifierOrFunction);
+        bool ContainsIdentifierOrFunction,
+        string StructuralKey);
 
     /// <summary>
     /// Performs one post-order analysis pass and groups equivalent non-leaf subtrees by
@@ -264,11 +270,16 @@ public partial class TokenTree
         int maxChildHeight = 0;
         bool containsIdentifierOrFunction = false;
 
+        string leftKey = "\0";
+        string rightKey = "\0";
+        List<string>? otherKeys = null;
+
         if (node.Left is Node<Token> left)
         {
             var leftInfo = AnalyzeNode(left, groups, patterns);
             maxChildHeight = Math.Max(maxChildHeight, leftInfo.Height);
             containsIdentifierOrFunction |= leftInfo.ContainsIdentifierOrFunction;
+            leftKey = leftInfo.StructuralKey;
         }
 
         if (node.Right is Node<Token> right)
@@ -276,47 +287,96 @@ public partial class TokenTree
             var rightInfo = AnalyzeNode(right, groups, patterns);
             maxChildHeight = Math.Max(maxChildHeight, rightInfo.Height);
             containsIdentifierOrFunction |= rightInfo.ContainsIdentifierOrFunction;
+            rightKey = rightInfo.StructuralKey;
         }
 
         if (node.Other is not null)
         {
-            foreach (var child in node.Other.OfType<Node<Token>>())
+            for (int i = 0; i < node.Other.Count; i++)
             {
+                if (node.Other[i] is not Node<Token> child)
+                    continue;
+
                 var childInfo = AnalyzeNode(child, groups, patterns);
                 maxChildHeight = Math.Max(maxChildHeight, childInfo.Height);
                 containsIdentifierOrFunction |= childInfo.ContainsIdentifierOrFunction;
+
+                otherKeys ??= [];
+                otherKeys.Add(childInfo.StructuralKey);
             }
         }
 
-        if (node.Value is not null &&
-            (node.Value.TokenType == TokenType.Identifier || node.Value.TokenType == TokenType.Function))
+        var nodeValue = node.Value;
+        if (nodeValue is not null &&
+            (nodeValue.TokenType == TokenType.Identifier || nodeValue.TokenType == TokenType.Function))
             containsIdentifierOrFunction = true;
 
         int height = maxChildHeight + 1;
 
-        if (node.IsLeaf || node.Value is null || node.Value.IsNull)
-            return new NodeAnalysis(height, containsIdentifierOrFunction);
+        string structuralKey = BuildStructuralKey(nodeValue, leftKey, rightKey, otherKeys, patterns.CaseSensitive);
+
+        if (node.IsLeaf || nodeValue is null || nodeValue.IsNull)
+            return new NodeAnalysis(height, containsIdentifierOrFunction, structuralKey);
 
         // ArgumentSeparator nodes are structural glue inside function argument lists;
         // they cannot be evaluated in isolation, so skip grouping them as candidates.
-        if (node.Value.TokenType == TokenType.ArgumentSeparator)
-            return new NodeAnalysis(height, containsIdentifierOrFunction);
+        if (nodeValue.TokenType == TokenType.ArgumentSeparator)
+            return new NodeAnalysis(height, containsIdentifierOrFunction, structuralKey);
 
-        string key = FormatNodeExpressionKey(node, patterns);
-
-        if (!groups.TryGetValue(key, out var group))
+        if (!groups.TryGetValue(structuralKey, out var group))
         {
             group = new CompressionGroup(depth: height - 1, isCompressible: containsIdentifierOrFunction);
-            groups[key] = group;
+            groups[structuralKey] = group;
         }
 
         group.Nodes.Add(node);
 
-        return new NodeAnalysis(height, containsIdentifierOrFunction);
+        return new NodeAnalysis(height, containsIdentifierOrFunction, structuralKey);
     }
 
-    private static string FormatNodeExpressionKey(Node<Token> node, TokenPatterns patterns) =>
-        NormalizeExpressionKey(ExpressionFormatter.Format(node, patterns), patterns);
+    private static string BuildStructuralKey(
+        Token? token,
+        string leftKey,
+        string rightKey,
+        List<string>? otherKeys,
+        bool caseSensitive)
+    {
+        string otherPart = otherKeys is null || otherKeys.Count == 0
+            ? "\0"
+            : string.Join('\u001F', otherKeys);
+
+        if (token is null)
+            return $"N|L:{leftKey}|R:{rightKey}|O:{otherPart}";
+
+        string normalizedText = NormalizeCase(token.Text, caseSensitive);
+        return $"{(int)token.TokenType}:{normalizedText}|L:{leftKey}|R:{rightKey}|O:{otherPart}";
+    }
+
+    private static string ComputeStructuralKey(Node<Token> node, bool caseSensitive)
+    {
+        string leftKey = node.Left is Node<Token> left
+            ? ComputeStructuralKey(left, caseSensitive)
+            : "\0";
+
+        string rightKey = node.Right is Node<Token> right
+            ? ComputeStructuralKey(right, caseSensitive)
+            : "\0";
+
+        List<string>? otherKeys = null;
+        if (node.Other is not null)
+        {
+            for (int i = 0; i < node.Other.Count; i++)
+            {
+                if (node.Other[i] is not Node<Token> other)
+                    continue;
+
+                otherKeys ??= [];
+                otherKeys.Add(ComputeStructuralKey(other, caseSensitive));
+            }
+        }
+
+        return BuildStructuralKey(node.Value, leftKey, rightKey, otherKeys, caseSensitive);
+    }
 
     private static string NormalizeExpressionKey(string expression, TokenPatterns patterns) =>
         patterns.CaseSensitive ? expression : expression.ToUpperInvariant();
