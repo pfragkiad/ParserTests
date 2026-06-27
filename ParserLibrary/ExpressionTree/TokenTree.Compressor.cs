@@ -68,6 +68,10 @@ public partial class TokenTree
         else
             forcedOperators = new HashSet<string>(forcedOperators, patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
+        StringComparer dependencyComparer = patterns.CaseSensitive
+            ? StringComparer.Ordinal
+            : StringComparer.OrdinalIgnoreCase;
+
         List<CompressionEntry> plan = existingEntries is null ? [] : [.. existingEntries];
         int counter = 1; // used only when nextTempVarName is null
 
@@ -185,7 +189,8 @@ public partial class TokenTree
                     OriginalExpression: originalExpr,
                     SubstitutedExpression: substitutedExpr,
                     SubstitutedSubtree: substitutedSubtree,
-                    OccurrenceCount: group.Nodes.Count
+                    OccurrenceCount: group.Nodes.Count,
+                    Dependencies: new HashSet<string>(dependencyComparer)
                 ));
                 tempByStructuralKey[ComputeStructuralKey(substitutedSubtree, patterns.CaseSensitive)] = tempVar;
                 occurrenceByTemp[tempVar] = group.Nodes.Count;
@@ -209,6 +214,10 @@ public partial class TokenTree
         string compressedExpr = workTree.GetExpressionString(patterns, spacesAroundOperators: false);
 
         var projectedPlan = new List<CompressionEntry>(plan.Count);
+        var knownTempVariables = new HashSet<string>(
+            plan.Select(e => e.TempVariable),
+            dependencyComparer);
+
         for (int i = 0; i < plan.Count; i++)
         {
             var entry = plan[i];
@@ -216,12 +225,19 @@ public partial class TokenTree
                 ? count
                 : entry.OccurrenceCount;
 
+            HashSet<string> dependencies = CollectTempDependencies(
+                entry.SubstitutedSubtree,
+                entry.TempVariable,
+                knownTempVariables,
+                dependencyComparer);
+
             projectedPlan.Add(new CompressionEntry(
                 TempVariable: entry.TempVariable,
                 OriginalExpression: entry.OriginalExpression,
                 SubstitutedExpression: entry.SubstitutedExpression,
                 SubstitutedSubtree: entry.SubstitutedSubtree,
-                OccurrenceCount: totalOccurrences));
+                OccurrenceCount: totalOccurrences,
+                Dependencies: dependencies));
         }
 
         return new CompressionResult
@@ -230,6 +246,197 @@ public partial class TokenTree
             CompressedExpression = compressedExpr,
             CompressedTree = workTree
         };
+    }
+
+    private static HashSet<string> CollectTempDependencies(
+        Node<Token>? node,
+        string selfTempVariable,
+        HashSet<string> knownTempVariables,
+        StringComparer comparer)
+    {
+        HashSet<string> dependencies = new(comparer);
+        CollectTempDependenciesCore(node, selfTempVariable, knownTempVariables, dependencies);
+        return dependencies;
+    }
+
+    private static void CollectTempDependenciesCore(
+        Node<Token>? node,
+        string selfTempVariable,
+        HashSet<string> knownTempVariables,
+        HashSet<string> dependencies)
+    {
+        if (node is null || node.Value is null)
+            return;
+
+        Token token = node.Value;
+        if (token.TokenType == TokenType.Identifier)
+        {
+            string identifier = token.Text;
+            if (!knownTempVariables.Comparer.Equals(identifier, selfTempVariable))
+                dependencies.Add(identifier);
+        }
+
+        if (node.Left is Node<Token> left)
+            CollectTempDependenciesCore(left, selfTempVariable, knownTempVariables, dependencies);
+
+        if (node.Right is Node<Token> right)
+            CollectTempDependenciesCore(right, selfTempVariable, knownTempVariables, dependencies);
+
+        if (node.Other is null)
+            return;
+
+        for (int i = 0; i < node.Other.Count; i++)
+        {
+            if (node.Other[i] is Node<Token> other)
+                CollectTempDependenciesCore(other, selfTempVariable, knownTempVariables, dependencies);
+        }
+    }
+
+    /// <summary>
+    /// Collects the full transitive dependency chain for a temp variable from a compression result.
+    /// </summary>
+    /// <param name="result">Compression result containing entries with precomputed dependencies.</param>
+    /// <param name="tempVariable">The temp variable whose dependency chain to resolve.</param>
+    /// <param name="caseSensitive">Controls temp-variable name matching.</param>
+    /// <returns>A hash set containing all direct and transitive dependencies of <paramref name="tempVariable"/>.</returns>
+    public static HashSet<string> CollectDependencyChain(
+        CompressionResult result,
+        string tempVariable,
+        bool caseSensitive = false)
+    {
+        return [.. CollectDependencyChainOrdered(result.Entries, tempVariable, caseSensitive)];
+    }
+
+    /// <summary>
+    /// Collects the full transitive dependency chain for a temp variable from compression entries.
+    /// </summary>
+    /// <param name="entries">Compression entries with precomputed dependencies.</param>
+    /// <param name="tempVariable">The temp variable whose dependency chain to resolve.</param>
+    /// <param name="caseSensitive">Controls temp-variable name matching.</param>
+    /// <returns>A hash set containing all direct and transitive dependencies of <paramref name="tempVariable"/>.</returns>
+    public static HashSet<string> CollectDependencyChain(
+        IReadOnlyList<CompressionEntry> entries,
+        string tempVariable,
+        bool caseSensitive = false)
+    {
+        return [.. CollectDependencyChainOrdered(entries, tempVariable, caseSensitive)];
+    }
+
+    /// <summary>
+    /// Collects the full transitive dependency chain in ordered form: direct dependencies first,
+    /// then deeper dependencies. Evaluating in reverse computes leaves first.
+    /// </summary>
+    public static IReadOnlyList<string> CollectDependencyChainOrdered(
+        CompressionResult result,
+        string tempVariable,
+        bool caseSensitive = false)
+    {
+        return CollectDependencyChainOrdered(result.Entries, tempVariable, caseSensitive);
+    }
+
+    /// <summary>
+    /// Collects the full transitive dependency chain in ordered form: direct dependencies first,
+    /// then deeper dependencies. Evaluating in reverse computes leaves first.
+    /// </summary>
+    public static IReadOnlyList<string> CollectDependencyChainOrdered(
+        IReadOnlyList<CompressionEntry> entries,
+        string tempVariable,
+        bool caseSensitive = false)
+    {
+        StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+        Dictionary<string, CompressionEntry> entryByTemp = new(entries.Count, comparer);
+        foreach (CompressionEntry entry in entries)
+            entryByTemp[entry.TempVariable] = entry;
+
+        List<string> ordered = [];
+        HashSet<string> seen = new(comparer);
+        Queue<string> queue = [];
+        queue.Enqueue(tempVariable);
+
+        while (queue.Count > 0)
+        {
+            string current = queue.Dequeue();
+            if (!entryByTemp.TryGetValue(current, out CompressionEntry? currentEntry))
+                continue;
+
+            foreach (string dependency in currentEntry.Dependencies)
+            {
+                if (comparer.Equals(dependency, tempVariable))
+                    continue;
+
+                if (!seen.Add(dependency))
+                    continue;
+
+                ordered.Add(dependency);
+
+                if (entryByTemp.ContainsKey(dependency))
+                    queue.Enqueue(dependency);
+            }
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// Evaluates a node after calculating all referenced temp dependencies into a shared variable cache.
+    /// Dependencies are evaluated leaf-first by reversing the ordered dependency chain.
+    /// </summary>
+    public static object? EvaluateNodeWithDependencies(
+        CompressionResult result,
+        Node<Token> node,
+        Dictionary<string, object?> localVariables,
+        Parsers.ParserBase parser)
+    {
+        return EvaluateNodeWithDependencies(result.Entries, node, localVariables, parser);
+    }
+
+    /// <summary>
+    /// Evaluates a node after calculating all referenced temp dependencies into a shared variable cache.
+    /// Dependencies are evaluated leaf-first by reversing the ordered dependency chain.
+    /// </summary>
+    public static object? EvaluateNodeWithDependencies(
+        IReadOnlyList<CompressionEntry> entries,
+        Node<Token> node,
+        Dictionary<string, object?> localVariables,
+        Parsers.ParserBase parser)
+    {
+        bool caseSensitive = parser.TokenizerOptions.TokenPatterns.CaseSensitive;
+        StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+        Dictionary<string, CompressionEntry> entryByTemp = new(entries.Count, comparer);
+        foreach (CompressionEntry entry in entries)
+            entryByTemp[entry.TempVariable] = entry;
+
+        HashSet<string> knownTempVariables = [.. entryByTemp.Keys];
+        HashSet<string> directDependencies = CollectTempDependencies(node, string.Empty, knownTempVariables, comparer);
+
+        foreach (string dependency in directDependencies)
+        {
+            IReadOnlyList<string> orderedChain = CollectDependencyChainOrdered(entries, dependency, caseSensitive);
+
+            for (int i = orderedChain.Count - 1; i >= 0; i--)
+            {
+                string nestedDependency = orderedChain[i];
+                if (localVariables.ContainsKey(nestedDependency)
+                    || !entryByTemp.TryGetValue(nestedDependency, out CompressionEntry? nestedEntry))
+                {
+                    continue;
+                }
+
+                localVariables[nestedDependency] = parser.Evaluate(nestedEntry.SubstitutedSubtree, localVariables, false);
+            }
+
+            if (localVariables.ContainsKey(dependency)
+                || !entryByTemp.TryGetValue(dependency, out CompressionEntry? dependencyEntry))
+            {
+                continue;
+            }
+
+            localVariables[dependency] = parser.Evaluate(dependencyEntry.SubstitutedSubtree, localVariables, false);
+        }
+
+        return parser.Evaluate(node, localVariables, false);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

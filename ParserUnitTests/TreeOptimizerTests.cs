@@ -1,31 +1,19 @@
-using Microsoft.Extensions.DependencyInjection;
-using ParserLibrary;
-using ParserLibrary.ExpressionTree;
+using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers;
 using ParserTests.Common.Parsers;
 using System.Numerics;
-using System.Reflection;
-using Xunit;
 
 namespace ParserUnitTests;
 
 public class TreeOptimizerTests
 {
-    // Helper: invoke the protected tree-based Evaluate via reflection
     private static object? EvaluateViaTree(IParser parser, TokenTree tree, Dictionary<string, object?>? variables, bool mergeConstants = true)
     {
-        var mi = parser.GetType().GetMethod(
-            name: "Evaluate",
-            BindingFlags.Instance | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(TokenTree), typeof(Dictionary<string, object?>), typeof(bool) },
-            modifiers: null);
+        if (parser is not ParserBase parserBase)
+            throw new InvalidOperationException("Tree-based evaluation requires ParserBase.");
 
-        if (mi is null)
-            throw new InvalidOperationException("Tree-based Evaluate(TokenTree, Dictionary<string, object?>, bool) not found. Implement the protected overload in ParserBase as discussed.");
-
-        return mi.Invoke(parser, new object?[] { tree, variables!, mergeConstants });
+        return parserBase.Evaluate(tree.Root, variables, mergeConstants);
     }
 
     private static void AssertEquivalent(object? postfix, object? tree)

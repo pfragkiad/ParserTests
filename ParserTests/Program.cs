@@ -430,6 +430,71 @@ internal class Program
         }
     }
 
+    private static void EvaluateCompressedWithDependenciesDemo(
+        IParser parser,
+        CompressionResult compression,
+        string originalExpression,
+        Dictionary<string, object?> variables,
+        string title)
+    {
+        Console.WriteLine($"=== Dependency-based evaluation demo ({title}) ===");
+
+        if (parser is not ParserLibrary.Parsers.ParserBase parserBase)
+        {
+            Console.WriteLine("Parser is not ParserBase; skipping dependency-based evaluation demo.");
+            return;
+        }
+
+        if (compression.CompressedTree is null)
+        {
+            Console.WriteLine("Compression did not produce a compressed tree.");
+            return;
+        }
+
+        var originalValue = parser.Evaluate(originalExpression, new Dictionary<string, object?>(variables));
+
+        var localVariables = new Dictionary<string, object?>(variables);
+        var compressedValue = TokenTree.EvaluateNodeWithDependencies(
+            compression,
+            compression.CompressedTree.Root,
+            localVariables,
+            parserBase);
+
+        Console.WriteLine($"Original Evaluate result:   {originalValue}");
+        Console.WriteLine($"Compressed+deps result:     {compressedValue}");
+        Console.WriteLine($"Results match: {Equals(originalValue, compressedValue)}");
+
+        var entryWithDependencies = compression.Entries.FirstOrDefault(e => e.Dependencies.Count > 0);
+        if (entryWithDependencies is null)
+        {
+            Console.WriteLine("No entry with dependencies found.");
+            Console.WriteLine();
+            return;
+        }
+
+        var subtreeVariables = new Dictionary<string, object?>(variables);
+        var subtreeValue = TokenTree.EvaluateNodeWithDependencies(
+            compression,
+            entryWithDependencies.SubstitutedSubtree,
+            subtreeVariables,
+            parserBase);
+
+        var expectedSubtree = parser.Evaluate(
+            entryWithDependencies.OriginalExpression,
+            new Dictionary<string, object?>(variables));
+
+        Console.WriteLine($"Subtree temp variable:      {entryWithDependencies.TempVariable}");
+        Console.WriteLine($"Subtree expression:         {entryWithDependencies.OriginalExpression}");
+        Console.WriteLine($"Subtree evaluate result:    {subtreeValue}");
+        Console.WriteLine($"Subtree expected result:    {expectedSubtree}");
+        Console.WriteLine($"Subtree results match: {Equals(expectedSubtree, subtreeValue)}");
+
+        foreach (var dep in entryWithDependencies.Dependencies)
+            Console.WriteLine($"  Dependency cached: {dep} = {subtreeVariables[dep]}");
+
+        Console.WriteLine();
+    }
+
     private static void CompressionExample()
     {
         Console.WriteLine("=== Expression Compressor Example ===");
@@ -553,6 +618,14 @@ internal class Program
         Console.WriteLine("--- Plan (substituted, evaluation order) ---");
         Console.WriteLine(result3.GetPlanText(withCalculation: true));
         PrintSubstitutedSubtrees(result3, "Expression 3");
+
+        var expr3Variables = new Dictionary<string, object?>
+        {
+            ["p"] = 2.0,
+            ["q"] = 3.0,
+            ["r"] = 4.0
+        };
+        EvaluateCompressedWithDependenciesDemo(parser, result3, expr3, expr3Variables, "Expression 3");
 
         // ── Example 4: same as Example 3 but with numeric literals 1, 2, 3 ────
         //

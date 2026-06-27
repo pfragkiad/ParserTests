@@ -1,3 +1,4 @@
+using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
 
@@ -5,6 +6,127 @@ namespace ParserUnitTests;
 
 public class TreeCompressorTests
 {
+    [Fact]
+    public void EvaluateNodeWithDependencies_CompressedRoot_MatchesOriginalEvaluation()
+    {
+        var parser = (ParserBase)ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        const string expr = "sqrt(sin(a*b+c)*cos(a*b+c)) + sin(a*b+c)*cos(a*b+c) + tan(a*b+c)/(a*b+c)";
+        var variables = new Dictionary<string, object?>
+        {
+            ["a"] = 2.0,
+            ["b"] = 3.0,
+            ["c"] = 4.0
+        };
+
+        var tree = parser.GetExpressionTree(expr);
+        var compression = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        Assert.True(compression.IsCompressed);
+        Assert.NotNull(compression.CompressedTree);
+
+        var localVariables = new Dictionary<string, object?>(variables);
+        var evaluatedCompressed = TokenTree.EvaluateNodeWithDependencies(
+            compression,
+            compression.CompressedTree!.Root,
+            localVariables,
+            parser);
+
+        var expected = parser.Evaluate(expr, new Dictionary<string, object?>(variables));
+        Assert.Equal(expected, evaluatedCompressed);
+    }
+
+    [Fact]
+    public void EvaluateNodeWithDependencies_EvaluatesTransitiveDependenciesForSubtree()
+    {
+        var parser = (ParserBase)ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        const string expr = "sqrt(sin(a*b+c)*cos(a*b+c)) + sin(a*b+c)*cos(a*b+c) + tan(a*b+c)/(a*b+c)";
+        var variables = new Dictionary<string, object?>
+        {
+            ["a"] = 2.0,
+            ["b"] = 3.0,
+            ["c"] = 4.0
+        };
+
+        var tree = parser.GetExpressionTree(expr);
+        var compression = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        CompressionEntry? entryWithDependencies = null;
+        foreach (var entry in compression.Entries)
+        {
+            if (entry.Dependencies.Count > 0)
+            {
+                entryWithDependencies = entry;
+                break;
+            }
+        }
+
+        Assert.NotNull(entryWithDependencies);
+
+        var localVariables = new Dictionary<string, object?>(variables);
+        var evaluatedSubtree = TokenTree.EvaluateNodeWithDependencies(
+            compression.Entries,
+            entryWithDependencies!.SubstitutedSubtree,
+            localVariables,
+            parser);
+
+        var expected = parser.Evaluate(entryWithDependencies.OriginalExpression, new Dictionary<string, object?>(variables));
+        Assert.Equal(expected, evaluatedSubtree);
+
+        foreach (var dependency in entryWithDependencies.Dependencies)
+            Assert.True(localVariables.ContainsKey(dependency));
+    }
+
+    [Fact]
+    public void EvaluateNodeWithDependencies_SubtreeUsingIdentifiers_UsesVariableDependencies()
+    {
+        var parser = (ParserBase)ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        const string expr = "sin(a*b+r)*cos(a*b+r) + sin(a*b+r)";
+        var variables = new Dictionary<string, object?>
+        {
+            ["a"] = 2.0,
+            ["b"] = 3.0,
+            ["r"] = 4.0
+        };
+
+        var tree = parser.GetExpressionTree(expr);
+        var compression = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        CompressionEntry? identifierBasedEntry = null;
+        foreach (var entry in compression.Entries)
+        {
+            bool usesIdentifiers = entry.OriginalExpression.Contains("a", StringComparison.Ordinal)
+                || entry.OriginalExpression.Contains("b", StringComparison.Ordinal)
+                || entry.OriginalExpression.Contains("r", StringComparison.Ordinal);
+
+            if (usesIdentifiers)
+            {
+                identifierBasedEntry = entry;
+                break;
+            }
+        }
+
+        Assert.NotNull(identifierBasedEntry);
+
+        var localVariables = new Dictionary<string, object?>(variables);
+        var evaluatedSubtree = TokenTree.EvaluateNodeWithDependencies(
+            compression,
+            identifierBasedEntry!.SubstitutedSubtree,
+            localVariables,
+            parser);
+
+        var expected = parser.Evaluate(identifierBasedEntry.OriginalExpression, new Dictionary<string, object?>(variables));
+        Assert.Equal(expected, evaluatedSubtree);
+
+        Assert.Equal(2.0, localVariables["a"]);
+        Assert.Equal(3.0, localVariables["b"]);
+        Assert.Equal(4.0, localVariables["r"]);
+    }
     [Fact]
     public void Compress_MultiLevel_WithLiterals_ExtractsSameSubstitutionsAsVariables()
     {

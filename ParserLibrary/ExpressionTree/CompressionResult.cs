@@ -20,7 +20,12 @@ public sealed record CompressionEntry(
     /// </summary>
     Node<Token> SubstitutedSubtree,
     /// <summary>How many times this subexpression appeared in the tree.</summary>
-    int OccurrenceCount
+    int OccurrenceCount,
+    /// <summary>
+    /// Temp variable names referenced by <see cref="SubstitutedSubtree"/>.
+    /// Comparer respects <see cref="TokenPatterns.CaseSensitive"/> from compression.
+    /// </summary>
+    HashSet<string> Dependencies
 );
 
 /// <summary>
