@@ -240,11 +240,31 @@ public partial class TokenTree
                 Dependencies: dependencies));
         }
 
+        bool isCompressed = projectedPlan.Count > 0;
+        if (projectedPlan.Count == 0)
+        {
+            string tempVar = nextTempVarName is not null
+                ? nextTempVarName(originalByTemp.Keys)
+                : $"{tempVarPrefix}{counter++}";
+
+            Node<Token> inputSubtree = workTree.Root.DeepClone();
+            string inputExpression = ExpressionFormatter.Format(inputSubtree, patterns);
+
+            projectedPlan.Add(new CompressionEntry(
+                TempVariable: tempVar,
+                OriginalExpression: inputExpression,
+                SubstitutedExpression: inputExpression,
+                SubstitutedSubtree: inputSubtree,
+                OccurrenceCount: 1,
+                Dependencies: new HashSet<string>(dependencyComparer)));
+        }
+
         return new CompressionResult
         {
             Entries = projectedPlan,
             CompressedExpression = compressedExpr,
-            CompressedTree = workTree
+            CompressedTree = workTree,
+            IsCompressed = isCompressed
         };
     }
 
