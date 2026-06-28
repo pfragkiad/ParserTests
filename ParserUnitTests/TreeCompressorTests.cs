@@ -185,6 +185,65 @@ public class TreeCompressorTests
     }
 
     [Fact]
+    public void CollectDependencyChainOrdered_ReturnsLeafFirstTopologicalOrder()
+    {
+        var parser = (ParserBase)ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        const string expr = "sqrt(sin(a*b+c)*cos(a*b+c)) + sin(a*b+c)*cos(a*b+c) + tan(a*b+c)/(a*b+c)";
+
+        var tree = parser.GetExpressionTree(expr);
+        var compression = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1);
+
+        CompressionEntry? entryWithDependencies = null;
+        foreach (CompressionEntry entry in compression.Entries)
+        {
+            if (entry.Dependencies.Count > 0)
+            {
+                entryWithDependencies = entry;
+                break;
+            }
+        }
+
+        Assert.NotNull(entryWithDependencies);
+
+        IReadOnlyList<string> ordered = TokenTree.CollectDependencyChainOrdered(
+            compression,
+            entryWithDependencies!.TempVariable,
+            patterns.CaseSensitive);
+
+        Assert.NotEmpty(ordered);
+
+        StringComparer comparer = patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        Dictionary<string, int> indexByTemp = new(comparer);
+        for (int i = 0; i < ordered.Count; i++)
+            indexByTemp[ordered[i]] = i;
+
+        Dictionary<string, CompressionEntry> entryByTemp = new(compression.Entries.Count, comparer);
+        foreach (CompressionEntry entry in compression.Entries)
+            entryByTemp[entry.TempVariable] = entry;
+
+        foreach (string dependency in ordered)
+        {
+            if (!entryByTemp.TryGetValue(dependency, out CompressionEntry? dependencyEntry))
+                continue;
+
+            foreach (string nested in dependencyEntry.Dependencies)
+            {
+                if (!indexByTemp.TryGetValue(nested, out int nestedIndex))
+                    continue;
+
+                Assert.True(
+                    nestedIndex < indexByTemp[dependency],
+                    $"Dependency order invalid: '{dependency}' appears before its prerequisite '{nested}'.");
+            }
+        }
+
+        if (entryByTemp.TryGetValue(ordered[0], out CompressionEntry? firstEntry))
+            Assert.Empty(firstEntry.Dependencies);
+    }
+
+    [Fact]
     public void Compress_ForcedFunction_RespectsCaseSensitivity()
     {
         var options = TokenizerOptions.Default;

@@ -65,22 +65,68 @@ public sealed class CompressionResult
     /// When <c>true</c>, shows each step as "<c>_T1 = &lt;substituted&gt;</c>" (ready-to-evaluate form).
     /// When <c>false</c>, shows "<c>_T1 = &lt;original&gt;</c>" (unsubstituted, easier to read).
     /// </param>
-    public string GetPlanText(bool withCalculation = true)
+    /// <param name="showDirectDependencies">
+    /// When <c>true</c>, appends direct temp-variable dependencies for each compression entry.
+    /// </param>
+    /// <param name="showAllDependencies">
+    /// When <c>true</c>, appends all dependencies (direct + transitive) for each compression entry.
+    /// </param>
+    public string GetPlanText(
+        bool withCalculation = true,
+        bool showDirectDependencies = false,
+        bool showAllDependencies = false)
     {
         var sb = new StringBuilder();
         foreach (var entry in Entries)
         {
             string expr = withCalculation ? entry.SubstitutedExpression : entry.OriginalExpression;
-            sb.AppendLine($"{entry.TempVariable} = {expr}   // occurrences: {entry.OccurrenceCount}");
+            sb.Append($"{entry.TempVariable} = {expr}   // occurrences: {entry.OccurrenceCount}");
+
+            StringComparer dependencyComparer = GetDependencyComparer(entry.Dependencies.Comparer);
+
+            if (showDirectDependencies)
+            {
+                sb.Append($" | direct deps: {FormatDependencies(entry.Dependencies, dependencyComparer)}");
+            }
+
+            if (showAllDependencies)
+            {
+                IReadOnlyList<string> allDependencies = TokenTree.CollectDependencyChainOrdered(Entries, entry.TempVariable, dependencyComparer == StringComparer.Ordinal);
+                sb.Append($" | all deps: {FormatDependenciesInExistingOrder(allDependencies, dependencyComparer)}");
+            }
+
+            sb.AppendLine();
         }
         sb.AppendLine();
         sb.Append($"result = {CompressedExpression}");
         return sb.ToString();
     }
 
-    /// <inheritdoc cref="GetPlanText(bool)"/>
-    public void PrintPlan(bool withCalculation = true) =>
-        Console.WriteLine(GetPlanText(withCalculation));
+    private static string FormatDependencies(IEnumerable<string> dependencies, StringComparer comparer)
+    {
+        string[] orderedDependencies = [.. dependencies.Distinct(comparer).OrderBy(d => d, comparer)];
+        return orderedDependencies.Length == 0 ? "(none)" : string.Join(", ", orderedDependencies);
+    }
+
+    private static string FormatDependenciesInExistingOrder(IEnumerable<string> dependencies, StringComparer comparer)
+    {
+        string[] orderedDependencies = [.. dependencies.Distinct(comparer)];
+        return orderedDependencies.Length == 0 ? "(none)" : string.Join(", ", orderedDependencies);
+    }
+
+    private static StringComparer GetDependencyComparer(IEqualityComparer<string>? comparer)
+    {
+        return comparer == StringComparer.Ordinal
+            ? StringComparer.Ordinal
+            : StringComparer.OrdinalIgnoreCase;
+    }
+
+    /// <inheritdoc cref="GetPlanText(bool, bool, bool)"/>
+    public void PrintPlan(
+        bool withCalculation = true,
+        bool showDirectDependencies = false,
+        bool showAllDependencies = false) =>
+        Console.WriteLine(GetPlanText(withCalculation, showDirectDependencies, showAllDependencies));
 
     /// <summary>
     /// Prints a side-by-side section showing the original tree, the compressed tree,

@@ -430,6 +430,65 @@ internal class Program
         }
     }
 
+    private static void PrintIdentifierDependencyPlan(CompressionResult result, bool caseSensitive)
+    {
+        Console.WriteLine("--- Identifier dependencies per compression entry (direct + transitive) ---");
+
+        if (result.Entries.Count == 0)
+        {
+            Console.WriteLine("(none)");
+            Console.WriteLine();
+            return;
+        }
+
+        StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        Dictionary<string, CompressionEntry> entryByTemp = new(result.Entries.Count, comparer);
+        foreach (CompressionEntry entry in result.Entries)
+            entryByTemp[entry.TempVariable] = entry;
+
+        foreach (CompressionEntry entry in result.Entries)
+        {
+            HashSet<string> directIdentifiers = CollectIdentifiers(entry.SubstitutedSubtree, comparer);
+
+            HashSet<string> allIdentifiers = new(directIdentifiers, comparer);
+            IReadOnlyList<string> allTempDependencies = TokenTree.CollectDependencyChainOrdered(
+                result.Entries,
+                entry.TempVariable,
+                caseSensitive);
+
+            foreach (string depTemp in allTempDependencies)
+            {
+                if (entryByTemp.TryGetValue(depTemp, out CompressionEntry? depEntry))
+                    allIdentifiers.UnionWith(CollectIdentifiers(depEntry.SubstitutedSubtree, comparer));
+            }
+
+            string directText = directIdentifiers.Count == 0
+                ? "(none)"
+                : string.Join(", ", directIdentifiers.OrderBy(x => x, comparer));
+            string allText = allIdentifiers.Count == 0
+                ? "(none)"
+                : string.Join(", ", allIdentifiers.OrderBy(x => x, comparer));
+
+            Console.WriteLine($"{entry.TempVariable} -> identifiers direct: {directText} | all: {allText}");
+        }
+
+        Console.WriteLine();
+    }
+
+    private static HashSet<string> CollectIdentifiers(Node<Token> root, StringComparer comparer)
+    {
+        HashSet<string> identifiers = new(comparer);
+
+        foreach (Node<Token> node in root.PostOrderNodes())
+        {
+            Token token = node.Value;
+            if (token.TokenType == TokenType.Identifier && !string.IsNullOrWhiteSpace(token.Text))
+                identifiers.Add(token.Text);
+        }
+
+        return identifiers;
+    }
+
     private static void EvaluateCompressedWithDependenciesDemo(
         IParser parser,
         CompressionResult compression,
@@ -617,6 +676,13 @@ internal class Program
         Console.WriteLine(result3.GetPlanText(withCalculation: false));
         Console.WriteLine("--- Plan (substituted, evaluation order) ---");
         Console.WriteLine(result3.GetPlanText(withCalculation: true));
+
+        Console.WriteLine("--- Plan (substituted, with direct temp dependencies) ---");
+        result3.PrintPlan(withCalculation: true, showDirectDependencies: true);
+        Console.WriteLine("--- Plan (substituted, with all temp dependencies) ---");
+        result3.PrintPlan(withCalculation: true, showAllDependencies: true);
+        PrintIdentifierDependencyPlan(result3, patterns.CaseSensitive);
+
         PrintSubstitutedSubtrees(result3, "Expression 3");
 
         var expr3Variables = new Dictionary<string, object?>

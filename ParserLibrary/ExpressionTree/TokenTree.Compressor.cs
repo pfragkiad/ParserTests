@@ -323,8 +323,8 @@ public partial class TokenTree
     }
 
     /// <summary>
-    /// Collects the full transitive dependency chain in ordered form: direct dependencies first,
-    /// then deeper dependencies. Evaluating in reverse computes leaves first.
+    /// Collects the full transitive dependency chain in deterministic topological order (leaf-first).
+    /// In the returned sequence, each dependency appears only after all of its own dependencies.
     /// </summary>
     public static IReadOnlyList<string> CollectDependencyChainOrdered(
         CompressionResult result,
@@ -335,8 +335,8 @@ public partial class TokenTree
     }
 
     /// <summary>
-    /// Collects the full transitive dependency chain in ordered form: direct dependencies first,
-    /// then deeper dependencies. Evaluating in reverse computes leaves first.
+    /// Collects the full transitive dependency chain in deterministic topological order (leaf-first).
+    /// In the returned sequence, each dependency appears only after all of its own dependencies.
     /// </summary>
     public static IReadOnlyList<string> CollectDependencyChainOrdered(
         IReadOnlyList<CompressionEntry> entries,
@@ -346,41 +346,62 @@ public partial class TokenTree
         StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
         Dictionary<string, CompressionEntry> entryByTemp = new(entries.Count, comparer);
-        foreach (CompressionEntry entry in entries)
+        Dictionary<string, int> entryOrder = new(entries.Count, comparer);
+        for (int i = 0; i < entries.Count; i++)
+        {
+            CompressionEntry entry = entries[i];
             entryByTemp[entry.TempVariable] = entry;
+            entryOrder[entry.TempVariable] = i;
+        }
 
         List<string> ordered = [];
-        HashSet<string> seen = new(comparer);
-        Queue<string> queue = [];
-        queue.Enqueue(tempVariable);
+        HashSet<string> added = new(comparer);
+        HashSet<string> visiting = new(comparer);
 
-        while (queue.Count > 0)
+        void AddDependencyAndPrerequisites(string dependency)
         {
-            string current = queue.Dequeue();
-            if (!entryByTemp.TryGetValue(current, out CompressionEntry? currentEntry))
-                continue;
+            if (comparer.Equals(dependency, tempVariable) || added.Contains(dependency))
+                return;
 
-            foreach (string dependency in currentEntry.Dependencies)
+            if (!visiting.Add(dependency))
+                return; // cycle guard
+
+            if (entryByTemp.TryGetValue(dependency, out CompressionEntry? dependencyEntry))
             {
-                if (comparer.Equals(dependency, tempVariable))
-                    continue;
+                IEnumerable<string> nestedDependencies = dependencyEntry.Dependencies
+                    .Where(d => !comparer.Equals(d, tempVariable))
+                    .Distinct(comparer)
+                    .OrderBy(d => entryOrder.TryGetValue(d, out int idx) ? idx : int.MaxValue)
+                    .ThenBy(d => d, comparer);
 
-                if (!seen.Add(dependency))
-                    continue;
-
-                ordered.Add(dependency);
-
-                if (entryByTemp.ContainsKey(dependency))
-                    queue.Enqueue(dependency);
+                foreach (string nested in nestedDependencies)
+                    AddDependencyAndPrerequisites(nested);
             }
+
+            visiting.Remove(dependency);
+
+            if (added.Add(dependency))
+                ordered.Add(dependency);
         }
+
+        if (!entryByTemp.TryGetValue(tempVariable, out CompressionEntry? rootEntry))
+            return ordered;
+
+        IEnumerable<string> rootDependencies = rootEntry.Dependencies
+            .Where(d => !comparer.Equals(d, tempVariable))
+            .Distinct(comparer)
+            .OrderBy(d => entryOrder.TryGetValue(d, out int idx) ? idx : int.MaxValue)
+            .ThenBy(d => d, comparer);
+
+        foreach (string dependency in rootDependencies)
+            AddDependencyAndPrerequisites(dependency);
 
         return ordered;
     }
 
     /// <summary>
     /// Evaluates a node after calculating all referenced temp dependencies into a shared variable cache.
-    /// Dependencies are evaluated leaf-first by reversing the ordered dependency chain.
+    /// Dependencies are evaluated in leaf-first topological order.
     /// </summary>
     public static object? EvaluateNodeWithDependencies(
         CompressionResult result,
@@ -393,7 +414,7 @@ public partial class TokenTree
 
     /// <summary>
     /// Evaluates a node after calculating all referenced temp dependencies into a shared variable cache.
-    /// Dependencies are evaluated leaf-first by reversing the ordered dependency chain.
+    /// Dependencies are evaluated in leaf-first topological order.
     /// </summary>
     public static object? EvaluateNodeWithDependencies(
         IReadOnlyList<CompressionEntry> entries,
@@ -415,9 +436,8 @@ public partial class TokenTree
         {
             IReadOnlyList<string> orderedChain = CollectDependencyChainOrdered(entries, dependency, caseSensitive);
 
-            for (int i = orderedChain.Count - 1; i >= 0; i--)
+            foreach (string nestedDependency in orderedChain)
             {
-                string nestedDependency = orderedChain[i];
                 if (localVariables.ContainsKey(nestedDependency)
                     || !entryByTemp.TryGetValue(nestedDependency, out CompressionEntry? nestedEntry))
                 {
