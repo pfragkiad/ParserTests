@@ -33,6 +33,10 @@ public partial class TokenTree
     /// When <c>false</c> (default), the method mutates <b>this</b> tree in place — no clone
     /// is made, which is significantly faster for large trees.
     /// </param>
+    /// <param name="allowAssociativeLadders">
+    /// When <c>true</c>, allows compressing associative operator ladders (for example +, *, AND, OR)
+    /// and prioritizes the longest ladder candidates before shorter ones.
+    /// </param>
     /// <param name="forceFunctionNames">
     /// Optional function names that must always be compressed when encountered, even when they
     /// appear once. Matching respects <see cref="TokenPatterns.CaseSensitive"/>.
@@ -50,6 +54,7 @@ public partial class TokenTree
         Func<ICollection<string>, string>? nextTempVarName = null,
         bool keepOriginalTree = false,
         bool compressConstantOnlySubtrees = false,
+        bool allowAssociativeLadders = false,
         IReadOnlyList<CompressionEntry>? existingEntries = null,
         HashSet<string>? forcedFunctions = null,
         HashSet<string>? forcedOperators = null)
@@ -61,16 +66,14 @@ public partial class TokenTree
         if (forcedFunctions is null)
             forcedFunctions = [];
         else
-            forcedFunctions = new HashSet<string>(forcedFunctions, patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            forcedFunctions = new HashSet<string>(forcedFunctions, patterns.Comparer);
 
         if (forcedOperators is null)
             forcedOperators = [];
         else
-            forcedOperators = new HashSet<string>(forcedOperators, patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            forcedOperators = new HashSet<string>(forcedOperators, patterns.Comparer);
 
-        StringComparer dependencyComparer = patterns.CaseSensitive
-            ? StringComparer.Ordinal
-            : StringComparer.OrdinalIgnoreCase;
+        StringComparer dependencyComparer = patterns.Comparer;
 
         List<CompressionEntry> plan = existingEntries is null ? [] : [.. existingEntries];
         int counter = 1; // used only when nextTempVarName is null
@@ -155,6 +158,7 @@ public partial class TokenTree
                 minOccurrences,
                 minDepth,
                 compressConstantOnlySubtrees,
+                allowAssociativeLadders,
                 patterns,
                 effectiveForcedFunctions,
                 effectiveForcedOperators);
@@ -184,14 +188,15 @@ public partial class TokenTree
                 string originalExpr = BackExpand(substitutedExpr, originalByTemp);
                 originalByTemp[tempVar] = originalExpr;
 
-                plan.Add(new CompressionEntry(
-                    TempVariable: tempVar,
-                    OriginalExpression: originalExpr,
-                    SubstitutedExpression: substitutedExpr,
-                    SubstitutedSubtree: substitutedSubtree,
-                    OccurrenceCount: group.Nodes.Count,
-                    Dependencies: new HashSet<string>(dependencyComparer)
-                ));
+                plan.Add(new CompressionEntry
+                {
+                    TempVariable = tempVar,
+                    OriginalExpression = originalExpr,
+                    SubstitutedExpression = substitutedExpr,
+                    SubstitutedSubtree = substitutedSubtree,
+                    OccurrenceCount = group.Nodes.Count,
+                    Dependencies = new HashSet<string>(dependencyComparer)
+                });
                 tempByStructuralKey[ComputeStructuralKey(substitutedSubtree, patterns.CaseSensitive)] = tempVar;
                 occurrenceByTemp[tempVar] = group.Nodes.Count;
 
@@ -231,13 +236,15 @@ public partial class TokenTree
                 knownTempVariables,
                 dependencyComparer);
 
-            projectedPlan.Add(new CompressionEntry(
-                TempVariable: entry.TempVariable,
-                OriginalExpression: entry.OriginalExpression,
-                SubstitutedExpression: entry.SubstitutedExpression,
-                SubstitutedSubtree: entry.SubstitutedSubtree,
-                OccurrenceCount: totalOccurrences,
-                Dependencies: dependencies));
+            projectedPlan.Add(new CompressionEntry
+            {
+                TempVariable = entry.TempVariable,
+                OriginalExpression = entry.OriginalExpression,
+                SubstitutedExpression = entry.SubstitutedExpression,
+                SubstitutedSubtree = entry.SubstitutedSubtree,
+                OccurrenceCount = totalOccurrences,
+                Dependencies = dependencies
+            });
         }
 
         bool isCompressed = projectedPlan.Count > 0;
@@ -250,13 +257,15 @@ public partial class TokenTree
             Node<Token> inputSubtree = workTree.Root.DeepClone();
             string inputExpression = ExpressionFormatter.Format(inputSubtree, patterns);
 
-            projectedPlan.Add(new CompressionEntry(
-                TempVariable: tempVar,
-                OriginalExpression: inputExpression,
-                SubstitutedExpression: inputExpression,
-                SubstitutedSubtree: inputSubtree,
-                OccurrenceCount: 1,
-                Dependencies: new HashSet<string>(dependencyComparer)));
+            projectedPlan.Add(new CompressionEntry
+            {
+                TempVariable = tempVar,
+                OriginalExpression = inputExpression,
+                SubstitutedExpression = inputExpression,
+                SubstitutedSubtree = inputSubtree,
+                OccurrenceCount = 1,
+                Dependencies = new HashSet<string>(dependencyComparer)
+            });
         }
 
         return new CompressionResult
@@ -264,7 +273,8 @@ public partial class TokenTree
             Entries = projectedPlan,
             CompressedExpression = compressedExpr,
             CompressedTree = workTree,
-            IsCompressed = isCompressed
+            IsCompressed = isCompressed,
+            CaseSensitive = patterns.CaseSensitive
         };
     }
 
@@ -464,7 +474,9 @@ public partial class TokenTree
                     continue;
                 }
 
-                localVariables[nestedDependency] = parser.Evaluate(nestedEntry.SubstitutedSubtree, localVariables, false);
+                object? nestedValue = parser.Evaluate(nestedEntry.SubstitutedSubtree, localVariables, false);
+                localVariables[nestedDependency] = nestedValue;
+                nestedEntry.Result = nestedValue;
             }
 
             if (localVariables.ContainsKey(dependency)
@@ -473,7 +485,9 @@ public partial class TokenTree
                 continue;
             }
 
-            localVariables[dependency] = parser.Evaluate(dependencyEntry.SubstitutedSubtree, localVariables, false);
+            object? dependencyValue = parser.Evaluate(dependencyEntry.SubstitutedSubtree, localVariables, false);
+            localVariables[dependency] = dependencyValue;
+            dependencyEntry.Result = dependencyValue;
         }
 
         return parser.Evaluate(node, localVariables, false);
@@ -626,10 +640,12 @@ public partial class TokenTree
     }
 
     private static string NormalizeExpressionKey(string expression, TokenPatterns patterns) =>
-        patterns.CaseSensitive ? expression : expression.ToUpperInvariant();
+        patterns.NormalizeCase(expression);
 
     /// <summary>
-    /// Selects all extractable candidates at the shallowest eligible depth.
+    /// Selects extractable candidates for the next batch.
+    /// Default behavior keeps innermost-first ordering. When associative ladders are enabled,
+    /// the longest ladder candidates are prioritized before depth.
     /// Stable ordering: higher occurrence count first, then structural key ordinal.
     /// </summary>
     private static List<string> SelectBatchCandidates(
@@ -637,41 +653,61 @@ public partial class TokenTree
         int minOccurrences,
         int minDepth,
         bool compressConstantOnlySubtrees,
+        bool allowAssociativeLadders,
         TokenPatterns patterns,
         HashSet<string> forcedFunctionNames,
         HashSet<string> forcedOperatorSymbols)
     {
         int bestDepth = int.MaxValue;
-        var eligible = new List<(string Key, CompressionGroup Group, bool IsForced)>();
+        var eligible = new List<(string Key, CompressionGroup Group, bool IsForced, int LadderLength)>();
 
         foreach (var kvp in groups)
         {
             var group = kvp.Value;
             bool isForced = IsForcedCandidate(group.Nodes[0], forcedFunctionNames, forcedOperatorSymbols, patterns);
+            int ladderLength = GetAssociativeLadderLength(group.Nodes[0], patterns);
 
             if (!isForced)
             {
                 if (group.Nodes.Count < minOccurrences) continue;
                 if (group.Depth < minDepth) continue;
                 if (!compressConstantOnlySubtrees && !group.IsCompressible) continue;
-                if (ShouldSkipAssociativeLadder(group.Nodes[0], patterns)) continue;
+                if (!allowAssociativeLadders && ShouldSkipAssociativeLadder(group.Nodes[0], patterns)) continue;
             }
 
             if (group.Depth < bestDepth)
                 bestDepth = group.Depth;
 
-            eligible.Add((kvp.Key, group, isForced));
+            eligible.Add((kvp.Key, group, isForced, ladderLength));
         }
 
-        if (bestDepth == int.MaxValue)
+        if (eligible.Count == 0)
             return [];
 
-        return eligible
+        if (allowAssociativeLadders)
+        {
+            int bestLadderLength = eligible
+                .Where(x => x.LadderLength >= 3)
+                .Select(x => x.LadderLength)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            if (bestLadderLength >= 3)
+            {
+                return [.. eligible
+                    .Where(x => x.LadderLength == bestLadderLength)
+                    .OrderByDescending(x => x.Group.Nodes.Count)
+                    .ThenByDescending(x => x.Group.Depth)
+                    .ThenBy(x => x.Key, StringComparer.Ordinal)
+                    .Select(x => x.Key)];
+            }
+        }
+
+        return [.. eligible
             .Where(x => x.Group.Depth == bestDepth)
             .OrderByDescending(x => x.Group.Nodes.Count)
             .ThenBy(x => x.Key, StringComparer.Ordinal)
-            .Select(x => x.Key)
-            .ToList();
+            .Select(x => x.Key)];
     }
 
     private static bool ShouldSkipAssociativeLadder(Node<Token> node, TokenPatterns patterns)
@@ -679,7 +715,7 @@ public partial class TokenTree
         if (node.Value is null || node.Value.TokenType != TokenType.Operator)
             return false;
 
-        string op = NormalizeCase(node.Value.Text, patterns.CaseSensitive);
+        string op = patterns.NormalizeCase(node.Value.Text);
         if (!IsAssociativeLadderOperator(op))
             return false;
 
@@ -689,8 +725,7 @@ public partial class TokenTree
         if (operandExpressions.Count < 3)
             return false;
 
-        var comparer = patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-        var freq = new Dictionary<string, int>(comparer);
+        var freq = new Dictionary<string, int>(patterns.Comparer);
         foreach (var expr in operandExpressions)
         {
             if (!freq.TryAdd(expr, 1))
@@ -704,7 +739,42 @@ public partial class TokenTree
     }
 
     private static bool IsAssociativeLadderOperator(string op) =>
-        op is "+" or "OR" or "AND" or "&";
+        op is "+" or "*" or "OR" or "AND" or "&" or "|" or "||" or "&&";
+
+    private static int GetAssociativeLadderLength(Node<Token> node, TokenPatterns patterns)
+    {
+        if (node.Value is null || node.Value.TokenType != TokenType.Operator)
+            return 0;
+
+        string op = patterns.NormalizeCase(node.Value.Text);
+        if (!IsAssociativeLadderOperator(op))
+            return 0;
+
+        return CountAssociativeOperands(node, op, patterns);
+    }
+
+    private static int CountAssociativeOperands(
+        Node<Token> node,
+        string normalizedOperator,
+        TokenPatterns patterns)
+    {
+        if (node.Value is not null
+            && node.Value.TokenType == TokenType.Operator
+            && patterns.NormalizeCase(node.Value.Text) == normalizedOperator)
+        {
+            int total = 0;
+
+            if (node.Left is Node<Token> left)
+                total += CountAssociativeOperands(left, normalizedOperator, patterns);
+
+            if (node.Right is Node<Token> right)
+                total += CountAssociativeOperands(right, normalizedOperator, patterns);
+
+            return total;
+        }
+
+        return 1;
+    }
 
     private static void CollectAssociativeOperands(
         Node<Token> node,
@@ -714,7 +784,7 @@ public partial class TokenTree
     {
         if (node.Value is not null
             && node.Value.TokenType == TokenType.Operator
-            && NormalizeCase(node.Value.Text, patterns.CaseSensitive) == normalizedOperator)
+            && patterns.NormalizeCase(node.Value.Text) == normalizedOperator)
         {
             if (node.Left is Node<Token> left)
                 CollectAssociativeOperands(left, normalizedOperator, patterns, operands);
@@ -726,7 +796,7 @@ public partial class TokenTree
         }
 
         string expr = ExpressionFormatter.Format(node, patterns);
-        operands.Add(NormalizeCase(expr, patterns.CaseSensitive));
+        operands.Add(patterns.NormalizeCase(expr));
     }
 
     private static string NormalizeCase(string text, bool caseSensitive) =>
@@ -741,13 +811,11 @@ public partial class TokenTree
         if (node.Value is null)
             return false;
 
-        var comparer = patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-
         if (node.Value.TokenType == TokenType.Function && forcedFunctionNames is not null)
-            return forcedFunctionNames.Contains(node.Value.Text, comparer);
+            return forcedFunctionNames.Contains(node.Value.Text,  patterns.Comparer);
 
         if (node.Value.TokenType == TokenType.Operator && forcedOperatorSymbols is not null)
-            return forcedOperatorSymbols.Contains(node.Value.Text, comparer);
+            return forcedOperatorSymbols.Contains(node.Value.Text, patterns.Comparer);
 
         return false;
     }

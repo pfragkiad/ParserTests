@@ -1,7 +1,4 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-
 using ParserLibrary;
 
 using ParserLibrary.Tokenizers;
@@ -10,9 +7,7 @@ using ParserLibrary.ExpressionTree;
 using System.Diagnostics;
 using System.Numerics;
 using System.Globalization;
-using OneOf;
 using ParserTests.Common;
-using ParserLibrary.Parsers.Common;
 using ParserLibrary.Parsers.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +32,7 @@ using ParserLibrary.Parsers.Compilation;
 //string expr = "0.1*sin(a1,a2)+90";
 
 
-internal class Program
+public static class Program
 {
 
     private static IHostBuilder GetHostBuilder(string settingsFile = "appsettings.json")
@@ -871,7 +866,7 @@ internal class Program
         tree2.Print(PrintType.Vertical);
     }
 
-    private static void Main(string[] args)
+    public static void Main(string[] args)
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 

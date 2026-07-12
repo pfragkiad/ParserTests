@@ -263,4 +263,43 @@ public class TreeCompressorTests
         Assert.Equal(0, result.SubstitutionCount);
         Assert.Equal(expr, result.CompressedExpression);
     }
+
+    [Fact]
+    public void GetPlanText_RespectsCaseSensitivityFromCompressionResult()
+    {
+        var parser = ParserApp.GetDefaultParser();
+        var leaf = parser.GetExpressionTree("1").Root.DeepClone();
+
+        var result = new CompressionResult
+        {
+            CaseSensitive = true,
+            IsCompressed = true,
+            CompressedExpression = "_T2",
+            Entries =
+            [
+                new CompressionEntry
+                {
+                    TempVariable = "_T1",
+                    OriginalExpression = "1",
+                    SubstitutedExpression = "1",
+                    SubstitutedSubtree = leaf.DeepClone(),
+                    OccurrenceCount = 1,
+                    Dependencies = []
+                },
+                new CompressionEntry
+                {
+                    TempVariable = "_T2",
+                    OriginalExpression = "_T1+_t1",
+                    SubstitutedExpression = "_T1+_t1",
+                    SubstitutedSubtree = leaf.DeepClone(),
+                    OccurrenceCount = 1,
+                    Dependencies = ["_T1", "_t1"]
+                }
+            ]
+        };
+
+        string plan = result.GetPlanText(showDirectDependencies: true);
+
+        Assert.Contains("direct deps: _T1, _t1", plan, StringComparison.Ordinal);
+    }
 }

@@ -12,7 +12,39 @@ public readonly struct SinglePattern
 
 public class TokenPatterns //NOT records here!
 {
-    public bool CaseSensitive { get; set; } = false;
+    private bool _caseSensitive = false;
+    private StringComparer _comparer = StringComparer.OrdinalIgnoreCase;
+    private StringComparison _comparison = StringComparison.OrdinalIgnoreCase;
+
+    public bool CaseSensitive
+    {
+        get => _caseSensitive;
+        set
+        {
+            _caseSensitive = value;
+            _comparer = value ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+            _comparison = value ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        }
+    }
+
+    /// <summary>StringComparer consistent with <see cref="CaseSensitive"/>. Cached on assignment.</summary>
+    public StringComparer Comparer => _comparer;
+
+    /// <summary>StringComparison consistent with <see cref="CaseSensitive"/>. Cached on assignment.</summary>
+    public StringComparison Comparison => _comparison;
+
+    /// <summary>
+    /// Returns <paramref name="text"/> unchanged when case-sensitive;
+    /// otherwise returns the upper-invariant canonical form.
+    /// </summary>
+    public string NormalizeCase(string text) =>
+        _caseSensitive ? text : text.ToUpperInvariant();
+
+    /// <summary>
+    /// Compares two strings using <see cref="Comparison"/>.
+    /// </summary>
+    public bool TextEquals(string a, string b) =>
+        string.Equals(a, b, _comparison);
 
 
     #region Identifiers
@@ -130,16 +162,14 @@ public class TokenPatterns //NOT records here!
         get => _operators;
         set
         {
-            var comparer = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-
             _operators = value ?? [];
-            _operatorDictionary = _operators.ToDictionary(op => op.Name, op => op, comparer);
+                _operatorDictionary = _operators.ToDictionary(op => op.Name, op => op, _comparer);
 
-            if (_unary.Count > 0)
-            {
-                _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
-                _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), comparer);
-            }
+                if (_unary.Count > 0)
+                {
+                    _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
+                    _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), _comparer);
+                }
         }
     }
 
@@ -152,17 +182,15 @@ public class TokenPatterns //NOT records here!
         get => _unary;
         set
         {
-            var comparer = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-
             _unary = value ?? [];
-            _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op, comparer);
-            _prefixUnaryNames = new HashSet<string>( _unary.Where(uo => uo.Prefix).Select(uo => uo.Name), comparer);
-            _postfixUnaryNames = new HashSet<string>( _unary.Where(uo => !uo.Prefix).Select(uo => uo.Name), comparer);
+            _unaryOperatorDictionary = _unary.ToDictionary(op => op.Name, op => op, _comparer);
+            _prefixUnaryNames = new HashSet<string>( _unary.Where(uo => uo.Prefix).Select(uo => uo.Name), _comparer);
+            _postfixUnaryNames = new HashSet<string>( _unary.Where(uo => !uo.Prefix).Select(uo => uo.Name), _comparer);
 
             if (_operators.Count > 0)
             {
                 _uniqueUnaryOperators = [.. _unary.Where(uo => !_operatorDictionary.ContainsKey(uo.Name))];
-                _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), comparer);
+                _sameNameUnaryAndBinaryOperators = new HashSet<string>( _operatorDictionary.Keys.Intersect(_unaryOperatorDictionary.Keys), _comparer);
             }
         }
     }

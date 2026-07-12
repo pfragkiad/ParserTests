@@ -3,32 +3,6 @@ using System.Text;
 namespace ParserLibrary.ExpressionTree;
 
 /// <summary>
-/// A single entry in the compression plan: a temporary variable and the expression it represents.
-/// </summary>
-public sealed record CompressionEntry(
-    /// <summary>The temporary variable name, e.g. "_T1".</summary>
-    string TempVariable,
-    /// <summary>The original (unsubstituted) expression string for this subexpression.</summary>
-    string OriginalExpression,
-    /// <summary>
-    /// The substituted expression string — same as OriginalExpression for first-level entries,
-    /// but uses previously defined temp variables for deeper levels.
-    /// </summary>
-    string SubstitutedExpression,
-    /// <summary>
-    /// A deep-cloned subtree for this expression in substituted form, ready for fast evaluation.
-    /// </summary>
-    Node<Token> SubstitutedSubtree,
-    /// <summary>How many times this subexpression appeared in the tree.</summary>
-    int OccurrenceCount,
-    /// <summary>
-    /// Temp variable names referenced by <see cref="SubstitutedSubtree"/>.
-    /// Comparer respects <see cref="TokenPatterns.CaseSensitive"/> from compression.
-    /// </summary>
-    HashSet<string> Dependencies
-);
-
-/// <summary>
 /// Result produced by <see cref="TokenTree.Compress"/>.
 /// </summary>
 public sealed class CompressionResult
@@ -38,12 +12,18 @@ public sealed class CompressionResult
     /// </summary>
     public IReadOnlyList<CompressionEntry> Entries { get; init; } = [];
 
+    /// <summary>
+    /// Case-sensitivity used while producing this compression result.
+    /// Must stay aligned with <see cref="TokenPatterns.CaseSensitive"/>.
+    /// </summary>
+    public bool CaseSensitive { get; init; }
+
     public bool IsCompressed { get; init; }
 
     /// <summary>
     /// The final compressed expression string using temp variable names.
     /// </summary>
-    public string CompressedExpression { get; init; } = string.Empty;
+    public string CompressedExpression { get; init; } = string.Empty; //SubstitutedExpression
 
     /// <summary>
     /// The compressed expression tree (cloned, original is untouched).
@@ -53,8 +33,10 @@ public sealed class CompressionResult
 
     /// <summary>
     /// Number of distinct repeated subexpressions that were extracted.
+    /// Returns 0 when no compression happened, even though a single passthrough
+    /// entry may exist to support downstream evaluation APIs.
     /// </summary>
-    public int SubstitutionCount => Entries.Count;
+    public int SubstitutionCount => IsCompressed ? Entries.Count : 0;
 
     // ── Display helpers ────────────────────────────────────────────────────
 
@@ -77,12 +59,12 @@ public sealed class CompressionResult
         bool showAllDependencies = false)
     {
         var sb = new StringBuilder();
+        StringComparer dependencyComparer = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
         foreach (var entry in Entries)
         {
             string expr = withCalculation ? entry.SubstitutedExpression : entry.OriginalExpression;
             sb.Append($"{entry.TempVariable} = {expr}   // occurrences: {entry.OccurrenceCount}");
-
-            StringComparer dependencyComparer = GetDependencyComparer(entry.Dependencies.Comparer);
 
             if (showDirectDependencies)
             {
@@ -91,7 +73,7 @@ public sealed class CompressionResult
 
             if (showAllDependencies)
             {
-                IReadOnlyList<string> allDependencies = TokenTree.CollectDependencyChainOrdered(Entries, entry.TempVariable, dependencyComparer == StringComparer.Ordinal);
+                IReadOnlyList<string> allDependencies = TokenTree.CollectDependencyChainOrdered(Entries, entry.TempVariable, CaseSensitive);
                 sb.Append($" | all deps: {FormatDependenciesInExistingOrder(allDependencies, dependencyComparer)}");
             }
 
@@ -112,13 +94,6 @@ public sealed class CompressionResult
     {
         string[] orderedDependencies = [.. dependencies.Distinct(comparer)];
         return orderedDependencies.Length == 0 ? "(none)" : string.Join(", ", orderedDependencies);
-    }
-
-    private static StringComparer GetDependencyComparer(IEqualityComparer<string>? comparer)
-    {
-        return comparer == StringComparer.Ordinal
-            ? StringComparer.Ordinal
-            : StringComparer.OrdinalIgnoreCase;
     }
 
     /// <inheritdoc cref="GetPlanText(bool, bool, bool)"/>

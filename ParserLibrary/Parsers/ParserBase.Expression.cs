@@ -63,7 +63,7 @@ public partial class ParserBase
         // Handle custom functions: inline body with parameter substitution
         if (tok.TokenType == TokenType.Function)
         {
-            var functionName = patterns.CaseSensitive ? tok.Text : tok.Text.ToLower();
+            var functionName = patterns.NormalizeCase(tok.Text);
 
             if (CustomFunctions.TryGetValue(functionName, out var def))
             {
@@ -102,7 +102,7 @@ public partial class ParserBase
                     string paramName = def.Parameters[i];
                     // IMPORTANT: produce a fresh clone with unique Token instances for every occurrence
                     Node<Token> ReplacementFactory() => CloneSubtree(argNodes[i]);
-                    bodyRoot = ReplaceAllIdentifiers(bodyRoot, paramName, ReplacementFactory, patterns.CaseSensitive);
+                    bodyRoot = ReplaceAllIdentifiers(bodyRoot, paramName, ReplacementFactory, patterns);
                 }
 
                 // 4) Recursively expand nested custom functions in the substituted body
@@ -135,16 +135,12 @@ public partial class ParserBase
         Node<Token> root,
         string identifierName,
         Func<Node<Token>> replacementFactory,
-        bool caseSensitive)
+        TokenPatterns patterns)
     {
-        bool EqualsName(string s1, string s2) =>
-            caseSensitive ? string.Equals(s1, s2, StringComparison.Ordinal)
-                          : string.Equals(s1, s2, StringComparison.OrdinalIgnoreCase);
-
         Node<Token> Recurse(Node<Token> current)
         {
             var t = (Token)current.Value!;
-            if (t.TokenType == TokenType.Identifier && EqualsName(t.Text, identifierName))
+            if (t.TokenType == TokenType.Identifier && patterns.TextEquals(t.Text, identifierName))
             {
                 // Return a fresh clone for this occurrence
                 return replacementFactory();

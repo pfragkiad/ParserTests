@@ -29,14 +29,14 @@ public partial class ParserBase : Tokenizer, IParser
         : base(logger, options, tokenizerValidator)
     {
         _parserValidator = parserValidator;
-        CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        CustomFunctions = new(_patterns.Comparer);
     }
 
     protected internal ParserBase(ILogger logger, ParserServices services)
       : base(logger, services.Options, services.TokenizerValidator)
     {
         _parserValidator = services.ParserValidator;
-        CustomFunctions = new(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        CustomFunctions = new(_patterns.Comparer);
     }
 
     //optional catalog for function metadata
