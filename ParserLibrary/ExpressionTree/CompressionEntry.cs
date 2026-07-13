@@ -25,7 +25,20 @@ public sealed class CompressionEntry
     public required Node<Token> SubstitutedSubtree { get; init; }
 
     /// <summary>How many times this subexpression appeared in the tree.</summary>
-    public required int OccurrenceCount { get; init; }
+    public required int OccurrenceCount { get; set;  } 
+
+    public bool OmitCalculation => OccurrenceCount == 0;
+
+    public bool NeedsComputation => !IsCalculated && OccurrenceCount > 0;
+
+    public void DecrementOccurences()
+    {
+        if (OccurrenceCount > 0)
+        {
+            OccurrenceCount--;
+        }
+    }
+
 
     /// <summary>
     /// Temp variable names referenced by <see cref="SubstitutedSubtree"/>.

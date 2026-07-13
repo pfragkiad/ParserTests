@@ -64,6 +64,7 @@ public sealed class CompressionResult
         foreach (var entry in Entries)
         {
             string expr = withCalculation ? entry.SubstitutedExpression : entry.OriginalExpression;
+
             sb.Append($"{entry.TempVariable} = {expr}   // occurrences: {entry.OccurrenceCount}");
 
             if (showDirectDependencies)
