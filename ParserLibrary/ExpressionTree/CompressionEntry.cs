@@ -40,6 +40,9 @@ public sealed class CompressionEntry
     }
 
 
+    public object? Tag { get; set; }
+
+
     /// <summary>
     /// Temp variable names referenced by <see cref="SubstitutedSubtree"/>.
     /// Comparer respects <see cref="TokenPatterns.CaseSensitive"/> from compression.

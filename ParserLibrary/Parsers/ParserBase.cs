@@ -8,13 +8,6 @@ using ParserLibrary.Tokenizers.Interfaces;
 
 namespace ParserLibrary.Parsers;
 
-public abstract class ParserContext
-{
-    public ParserBase? ParentParser { get; set; }
-
-    public abstract string OriginalFormula { get; }
-}
-
 
 public partial class ParserBase : Tokenizer, IParser
 {

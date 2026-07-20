@@ -75,7 +75,9 @@ public partial class TokenTree
 
         StringComparer dependencyComparer = patterns.Comparer;
 
-        List<CompressionEntry> plan = existingEntries is null ? [] : [.. existingEntries];
+        List<CompressionEntry> plan = existingEntries is null
+            ? []
+            : [.. existingEntries.Where(e => IsArgumentSeparatorRootAllowed(e.SubstitutedSubtree))];
         int counter = 1; // used only when nextTempVarName is null
 
         // Maps each temp var name back to its fully-expanded original expression
@@ -90,6 +92,9 @@ public partial class TokenTree
         for (int i = 0; i < plan.Count; i++)
         {
             var entry = plan[i];
+            if (!IsArgumentSeparatorRootAllowed(entry.SubstitutedSubtree))
+                continue;
+
             originalByTemp[entry.TempVariable] = entry.OriginalExpression;
 
             string seedKey = entry.SubstitutedSubtree is not null
@@ -172,16 +177,19 @@ public partial class TokenTree
             {
                 var group = analysis.Groups[key];
 
+                // Record the plan entry.
+                // SubstitutedSubtree is normalized so that dependencies on previously
+                // introduced temp vars appear as Identifier leaves (e.g. _T1, _T2).
+                var substitutedSubtree = NormalizeSubstitutedSubtree(group.Nodes[0].DeepClone(), plan, patterns);
+                if (!IsArgumentSeparatorRootAllowed(substitutedSubtree))
+                    continue;
+
                 // Assign temp variable name — use the external resolver when provided so
                 // the caller can guarantee cross-session uniqueness (e.g. lambda vs outer expr).
                 string tempVar = nextTempVarName is not null
                     ? nextTempVarName(originalByTemp.Keys)
                     : $"{tempVarPrefix}{counter++}";
 
-                // Record the plan entry.
-                // SubstitutedSubtree is normalized so that dependencies on previously
-                // introduced temp vars appear as Identifier leaves (e.g. _T1, _T2).
-                var substitutedSubtree = NormalizeSubstitutedSubtree(group.Nodes[0].DeepClone(), plan, patterns);
                 string substitutedExpr = ExpressionFormatter.Format(substitutedSubtree, patterns);
 
                 // OriginalExpression always shows the fully expanded raw expression.
@@ -250,22 +258,25 @@ public partial class TokenTree
         bool isCompressed = projectedPlan.Count > 0;
         if (projectedPlan.Count == 0)
         {
-            string tempVar = nextTempVarName is not null
-                ? nextTempVarName(originalByTemp.Keys)
-                : $"{tempVarPrefix}{counter++}";
-
             Node<Token> inputSubtree = workTree.Root.DeepClone();
-            string inputExpression = ExpressionFormatter.Format(inputSubtree, patterns);
-
-            projectedPlan.Add(new CompressionEntry
+            if (inputSubtree.Value?.TokenType != TokenType.ArgumentSeparator)
             {
-                TempVariable = tempVar,
-                OriginalExpression = inputExpression,
-                SubstitutedExpression = inputExpression,
-                SubstitutedSubtree = inputSubtree,
-                OccurrenceCount = 1,
-                Dependencies = new HashSet<string>(dependencyComparer)
-            });
+                string tempVar = nextTempVarName is not null
+                    ? nextTempVarName(originalByTemp.Keys)
+                    : $"{tempVarPrefix}{counter++}";
+
+                string inputExpression = ExpressionFormatter.Format(inputSubtree, patterns);
+
+                projectedPlan.Add(new CompressionEntry
+                {
+                    TempVariable = tempVar,
+                    OriginalExpression = inputExpression,
+                    SubstitutedExpression = inputExpression,
+                    SubstitutedSubtree = inputSubtree,
+                    OccurrenceCount = 1,
+                    Dependencies = new HashSet<string>(dependencyComparer)
+                });
+            }
         }
 
         return new CompressionResult
@@ -276,6 +287,17 @@ public partial class TokenTree
             IsCompressed = isCompressed,
             CaseSensitive = patterns.CaseSensitive
         };
+    }
+
+    private static bool IsArgumentSeparatorRootAllowed(Node<Token>? node)
+    {
+        if (node?.Value is null)
+            return true;
+
+        if (node.Value.TokenType != TokenType.ArgumentSeparator)
+            return true;
+
+        return node.Other is { Count: > 0 };
     }
 
     private static HashSet<string> CollectTempDependencies(

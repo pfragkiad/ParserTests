@@ -196,4 +196,6 @@ public class FunctionSyntax
         return true;
     }
 
+    public HashSet<string>? Tags { get; init; }
+
 }

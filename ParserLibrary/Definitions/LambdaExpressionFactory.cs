@@ -4,8 +4,10 @@ public sealed class LambdaExpressionFactory(TokenPatterns tokenPatterns)
 {
     private readonly TokenPatterns _tokenPatterns = tokenPatterns ?? throw new ArgumentNullException(nameof(tokenPatterns));
 
+    public bool CaseSensitive => _tokenPatterns.CaseSensitive;
+
     public LambdaExpression Create(string[] parameters, string body) =>
-        LambdaExpression.Create(parameters, body);
+        LambdaExpression.Create(parameters, body, _tokenPatterns.Comparer);
 
     public LambdaExpression? TryParse(string lambdaText)
     {
@@ -19,7 +21,7 @@ public sealed class LambdaExpressionFactory(TokenPatterns tokenPatterns)
         if (string.IsNullOrWhiteSpace(arrow))
             return null;
 
-        var arrowIndex = span.IndexOf(arrow, StringComparison.Ordinal);
+        var arrowIndex = span.IndexOf(arrow, _tokenPatterns.Comparison);
         if (arrowIndex < 0)
             return null;
 
