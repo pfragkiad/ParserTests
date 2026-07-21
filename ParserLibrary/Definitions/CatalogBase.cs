@@ -18,9 +18,15 @@ public abstract class CatalogBase<TInfo> where TInfo : OperatorDefinition
     // Catalog-level policy: whether lookups should ignore case by default
     public abstract bool IgnoreCase { get; }
 
-    public virtual List<TInfo> GetAll()
+    public List<TInfo> GetAll()
     {
-        return GetAllInternal();
+        return GetAllAsync().GetAwaiter().GetResult();
+    }
+
+    public virtual Task<List<TInfo>> GetAllAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(GetAllInternal());
     }
 
     //protected virtual async Task<List<TInfo>> GetAllCoreAsync()
@@ -78,14 +84,14 @@ public abstract class CatalogBase<TInfo> where TInfo : OperatorDefinition
     }
 
 
-    public List<TInfo> SearchByNameOrDescription(string searchTerm, StringComparison comparisonType)
+    public virtual async Task<List<TInfo>> SearchByNameOrDescriptionAsync(string searchTerm, StringComparison comparisonType, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return GetAll();
+            return await GetAllAsync(ct);
 
         searchTerm = searchTerm.Trim();
 
-        _allItemsCache ??= GetAll();
+        _allItemsCache ??= await GetAllAsync(ct);
 
         var all = _allItemsCache;
         var results = all
@@ -98,12 +104,12 @@ public abstract class CatalogBase<TInfo> where TInfo : OperatorDefinition
     }
 
     // Simple helper: return single match for name (uses the internal dictionary's comparer)
-    public virtual TInfo? Get(string name)
+    public virtual async Task<TInfo?> GetAsync(string name, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
 
         // Ensure caches/dictionary are built
-        _allItemsCache ??= GetAll();
+        _allItemsCache ??= await GetAllAsync(ct);
 
         if (_itemsDictionaryCache is not null)
         {
@@ -117,6 +123,11 @@ public abstract class CatalogBase<TInfo> where TInfo : OperatorDefinition
         return _allItemsCache.FirstOrDefault(it =>
             it.Name.Equals(name, comparison) ||
             (it.Aliases?.Any(a => a.Equals(name, comparison)) ?? false));
+    }
+
+    public TInfo? Get(string name)
+    {
+        return GetAsync(name).GetAwaiter().GetResult();
     }
 
 
