@@ -124,15 +124,15 @@ public class Tokenizer : ITokenizer
         MatchCollection litMatches = _literalRegex.Matches(expression);
         if (litMatches.Count == 0) return [];
 
+        var inputMemory = expression.AsMemory();
         List<Token> tokens = [];
         foreach (Match m in litMatches)
         {
             string? group = FirstSuccessfulNamedGroup(m, _literalGroupNames);
             if (group is null) continue;
 
-
             if (group.Equals(captureGroup, StringComparison.OrdinalIgnoreCase))
-                tokens.Add(Token.FromMatch(m, TokenType.Literal, group));
+                tokens.Add(Token.FromMatch(m, inputMemory, TokenType.Literal, group));
         }
         return tokens;
     }
@@ -157,13 +157,14 @@ public class Tokenizer : ITokenizer
         HashSet<int> functionParenthesisPositions = [];
 
         // 1) LITERALS FIRST - collect literal tokens and spans
+        var inputMemory = expression.AsMemory();
         MatchCollection litMatches = _literalRegex.Matches(expression);
         if (litMatches.Count > 0)
         {
             foreach (Match m in litMatches)
             {
                 string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
-                tokens.Add(Token.FromMatch(m, TokenType.Literal, group));
+                tokens.Add(Token.FromMatch(m, inputMemory, TokenType.Literal, group));
             }
         }
 
@@ -199,11 +200,11 @@ public class Tokenizer : ITokenizer
                 if (IsInsideAnySpan(start, end, literalSpans)) continue;
 
                 string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
-                var text = m.Value;
 
                 // If the matched identifier text is exactly an operator name, don't treat it as identifier/function.
                 // Leave it for the operator matching phase (and allow '(' to be a normal OpenParenthesis).
-                if (IsOperatorName(text))
+                // Use span slice for the check — no extra string allocation.
+                if (IsOperatorName(expression.AsSpan(m.Index, m.Length)))
                     continue;
 
                 int i = m.Index + m.Length;
@@ -213,14 +214,14 @@ public class Tokenizer : ITokenizer
                 if (i < expression.Length && expression[i] == _patterns.OpenParenthesis)
                 {
                     // Function: add function token and remember '(' position to avoid re-adding it
-                    tokens.Add(Token.FromMatch(m, TokenType.Function, group));
+                    tokens.Add(Token.FromMatch(m, inputMemory, TokenType.Function, group));
                     functionParenthesisPositions.Add(i);
                     identifierSpans.Add((start, end));
                     continue;
                 }
 
                 // Plain identifier
-                tokens.Add(Token.FromMatch(m, TokenType.Identifier, group));
+                tokens.Add(Token.FromMatch(m, inputMemory, TokenType.Identifier, group));
                 identifierSpans.Add((start, end));
             }
         }
@@ -261,7 +262,7 @@ public class Tokenizer : ITokenizer
                     // longest-first guarantees correct choice; skip if a longer match already claimed this start
                     if (!unaryStarts.Add(start)) continue;
 
-                    tokens.Add(Token.FromMatch(m, TokenType.OperatorUnary));
+                    tokens.Add(Token.FromMatch(m, inputMemory, TokenType.OperatorUnary));
                     operatorSpans.Add((start, end));
                 }
             }
@@ -295,7 +296,7 @@ public class Tokenizer : ITokenizer
                     // longest-first guarantees correct choice; skip if a longer match already claimed this start
                     if (!opStarts.Add(start)) continue;
 
-                    tokens.Add(Token.FromMatch(m, TokenType.Operator));
+                    tokens.Add(Token.FromMatch(m, inputMemory, TokenType.Operator));
                     operatorSpans.Add((start, end));
                 }
             }
@@ -345,6 +346,7 @@ public class Tokenizer : ITokenizer
         _logger.LogDebug("Retrieving infix tokens (single-pass/lightweight)...");
         var tokens = new List<Token>(Math.Max(8, expression.Length / 2));
         var functionParenthesisPositions = new HashSet<int>(); // to avoid re-adding '(' after Function
+        var inputMemory = expression.AsMemory();
         var span = expression.AsSpan();
 
         int i = 0;
@@ -362,7 +364,7 @@ public class Tokenizer : ITokenizer
                 if (m.Success && m.Index == i)
                 {
                     string? group = _literalHasNamedGroups ? FirstSuccessfulNamedGroup(m, _literalGroupNames) : null;
-                    tokens.Add(new Token(TokenType.Literal, m.Value, i, group));
+                    tokens.Add(new Token(TokenType.Literal, inputMemory, i, m.Length, group));
                     i += m.Length;
                     continue;
                 }
@@ -394,13 +396,13 @@ public class Tokenizer : ITokenizer
             {
                 if (TryMatchOperator(span, i, _uniqueUnaryNamesByLenDesc, out int ulen))
                 {
-                    tokens.Add(new Token(TokenType.OperatorUnary, expression.Substring(i, ulen), i));
+                    tokens.Add(new Token(TokenType.OperatorUnary, inputMemory, i, ulen));
                     i += ulen;
                     continue;
                 }
                 if (TryMatchOperator(span, i, _operatorNamesByLenDesc, out int blen))
                 {
-                    tokens.Add(new Token(TokenType.Operator, expression.Substring(i, blen), i));
+                    tokens.Add(new Token(TokenType.Operator, inputMemory, i, blen));
                     i += blen;
                     continue;
                 }
@@ -413,16 +415,15 @@ public class Tokenizer : ITokenizer
                 if (m.Success && m.Index == i)
                 {
                     string? group = _identifierHasNamedGroups ? FirstSuccessfulNamedGroup(m, _identifierGroupNames) : null;
-                    var text = m.Value;
 
                     // detect function call: optional spaces + '('
-                    int j = i + text.Length;
+                    int j = i + m.Length;
                     while (j < span.Length && char.IsWhiteSpace(span[j])) j++;
                     bool isFunc = j < span.Length && span[j] == _patterns.OpenParenthesis;
                     if (isFunc) functionParenthesisPositions.Add(j);
 
-                    tokens.Add(new Token(isFunc ? TokenType.Function : TokenType.Identifier, text, i, group));
-                    i += text.Length;
+                    tokens.Add(new Token(isFunc ? TokenType.Function : TokenType.Identifier, inputMemory, i, m.Length, group));
+                    i += m.Length;
                     continue;
                 }
             }
@@ -430,13 +431,13 @@ public class Tokenizer : ITokenizer
             // Fallback: if nothing matched, try operator matching again.
             if (TryMatchOperator(span, i, _uniqueUnaryNamesByLenDesc, out int ulen2))
             {
-                tokens.Add(new Token(TokenType.OperatorUnary, expression.Substring(i, ulen2), i));
+                tokens.Add(new Token(TokenType.OperatorUnary, inputMemory, i, ulen2));
                 i += ulen2;
                 continue;
             }
             if (TryMatchOperator(span, i, _operatorNamesByLenDesc, out int blen2))
             {
-                tokens.Add(new Token(TokenType.Operator, expression.Substring(i, blen2), i));
+                tokens.Add(new Token(TokenType.Operator, inputMemory, i, blen2));
                 i += blen2;
                 continue;
             }
@@ -987,22 +988,22 @@ public class Tokenizer : ITokenizer
     #endregion
 
     // Helper: is text exactly an operator (binary or unary) name? Honors tokenizer case-sensitivity.
-    private bool IsOperatorName(string text)
+    private bool IsOperatorName(string text) => IsOperatorName(text.AsSpan());
+
+    private bool IsOperatorName(ReadOnlySpan<char> text)
     {
         var ops = _patterns.OperatorDictionary;
-        if (ops.ContainsKey(text)) return true;
+        foreach (var k in ops.Keys)
+        {
+            if (_patterns.CaseSensitive ? text.SequenceEqual(k) : text.Equals(k, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
 
         var uops = _patterns.UnaryOperatorDictionary;
-        if (uops.ContainsKey(text)) return true;
-
-        if (!_patterns.CaseSensitive)
+        foreach (var k in uops.Keys)
         {
-            foreach (var k in ops.Keys)
-                if (string.Equals(k, text, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            foreach (var k in uops.Keys)
-                if (string.Equals(k, text, StringComparison.OrdinalIgnoreCase))
-                    return true;
+            if (_patterns.CaseSensitive ? text.SequenceEqual(k) : text.Equals(k, StringComparison.OrdinalIgnoreCase))
+                return true;
         }
 
         return false;
