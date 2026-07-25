@@ -21,6 +21,9 @@ public sealed class UnaryOperatorSyntax
     // args: [operand]; context: optional runtime context
     public Func<object?[], object?, object?>? Calc { get; init; }
 
+    // args: [operand], context, cancellation token, returns result
+    public Func<object?[], object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+
     // Per-syntax validation hook (runs after type matching)
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
 

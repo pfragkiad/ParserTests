@@ -42,7 +42,10 @@ public class FunctionSyntax
 
     public string? Description { get; init; }
 
-    public Func<object?[],object?, object?>? Calc { get; init; } //args, context, returns result
+    public Func<object?[],object?, object?>? Calc { get; init; } //args, context, returns result (IF NULL THEN USE CALCASYNC?)
+
+    //args, context, cancellation token, returns result
+    public Func<object?[], object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
 
     [JsonIgnore]
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }

@@ -226,11 +226,14 @@ public partial class TokenTree
 
         string compressedExpr = workTree.GetExpressionString(patterns, spacesAroundOperators: false);
 
-        var projectedPlan = new List<CompressionEntry>(plan.Count);
         var knownTempVariables = new HashSet<string>(
             plan.Select(e => e.TempVariable),
             dependencyComparer);
 
+        // occurrenceByTemp and knownTempVariables are read-only from here on.
+        // CollectTempDependencies allocates a fresh HashSet per call with no shared writes,
+        // and each iteration writes to a unique array slot — safe for parallel execution.
+        var projectedEntries = new CompressionEntry[plan.Count];
         for (int i = 0; i < plan.Count; i++)
         {
             var entry = plan[i];
@@ -244,7 +247,7 @@ public partial class TokenTree
                 knownTempVariables,
                 dependencyComparer);
 
-            projectedPlan.Add(new CompressionEntry
+            projectedEntries[i] = new CompressionEntry
             {
                 TempVariable = entry.TempVariable,
                 OriginalExpression = entry.OriginalExpression,
@@ -252,8 +255,10 @@ public partial class TokenTree
                 SubstitutedSubtree = entry.SubstitutedSubtree,
                 OccurrenceCount = totalOccurrences,
                 Dependencies = dependencies
-            });
+            };
         }
+
+        var projectedPlan = new List<CompressionEntry>(projectedEntries);
 
         bool isCompressed = projectedPlan.Count > 0;
         if (projectedPlan.Count == 0)
@@ -300,7 +305,7 @@ public partial class TokenTree
         return node.Other is { Count: > 0 };
     }
 
-    private static HashSet<string> CollectTempDependencies(
+    internal static HashSet<string> CollectTempDependencies(
         Node<Token>? node,
         string selfTempVariable,
         HashSet<string> knownTempVariables,

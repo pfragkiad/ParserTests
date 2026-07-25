@@ -317,6 +317,37 @@ public partial class ParserBase : Tokenizer, IParser
         return Evaluate(optimizedTree.Root, variables, mergeConstants: true);
     }
 
+    public virtual async Task<object?> EvaluateAsync(
+        string expression,
+        Dictionary<string, object?>? variables = null,
+        bool optimizeTree = false,
+        CancellationToken ct = default)
+    {
+        if (!optimizeTree)
+        {
+            var postfixTokens = GetPostfixTokens(expression);
+            return await EvaluateAsync(postfixTokens, variables, mergeConstants: true, ct);
+        }
+
+        var variableTypes = variables?
+               .Where(kv => kv.Value is not null)
+               .ToDictionary(kv => kv.Key, kv => kv.Value!.GetType());
+
+        //var tree = GetExpressionTree(expression);
+        //var optimizedTree =tree.OptimizeForDataTypes(
+        //    _options.TokenPatterns,
+        //    variableTypes,
+        //    functionReturnTypes: null,
+        //    ambiguousFunctionReturnTypes: null).Tree;
+
+        var tree = GetExpressionTree(expression);
+        var optimizerResult = GetOptimizedTree(tree, variables, false);
+        var optimizedTree = optimizerResult.Tree;
+
+        return await EvaluateAsync(optimizedTree.Root, variables, mergeConstants: true, ct);
+    }
+
+
 
     // -------- Tree-based evaluation (object) --------
     public virtual object? Evaluate(
@@ -360,6 +391,63 @@ public partial class ParserBase : Tokenizer, IParser
 
                 case TokenType.Function:
                     nodeValueDictionary[node] = EvaluateFunction(node, nodeValueDictionary);
+                    break;
+
+                case TokenType.ArgumentSeparator:
+                    // No value produced for separators (used for function arg routing)
+                    nodeValueDictionary[node] = null;
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
+            }
+        }
+
+        return nodeValueDictionary[root];
+    }
+
+    public virtual async Task<object?> EvaluateAsync(
+        //TokenTree tree,
+        Node<Token> root,
+        Dictionary<string, object?>? variables,
+        bool mergeConstants,
+        CancellationToken ct = default)
+    {
+        if (mergeConstants)
+            variables = MergeVariableConstants(variables);
+
+        var nodeValueDictionary = new Dictionary<Node<Token>, object?>();
+
+        //var postNodes = tree.Root.PostOrderNodes();
+
+        foreach (var nb in root.PostOrderNodes())
+        {
+            var node = (Node<Token>)nb;
+            var token = node.Value!;
+
+            switch (token.TokenType)
+            {
+                case TokenType.Literal:
+                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup);
+                    break;
+
+                case TokenType.Identifier:
+                    nodeValueDictionary[node] =
+                        variables is not null && variables.TryGetValue(token.Text, out var idVal)
+                            ? idVal
+                            : null;
+                    break;
+
+                case TokenType.Operator:
+                    nodeValueDictionary[node] = await EvaluateOperatorAsync(node, nodeValueDictionary, ct);
+                    break;
+
+                case TokenType.OperatorUnary:
+                    nodeValueDictionary[node] = await EvaluateUnaryOperatorAsync(node, nodeValueDictionary, ct);
+                    break;
+
+                case TokenType.Function:
+                    nodeValueDictionary[node] = await EvaluateFunctionAsync(node, nodeValueDictionary, ct);
                     break;
 
                 case TokenType.ArgumentSeparator:
@@ -535,6 +623,19 @@ public partial class ParserBase : Tokenizer, IParser
         return Evaluate(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants);
     }
 
+    protected virtual async Task<object?> EvaluateAsync(
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables,
+        bool mergeConstants,
+        CancellationToken ct = default )
+    {
+        Stack<Token> stack = new();
+        Dictionary<Token, Node<Token>> nodeDictionary = [];
+        Dictionary<Node<Token>, object?> nodeValueDictionary = [];
+        return await EvaluateAsync(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants, ct);
+    }
+
+
     protected object? Evaluate( //MAIN EVALUATE FUNCTION
         List<Token> postfixTokens,
         Dictionary<string, object?>? variables,
@@ -579,6 +680,70 @@ public partial class ParserBase : Tokenizer, IParser
                         token.TokenType == TokenType.Operator
                             ? EvaluateOperator(operatorNode, nodeValueDictionary)
                             : EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
+                    nodeValueDictionary.Add(operatorNode, result);
+                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                }
+                else
+                {
+                    nodeValueDictionary.Add(operatorNode, null); //argument separator produces no result
+                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+                }
+            }
+        }
+
+        ThrowExceptionIfStackIsInvalid(stack);
+        //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW
+
+        var root = nodeDictionary[stack.Pop()];
+
+        return nodeValueDictionary[root];
+    }
+
+    protected async Task<object?> EvaluateAsync( //MAIN EVALUATE FUNCTION
+        List<Token> postfixTokens,
+        Dictionary<string, object?>? variables,
+        Stack<Token> stack,
+        Dictionary<Token, Node<Token>> nodeDictionary,
+        Dictionary<Node<Token>, object?> nodeValueDictionary,
+        bool mergeConstants,
+        CancellationToken ct)
+    {
+        if (mergeConstants)
+            variables = MergeVariableConstants(variables);
+
+        _logger.LogDebug("Evaluating...");
+        foreach (var token in postfixTokens)
+        {
+            if (token.TokenType == TokenType.Function)
+            {
+                Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+                object? functionResult = await EvaluateFunctionAsync(functionNode, nodeValueDictionary, ct);
+                nodeValueDictionary.Add(functionNode, functionResult);
+                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                continue;
+            }
+
+            if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
+            {
+                var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+                object? value = null;
+                if (token.TokenType == TokenType.Literal)
+                    nodeValueDictionary.Add(tokenNode, value = tokenNode.Value!.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup));
+                else if (token.TokenType == TokenType.Identifier && variables is not null)
+                    nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
+                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                continue;
+            }
+
+            if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
+            {
+                Node<Token> operatorNode = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
+                if (token.TokenType != TokenType.ArgumentSeparator)
+                {
+                    var result =
+                        token.TokenType == TokenType.Operator
+                            ? await EvaluateOperatorAsync(operatorNode, nodeValueDictionary, ct)
+                            : await EvaluateUnaryOperatorAsync(operatorNode, nodeValueDictionary, ct);
                     nodeValueDictionary.Add(operatorNode, result);
                     _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
@@ -709,6 +874,13 @@ public partial class ParserBase : Tokenizer, IParser
         return EvaluateOperator(operatorName, LeftOperand, RightOperand);
     }
 
+    protected async Task<object?> EvaluateOperatorAsync(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary, CancellationToken ct)
+    {
+        var (leftOperand, rightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        return await EvaluateOperatorAsync(operatorName, leftOperand, rightOperand, ct);
+    }
+
     protected Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
         var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
@@ -723,6 +895,15 @@ public partial class ParserBase : Tokenizer, IParser
             _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
             nodeValueDictionary);
         return EvaluateUnaryOperator(operatorName, operand);
+    }
+
+    protected async Task<object?> EvaluateUnaryOperatorAsync(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary, CancellationToken ct)
+    {
+        string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
+        var operand = operatorNode.GetUnaryArgument(
+            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
+            nodeValueDictionary);
+        return await EvaluateUnaryOperatorAsync(operatorName, operand, ct);
     }
 
     protected Type EvaluateUnaryOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -744,7 +925,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
-            var localVars = new Dictionary<string, object?>(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            var localVars = new Dictionary<string, object?>(_patterns.Comparer);
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 
@@ -753,6 +934,25 @@ public partial class ParserBase : Tokenizer, IParser
 
         return EvaluateFunction(functionName, args);
     }
+
+    protected async Task<object?> EvaluateFunctionAsync(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary, CancellationToken ct)
+    {
+        string functionName = _patterns.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
+        object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
+        if (CustomFunctions.TryGetValue(functionName, out var funcDef))
+        {
+            if (args.Length != funcDef.Parameters.Length)
+                throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
+            var localVars = new Dictionary<string, object?>(_patterns.Comparer);
+            for (int i = 0; i < funcDef.Parameters.Length; i++)
+                localVars[funcDef.Parameters[i]] = args[i];
+
+            return await EvaluateAsync(funcDef.Body, localVars, optimizeTree: false, ct); //  <--------
+        }
+
+        return await EvaluateFunctionAsync(functionName, args, ct); //FunctionDefinition implementation  <--------
+    }
+
 
     protected Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
@@ -764,7 +964,7 @@ public partial class ParserBase : Tokenizer, IParser
             if (args.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
-            var localVars = new Dictionary<string, object?>(_patterns.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            var localVars = new Dictionary<string, object?>(_patterns.Comparer);
             for (int i = 0; i < funcDef.Parameters.Length; i++)
                 localVars[funcDef.Parameters[i]] = args[i];
 
@@ -788,17 +988,27 @@ public partial class ParserBase : Tokenizer, IParser
     protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand) =>
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
+    protected virtual Task<object?> EvaluateOperatorAsync(string operatorName, object? leftOperand, object? rightOperand, CancellationToken ct) =>
+        Task.FromResult(EvaluateOperator(operatorName, leftOperand, rightOperand));
+
     protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand) =>
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
     protected virtual object? EvaluateUnaryOperator(string operatorName, object? operand) =>
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
+    protected virtual Task<object?> EvaluateUnaryOperatorAsync(string operatorName, object? operand, CancellationToken ct) =>
+        Task.FromResult(EvaluateUnaryOperator(operatorName, operand));
+
     protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand) =>
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
     protected virtual object? EvaluateFunction(string functionName, object?[] args) =>
         throw new InvalidOperationException($"Unknown function ({functionName})");
+
+    protected virtual async Task<object?> EvaluateFunctionAsync(string functionName, object?[] args, CancellationToken ct) =>
+        throw new InvalidOperationException($"Unknown function ({functionName})");
+
 
     protected virtual Type EvaluateFunctionType(string functionName, object?[] args) =>
         throw new InvalidOperationException($"Unknown function ({functionName})");
@@ -847,6 +1057,14 @@ public partial class ParserBase : Tokenizer, IParser
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
         return f.ValidateAndCalc(args, Context);
     }
+
+    public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateFunctionAsync(string functionName, object?[] args, CancellationToken ct)
+    {
+        FunctionDefinition? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return await f.ValidateAndCalcAsync(args, Context, ct); //also covers Calc
+    }
+
     #endregion
 
 
@@ -918,12 +1136,26 @@ public partial class ParserBase : Tokenizer, IParser
         return info.ValidateAndCalc(leftArg, rightArg, Context);
     }
 
+    public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateBinaryOperatorAsync(string operatorName, object? leftArg, object? rightArg, CancellationToken ct)
+    {
+        var info = GetBinaryOperatorInformation(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return await info.ValidateAndCalcAsync(leftArg, rightArg, Context, ct: ct);
+    }
+
     // Catalog-backed validate + evaluate (unary)
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateUnaryOperator(string operatorName, object? arg)
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
         return info.ValidateAndCalc(arg, Context);
+    }
+
+    public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateUnaryOperatorAsync(string operatorName, object? arg, CancellationToken ct)
+    {
+        var info = ResolveUnaryOperatorInfoForName(operatorName);
+        if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
+        return await info.ValidateAndCalcAsync(arg, Context, ct: ct);
     }
 
     // Catalog-backed resolve output type (binary)

@@ -97,6 +97,7 @@ public class Tokenizer : ITokenizer
     }
 
     protected readonly TokenPatterns _patterns;
+   
 
     protected readonly TokenizerOptions _options;
     public TokenizerOptions TokenizerOptions => _options;

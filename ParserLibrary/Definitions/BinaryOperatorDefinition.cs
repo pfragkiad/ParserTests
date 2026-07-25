@@ -15,7 +15,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
     public List<BinaryOperatorSyntax>? Syntaxes { get; init; }
 
     // Optional cross-syntax validation (e.g., domain rules)
-    public Func<object?,object?, Result<BinaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
+    public Func<object?, object?, Result<BinaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
 
     public Result<Type, ValidationResult> ResolveOutputType(object? left, object? right, bool allowParentTypes = true)
     {
@@ -37,61 +37,68 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
         return syn.Calc(left, right, context);
     }
 
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? left, object? right, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    {
+        var match = GetValidSyntax(left, right, allowParentTypes);
+        if (match.IsFailure) return match.Error!;
+
+        var syn = match.Value!.MatchedSyntax;
+        if (syn.CalcAsync is not null)
+            return await syn.CalcAsync(left, right, context, ct);
+        if (syn.Calc is not null)
+            return syn.Calc(left, right, context);
+
+        return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
+    }
+
     public ValidationResult Validate(object? left, object? right, bool allowParentTypes = true)
         => GetValidSyntax(left, right, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
     public Result<BinaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? left, object? right, bool allowParentTypes = true)
     {
-        if (Syntaxes is null || Syntaxes.Count == 0)
-            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
-
-        // Resolve types (support passing Type directly)
         var leftType = GetArgumentType(left);
         var rightType = GetArgumentType(right);
 
-        foreach (var syn in Syntaxes)
+        var syntaxResult = FindMatchingSyntax(
+            Syntaxes,
+            syn => syn.IsMatch(leftType, rightType, allowParentTypes),
+            syn => syn.AdditionalValidation?.Invoke(left, right) ?? ValidationHelpers.Success,
+            noSyntaxCategory: "operator",
+            noSyntaxMessage: $"Operator '{Name}' has no declared syntaxes.",
+            noMatchValidationFactory: () =>
+            {
+                var resolvedNames = $"({FormatTypeName(leftType)}, {FormatTypeName(rightType)})";
+
+                string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+                {
+                    string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+                    var left = FormatTypeSet(syn.LeftTypes);
+                    var right = FormatTypeSet(syn.RightTypes);
+                    return $"  {scenarioPart}Binary: ({left}, {right}) -> {FormatTypeName(syn.OutputType)}";
+                });
+
+                string message =
+                    $"'{Name}' operator operands do not match any declared syntax." +
+                    $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+                    $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+                return ValidationHelpers.FailureResult("operands", message, resolvedNames);
+            });
+
+        if (syntaxResult.IsFailure) return syntaxResult.Error!;
+
+        if (AdditionalGlobalValidation is not null)
         {
-            if (!syn.IsMatch(leftType, rightType, allowParentTypes)) continue;
-
-            if (syn.AdditionalValidation is not null)
-            {
-                var v = syn.AdditionalValidation(left, right);
-                if (!v.IsValid) return v;
-            }
-
-            var match = new BinaryOperatorSyntaxMatch
-            {
-                MatchedSyntax = syn,
-                LeftType = leftType,
-                RightType = rightType
-            };
-
-            if (AdditionalGlobalValidation is not null)
-            {
-                var g = AdditionalGlobalValidation(left, right);
-                if (g.IsFailure) return g.Error!;
-            }
-
-            return match;
+            var globalValidation = AdditionalGlobalValidation(left, right);
+            if (globalValidation.IsFailure) return globalValidation.Error!;
         }
 
-        // Build detailed diagnostic similar to FunctionInformation
-        var resolvedNames = $"({FormatTypeName(leftType)}, {FormatTypeName(rightType)})";
-
-        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        return new BinaryOperatorSyntaxMatch
         {
-            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
-            var left = FormatTypeSet(syn.LeftTypes);
-            var right = FormatTypeSet(syn.RightTypes);
-            return $"  {scenarioPart}Binary: ({left}, {right}) -> {FormatTypeName(syn.OutputType)}";
-        });
-
-        string message =
-            $"'{Name}' operator operands do not match any declared syntax." +
-            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
-            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
-
-        return ValidationHelpers.FailureResult("operands", message, resolvedNames);
+            MatchedSyntax = syntaxResult.Value!,
+            LeftType = leftType,
+            RightType = rightType
+        };
     }
 
     // New: instance mapper to DTO (mirrors FunctionInformation pattern)

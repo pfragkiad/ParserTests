@@ -7,3 +7,5 @@ global using ParserLibrary;
 global using ParserLibrary.ExpressionTree;
 global using ParserLibrary.Parsers;
 global using ParserLibrary.Tokenizers;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("ParserUnitTests")]

@@ -40,56 +40,64 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
         return syn.Calc([operand], context);
     }
 
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? operand, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    {
+        var match = GetValidSyntax(operand, allowParentTypes);
+        if (match.IsFailure) return match.Error!;
+
+        var syn = match.Value!.MatchedSyntax;
+        if (syn.CalcAsync is not null)
+            return await syn.CalcAsync([operand], context, ct);
+        if (syn.Calc is not null)
+            return syn.Calc([operand], context);
+
+        return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
+    }
+
     public ValidationResult Validate(object? operand, bool allowParentTypes = true)
         => GetValidSyntax(operand, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
     public Result<UnaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? operand, bool allowParentTypes = true)
     {
-        if (Syntaxes is null || Syntaxes.Count == 0)
-            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
+        var operandType = GetArgumentType(operand);
 
-        var t = GetArgumentType(operand);
+        var syntaxResult = FindMatchingSyntax(
+            Syntaxes,
+            syn => syn.IsMatch(operandType, allowParentTypes),
+            syn => syn.AdditionalValidation?.Invoke([operand]) ?? ValidationHelpers.Success,
+            noSyntaxCategory: "operator",
+            noSyntaxMessage: $"Operator '{Name}' has no declared syntaxes.",
+            noMatchValidationFactory: () =>
+            {
+                var resolvedNames = FormatTypeName(operandType);
 
-        foreach (var syn in Syntaxes)
+                string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+                {
+                    string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+                    var operandTypes = FormatTypeSet(syn.OperandTypes);
+                    return $"  {scenarioPart}Unary: ({operandTypes}) -> {FormatTypeName(syn.OutputType)}";
+                });
+
+                string message =
+                    $"{Name} operator operand does not match any declared syntax." +
+                    $"{Environment.NewLine}Provided type: [{resolvedNames}]" +
+                    $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+                return ValidationHelpers.FailureResult("operands", message, resolvedNames);
+            });
+
+        if (syntaxResult.IsFailure) return syntaxResult.Error!;
+
+        if (AdditionalGlobalValidation is not null)
         {
-            if (!syn.IsMatch(t, allowParentTypes)) continue;
-
-            if (syn.AdditionalValidation is not null)
-            {
-                var v = syn.AdditionalValidation([operand]);
-                if (!v.IsValid) return v;
-            }
-
-            var match = new UnaryOperatorSyntaxMatch
-            {
-                MatchedSyntax = syn,
-                OperandType = t
-            };
-
-            if (AdditionalGlobalValidation is not null)
-            {
-                var g = AdditionalGlobalValidation([operand]);
-                if (g.IsFailure) return g.Error!;
-            }
-
-            return match;
+            var globalValidation = AdditionalGlobalValidation([operand]);
+            if (globalValidation.IsFailure) return globalValidation.Error!;
         }
 
-        // Build detailed diagnostic similar to FunctionInformation
-        var resolvedNames = FormatTypeName(t);
-
-        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        return new UnaryOperatorSyntaxMatch
         {
-            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
-            var operandTypes = FormatTypeSet(syn.OperandTypes);
-            return $"  {scenarioPart}Unary: ({operandTypes}) -> {FormatTypeName(syn.OutputType)}";
-        });
-
-        string message =
-            $"{Name} operator operand does not match any declared syntax." +
-            $"{Environment.NewLine}Provided type: [{resolvedNames}]" +
-            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
-
-        return ValidationHelpers.FailureResult("operands", message, resolvedNames);
+            MatchedSyntax = syntaxResult.Value!,
+            OperandType = operandType
+        };
     }
 }

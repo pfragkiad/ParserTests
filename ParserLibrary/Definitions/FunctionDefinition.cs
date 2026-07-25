@@ -83,14 +83,38 @@ public class FunctionDefinition : OperatorDefinition
         return syntaxMatch.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, object? context)
+    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, object? context, bool allowParentTypes = true) //only Calc, no async
     {
-        var syntaxMatch = ValidateArgumentTypes(args);
+        var syntaxMatch = ValidateArgumentTypes(args, allowParentTypes);
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
         return syntax.Calc!(args, context);
     }
+
+    //both CalcAsync and Calc support
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true) 
+    {
+        var syntaxMatch = ValidateArgumentTypes(args, allowParentTypes);
+        if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
+
+
+        //only Calc can be async for the moment
+        var syntax = syntaxMatch.Value!.MatchedSyntax;
+        if (syntax.CalcAsync is not null)
+        {
+            return await syntax.CalcAsync(args, context, ct);
+        }
+        else if (syntax.Calc is not null)
+        {
+            return syntax.Calc(args, context);
+        }
+        else
+        {
+            return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no calculation method.", null);
+        }
+    }
+
 
 
     public ValidationResult Validate(object?[] args)
@@ -114,9 +138,7 @@ public class FunctionDefinition : OperatorDefinition
         }
 
         // Resolve argument types (support passing Type directly) for the return payload
-        var resolved = new Type[args.Length];
-        for (int i = 0; i < args.Length; i++)
-            resolved[i] = GetArgumentType(args[i]);
+        var resolved = ResolveArgumentTypes(args);
 
         return new SyntaxMatch
         {
@@ -128,20 +150,13 @@ public class FunctionDefinition : OperatorDefinition
     // Centralized matcher: validates syntaxes, nulls, type compatibility (with inheritance), and string constraints
     public Result<FunctionSyntax, ValidationResult> GetValidSyntax(object?[] args, bool allowParentTypes = true)
     {
-        // Require syntaxes to be present
-        if (Syntaxes is null || Syntaxes.Count == 0)
-            return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no declared syntaxes.", null);
-
         // Resolve argument types (support passing Type directly)
-        var resolved = new Type[args.Length];
-        for (int i = 0; i < args.Length; i++)
-            resolved[i] = GetArgumentType(args[i]);
+        var resolved = ResolveArgumentTypes(args);
 
-        // Try to match any syntax
-        foreach (var syn in Syntaxes)
-        {
-            // 1) Try fixed signature
-            if (syn.IsFixedMatch(resolved, allowParentTypes))
+        return FindMatchingSyntax(
+            Syntaxes,
+            syn => syn.IsFixedMatch(resolved, allowParentTypes) || syn.IsDynamicMatch(resolved, allowParentTypes),
+            syn =>
             {
                 var strCheck = ValidateStringConstraints(args);
                 if (!strCheck.IsValid) return strCheck;
@@ -152,68 +167,55 @@ public class FunctionDefinition : OperatorDefinition
                     if (!addVal.IsValid) return addVal;
                 }
 
-                return syn;
-            }
-
-            // 2) Try dynamic signature
-            if (syn.IsDynamicMatch(resolved, allowParentTypes))
+                return ValidationHelpers.Success;
+            },
+            noSyntaxCategory: "function",
+            noSyntaxMessage: $"Function '{Name}' has no declared syntaxes.",
+            noMatchValidationFactory: () =>
             {
-                var strCheckDyn = ValidateStringConstraints(args);
-                if (!strCheckDyn.IsValid) return strCheckDyn;
+                var resolvedNames = resolved.Length == 0
+                    ? "<no arguments>"
+                    : string.Join(", ", resolved.Select(TypeNameDisplay.GetDisplayTypeName));
 
-                if (syn.AdditionalValidation is not null)
+                string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
                 {
-                    var addValDyn = syn.AdditionalValidation(args);
-                    if (!addValDyn.IsValid) return addValDyn;
-                }
-                return syn;
-            }
-        }
+                    string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+                    if (syn.InputsFixed is { Count: > 0 })
+                    {
+                        var fixedParts = syn.InputsFixed!
+                            .Select(set => set.Count == 1
+                                ? TypeNameDisplay.GetDisplayTypeName(set.First())
+                                : "[" + string.Join("|", set.Select(TypeNameDisplay.GetDisplayTypeName)) + "]")
+                            .ToArray();
+                        return $"  {scenarioPart}Fixed: ({string.Join(", ", fixedParts)}) -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+                    }
+                    else if (syn.InputsDynamic.HasValue)
+                    {
+                        var dyn = syn.InputsDynamic.Value;
+                        string first = dyn.FirstInputType is { Count: > 0 }
+                            ? "(" + string.Join("|", dyn.FirstInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                            : "-";
+                        string middle = dyn.MiddleInputTypes is { Count: > 0 }
+                            ? "(" + string.Join("|", dyn.MiddleInputTypes.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                            : "-";
+                        string last = dyn.LastInputType is { Count: > 0 }
+                            ? "(" + string.Join("|", dyn.LastInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                            : "-";
+                        return $"  {scenarioPart}Dynamic: first={first}, middle={middle}* (min {dyn.MinMiddleArgumentsCount}), last={last} -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+                    }
+                    else
+                    {
+                        return $"  {scenarioPart}Empty -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+                    }
+                });
 
-        // Nothing matched
-        // Nothing matched: build detailed diagnostic
-        var resolvedNames = resolved.Length == 0
-            ? "<no arguments>"
-            : string.Join(", ", resolved.Select(TypeNameDisplay.GetDisplayTypeName));
+                string message =
+                    $"'{Name}' arguments do not match any declared syntax." +
+                    $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+                    $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
 
-        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
-        {
-            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
-            if (syn.InputsFixed is { Count: > 0 })
-            {
-                var fixedParts = syn.InputsFixed!
-                    .Select(set => set.Count == 1
-                        ? TypeNameDisplay.GetDisplayTypeName(set.First())
-                        : "[" + string.Join("|", set.Select(TypeNameDisplay.GetDisplayTypeName)) + "]")
-                    .ToArray();
-                return $"  {scenarioPart}Fixed: ({string.Join(", ", fixedParts)}) -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-            }
-            else if (syn.InputsDynamic.HasValue)
-            {
-                var dyn = syn.InputsDynamic.Value;
-                string first = dyn.FirstInputType is { Count: > 0 }
-                    ? "(" + string.Join("|", dyn.FirstInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                    : "-";
-                string middle = dyn.MiddleInputTypes is { Count: > 0 }
-                    ? "(" + string.Join("|", dyn.MiddleInputTypes.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                    : "-";
-                string last = dyn.LastInputType is { Count: > 0 }
-                    ? "(" + string.Join("|", dyn.LastInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                    : "-";
-                return $"  {scenarioPart}Dynamic: first={first}, middle={middle}* (min {dyn.MinMiddleArgumentsCount}), last={last} -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-            }
-            else
-            {
-                return $"  {scenarioPart}Empty -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-            }
-        });
-
-        string message =
-            $"'{Name}' arguments do not match any declared syntax." +
-            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
-            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
-
-        return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
+                return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
+            });
     }
 
     public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later

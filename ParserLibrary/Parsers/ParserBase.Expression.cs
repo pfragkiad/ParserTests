@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ParserLibrary.Parsers;
+﻿namespace ParserLibrary.Parsers;
 
 public partial class ParserBase
 {
@@ -35,7 +29,7 @@ public partial class ParserBase
     /// </summary>
     public TokenTree ExpandCustomFunctions(TokenTree tree, int maxDepth = 10)
     {
-        if (tree.Root?.Value is not Token) return tree;
+        if (tree.Root?.Value is null) return tree;
 
         // Work on a deep copy so we don't mutate caller's tree
         var working = tree.DeepCloneTyped();
@@ -46,7 +40,7 @@ public partial class ParserBase
     }
     public void ExpandCustomFunctionsInPlace(TokenTree tree, int maxDepth = 10)
     {
-        if (tree.Root?.Value is not Token) return;
+        if (tree.Root?.Value is null) return;
 
         var newRoot = ExpandNode((Node<Token>)tree.Root, 0, _options.TokenPatterns, maxDepth);
         tree.Root = newRoot;
@@ -58,7 +52,7 @@ public partial class ParserBase
         // Depth guard to prevent infinite recursion on self-recursive functions
         if (depth > maxDepth) return node;
 
-        var tok = (Token)node.Value!;
+        Token tok = node.Value!;
 
         // Handle custom functions: inline body with parameter substitution
         if (tok.TokenType == TokenType.Function)

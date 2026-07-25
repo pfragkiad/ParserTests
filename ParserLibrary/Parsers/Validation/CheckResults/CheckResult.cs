@@ -14,6 +14,9 @@ public abstract class CheckResult
         return [new ValidationFailure("Formula.Exception", Exception.Message)];
     }
 
+    public ValidationResult ToValidationResult() =>
+        new(GetValidationFailures());
+
     public override string ToString() =>
         IsSuccess ? "Success" :
             $"Failed with {GetValidationFailures().Count} validation failures";

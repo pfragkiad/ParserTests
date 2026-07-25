@@ -1,10 +1,12 @@
 using ParserLibrary.Parsers;
 using ParserLibrary.Parsers.Common;
 using ParserLibrary.Tokenizers;
+using System.Diagnostics;
+using Xunit.v3;
 
 namespace ParserUnitTests;
 
-public class TreeCompressorTests
+public class TreeCompressorTests(ITestOutputHelper output)
 {
     [Fact]
     public void EvaluateNodeWithDependencies_CompressedRoot_MatchesOriginalEvaluation()
@@ -301,5 +303,119 @@ public class TreeCompressorTests
         string plan = result.GetPlanText(showDirectDependencies: true);
 
         Assert.Contains("direct deps: _T1, _t1", plan, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DependencyLoop_SequentialVsParallel_Timing()
+    {
+        var parser = (ParserBase)ParserApp.GetDefaultParser();
+        var patterns = parser.TokenizerOptions.TokenPatterns;
+
+        // Synthesize a large expression to simulate a plan with thousands of entries,
+        // comparable to what template-expanded formulas like CINSTQ(deal(N)) produce.
+        // Each term  sin(a{i}+b)*sin(a{i}+b)  contributes two entries:
+        //   one for (a{i}+b) and one for sin(a{i}+b) — both appear exactly twice.
+        // With N=1000 we get ~2000 plan entries.
+        const int termCount = 1000;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < termCount; i++)
+        {
+            if (i > 0) sb.Append('+');
+            sb.Append($"sin(a{i}+b)*sin(a{i}+b)");
+        }
+        string expr = sb.ToString();
+
+        var tree = parser.GetExpressionTree(expr);
+        var compression = tree.Compress(patterns, tempVarPrefix: "_T", minOccurrences: 2, minDepth: 1,
+            keepOriginalTree: true);
+
+        var entries = compression.Entries;
+        var knownTempVariables = new HashSet<string>(
+            entries.Select(e => e.TempVariable),
+            patterns.Comparer);
+        StringComparer comparer = patterns.Comparer;
+
+        const int iterations = 50;
+
+        // Warm-up
+        for (int i = 0; i < 10; i++)
+            foreach (var e in entries)
+                TokenTree.CollectTempDependencies(e.SubstitutedSubtree, e.TempVariable, knownTempVariables, comparer);
+
+        // Sequential
+        var sw = Stopwatch.StartNew();
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            var projected = new CompressionEntry[entries.Count];
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                projected[i] = new CompressionEntry
+                {
+                    TempVariable = entry.TempVariable,
+                    OriginalExpression = entry.OriginalExpression,
+                    SubstitutedExpression = entry.SubstitutedExpression,
+                    SubstitutedSubtree = entry.SubstitutedSubtree,
+                    OccurrenceCount = entry.OccurrenceCount,
+                    Dependencies = TokenTree.CollectTempDependencies(
+                        entry.SubstitutedSubtree, entry.TempVariable, knownTempVariables, comparer)
+                };
+            }
+        }
+        sw.Stop();
+        long seqMs = sw.ElapsedMilliseconds;
+
+        // Parallel
+        sw.Restart();
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            var projected = new CompressionEntry[entries.Count];
+            Parallel.For(0, entries.Count, i =>
+            {
+                var entry = entries[i];
+                projected[i] = new CompressionEntry
+                {
+                    TempVariable = entry.TempVariable,
+                    OriginalExpression = entry.OriginalExpression,
+                    SubstitutedExpression = entry.SubstitutedExpression,
+                    SubstitutedSubtree = entry.SubstitutedSubtree,
+                    OccurrenceCount = entry.OccurrenceCount,
+                    Dependencies = TokenTree.CollectTempDependencies(
+                        entry.SubstitutedSubtree, entry.TempVariable, knownTempVariables, comparer)
+                };
+            });
+        }
+        sw.Stop();
+        long parMs = sw.ElapsedMilliseconds;
+
+        // Parallel (max 2 threads)
+        var opts2 = new ParallelOptions { MaxDegreeOfParallelism = 2 };
+        sw.Restart();
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            var projected = new CompressionEntry[entries.Count];
+            Parallel.For(0, entries.Count, opts2, i =>
+            {
+                var entry = entries[i];
+                projected[i] = new CompressionEntry
+                {
+                    TempVariable = entry.TempVariable,
+                    OriginalExpression = entry.OriginalExpression,
+                    SubstitutedExpression = entry.SubstitutedExpression,
+                    SubstitutedSubtree = entry.SubstitutedSubtree,
+                    OccurrenceCount = entry.OccurrenceCount,
+                    Dependencies = TokenTree.CollectTempDependencies(
+                        entry.SubstitutedSubtree, entry.TempVariable, knownTempVariables, comparer)
+                };
+            });
+        }
+        sw.Stop();
+        long par2Ms = sw.ElapsedMilliseconds;
+
+        output.WriteLine($"Plan entries      : {entries.Count}");
+        output.WriteLine($"Iterations        : {iterations}");
+        output.WriteLine($"Sequential        : {seqMs} ms");
+        output.WriteLine($"Parallel (unbounded): {parMs} ms  ({(double)seqMs / parMs:F2}x)");
+        output.WriteLine($"Parallel (2 threads): {par2Ms} ms  ({(double)seqMs / par2Ms:F2}x)");
     }
 }

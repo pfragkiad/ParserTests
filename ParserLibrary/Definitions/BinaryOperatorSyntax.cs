@@ -22,6 +22,9 @@ public sealed class BinaryOperatorSyntax
     // args: left, right; context: optional runtime context
     public Func<object?, object?, object?, object?>? Calc { get; init; }
 
+    // args: left, right, context, cancellation token, returns result
+    public Func<object?, object?, object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+
     // Per-syntax validation hook (runs after type matching)
     public Func<object?, object?, ValidationResult>? AdditionalValidation { get; init; }
 
