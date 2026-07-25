@@ -27,3 +27,13 @@ public sealed class NullType
 
     public static bool operator |(bool left, NullType _) => left;
 }
+
+public sealed class AnyType
+{
+    private AnyType() { }
+}
+
+public sealed class AnyNonNullType
+{
+    private AnyNonNullType() { }
+}

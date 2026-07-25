@@ -22,6 +22,9 @@ public readonly struct InputsDynamic
 
 public class FunctionSyntax
 {
+    /// <summary>
+    /// Scenario ID is optional but can assist in direct syntax identification if combined with an enum code value.
+    /// </summary>
     public int? Scenario { get; init; }
 
     public string? Expression { get; init; } //useful for custom functions only

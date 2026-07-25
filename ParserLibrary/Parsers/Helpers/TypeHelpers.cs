@@ -69,5 +69,15 @@ public static class TypeHelpers
     }
 
     public static bool MatchesAnyExpectedWithNullAwareness(Type actual, IEnumerable<Type> expectedTypes, bool allowParentTypes)
-        => expectedTypes.Any(expected => TypeMatchesWithNullAwareness(actual, expected, allowParentTypes));
+    {
+        var expected = expectedTypes as Type[] ?? [.. expectedTypes];
+
+        if (expected.Any(t => ReferenceEquals(t, typeof(AnyType))))
+            return true;
+
+        if (expected.Any(t => ReferenceEquals(t, typeof(AnyNonNullType))))
+            return !IsNullArgumentType(actual);
+
+        return expected.Any(t => TypeMatchesWithNullAwareness(actual, t, allowParentTypes));
+    }
 }

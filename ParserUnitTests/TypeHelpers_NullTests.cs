@@ -71,4 +71,23 @@ public class TypeHelpers_NullTests
         Assert.True(NullType.Instance | true);
         Assert.True(true | NullType.Instance);
     }
+
+    [Fact]
+    public void MatchesAnyExpectedWithNullAwareness_AnyType_MatchesNullAndNonNull()
+    {
+        var expected = new HashSet<Type> { typeof(AnyType) };
+
+        Assert.True(TypeHelpers.MatchesAnyExpectedWithNullAwareness(typeof(NullType), expected, allowParentTypes: true));
+        Assert.True(TypeHelpers.MatchesAnyExpectedWithNullAwareness(typeof(int), expected, allowParentTypes: true));
+    }
+
+    [Fact]
+    public void MatchesAnyExpectedWithNullAwareness_AnyNonNullType_RejectsNullMarker()
+    {
+        var expected = new HashSet<Type> { typeof(AnyNonNullType) };
+
+        Assert.False(TypeHelpers.MatchesAnyExpectedWithNullAwareness(typeof(NullType), expected, allowParentTypes: true));
+        Assert.False(TypeHelpers.MatchesAnyExpectedWithNullAwareness(typeof(object), expected, allowParentTypes: true));
+        Assert.True(TypeHelpers.MatchesAnyExpectedWithNullAwareness(typeof(bool), expected, allowParentTypes: true));
+    }
 }
