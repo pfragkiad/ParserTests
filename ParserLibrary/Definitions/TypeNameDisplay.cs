@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using ParserLibrary.Parsers.Helpers;
 
 namespace ParserLibrary.Definitions;
 
@@ -20,6 +21,7 @@ public static class TypeNameDisplay
         [typeof(double)] = "double",
         [typeof(decimal)] = "decimal",
         [typeof(void)] = "void",
+        [typeof(NullType)] = "null",
         [typeof(object)] = "object",
         [typeof(char)] = "char",
         [typeof(sbyte)] = "sbyte",

@@ -869,9 +869,9 @@ public partial class ParserBase : Tokenizer, IParser
 
     protected object? EvaluateOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
     {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        var (leftOperand, rightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
         string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
-        return EvaluateOperator(operatorName, LeftOperand, RightOperand);
+        return EvaluateOperator(operatorName, leftOperand, rightOperand);
     }
 
     protected async Task<object?> EvaluateOperatorAsync(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary, CancellationToken ct)
@@ -982,7 +982,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected virtual Type EvaluateLiteralType(string s, string? group)
     {
         var value = EvaluateLiteral(s, group);
-        return value is null ? typeof(object) : value.GetType();
+        return value is null ? TypeHelpers.NullArgumentType : value.GetType();
     }
 
     protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand) =>
@@ -1212,8 +1212,8 @@ public partial class ParserBase : Tokenizer, IParser
         //    ]);
 
         // Resolve operand types (support passing Type directly)
-        Type leftType = leftArg is Type lt ? lt : leftArg?.GetType() ?? typeof(object);
-        Type rightType = rightArg is Type rt ? rt : rightArg?.GetType() ?? typeof(object);
+        Type leftType = leftArg is Type lt ? TypeHelpers.NormalizeNullMarkerType(lt) : TypeHelpers.ResolveRuntimeArgumentType(leftArg);
+        Type rightType = rightArg is Type rt ? TypeHelpers.NormalizeNullMarkerType(rt) : TypeHelpers.ResolveRuntimeArgumentType(rightArg);
 
         // If no constraints provided, accept any types
         if (allowedOperandTypes is null || allowedOperandTypes.Count == 0)

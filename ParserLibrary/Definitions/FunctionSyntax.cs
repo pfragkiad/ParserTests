@@ -131,7 +131,7 @@ public class FunctionSyntax
 
             // Use null-aware type matching to ensure that null (object) only matches
             // syntaxes that explicitly declare object in their allowed types
-            if (!expectedSet.Any(exp => TypeHelpers.TypeMatchesWithNullAwareness(actual, exp, allowParentTypes)))
+            if (!TypeHelpers.MatchesAnyExpectedWithNullAwareness(actual, expectedSet, allowParentTypes))
                 return false;
         }
 
@@ -161,7 +161,7 @@ public class FunctionSyntax
         // Check first (use null-aware matching)
         if (hasFirst)
         {
-            if (!dyn.FirstInputType!.Any(ft => TypeHelpers.TypeMatchesWithNullAwareness(resolved[0], ft, allowParentTypes)))
+            if (!TypeHelpers.MatchesAnyExpectedWithNullAwareness(resolved[0], dyn.FirstInputType!, allowParentTypes))
                 return false;
             start = 1;
         }
@@ -169,7 +169,7 @@ public class FunctionSyntax
         // Check last (use null-aware matching)
         if (hasLast)
         {
-            if (!dyn.LastInputType!.Any(lt => TypeHelpers.TypeMatchesWithNullAwareness(resolved[^1], lt, allowParentTypes)))
+            if (!TypeHelpers.MatchesAnyExpectedWithNullAwareness(resolved[^1], dyn.LastInputType!, allowParentTypes))
                 return false;
             endExclusive = resolved.Length - 1;
         }
@@ -191,7 +191,7 @@ public class FunctionSyntax
             {
                 var actualMid = resolved[i];
                 // Use null-aware matching: any expected type that matches (supports inheritance if allowed)
-                if (!middleSet.Any(expectedMid => TypeHelpers.TypeMatchesWithNullAwareness(actualMid, expectedMid, allowParentTypes)))
+                if (!TypeHelpers.MatchesAnyExpectedWithNullAwareness(actualMid, middleSet, allowParentTypes))
                     return false;
             }
         }

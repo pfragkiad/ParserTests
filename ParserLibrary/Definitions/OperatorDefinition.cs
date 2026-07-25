@@ -21,9 +21,10 @@ public class OperatorDefinition
 
     public static Type GetArgumentType(object? o)
     {
-        if (o is null) return typeof(object);
-        if (o is Type t) return t;
-        return o.GetType();
+        if (o is Type t)
+            return TypeHelpers.NormalizeNullMarkerType(t);
+
+        return TypeHelpers.ResolveRuntimeArgumentType(o);
     }
 
     protected static Type[] ResolveArgumentTypes(object?[] args)

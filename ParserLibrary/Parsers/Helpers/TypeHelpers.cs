@@ -2,6 +2,9 @@
 
 public static class TypeHelpers
 {
+    public static readonly Type NullArgumentType = typeof(NullType);
+    public static readonly Type LegacyNullArgumentType = typeof(object);
+
     // Common type-compatibility helper (exact or superclass/interface when allowed)
     public static bool TypeMatches(Type actual, Type expected, bool allowParentTypes)
     {
@@ -10,31 +13,61 @@ public static class TypeHelpers
         return ReferenceEquals(actual, expected) || allowParentTypes && actual.IsAssignableFrom(expected);
     }
 
+    public static bool IsNullArgumentType(Type t) =>
+        ReferenceEquals(t, NullArgumentType) || ReferenceEquals(t, LegacyNullArgumentType);
+
+    public static bool IsNullValue(object? value) => value is null || value is NullType;
+
+    public static bool IsNonNullValue(object? value) => !IsNullValue(value);
+
+    public static object NormalizeNullValue(object? value) => IsNullValue(value) ? NullType.Instance : value!;
+
+    public static Type NormalizeNullMarkerType(Type type) => IsNullArgumentType(type) ? NullArgumentType : type;
+
+    public static Type ResolveRuntimeArgumentType(object? value)
+    {
+        var normalized = NormalizeNullValue(value);
+        return normalized is NullType ? NullArgumentType : normalized.GetType();
+    }
+
+    public static bool TryPropagateNullBinary(object? left, object? right, out object? result)
+    {
+        if (IsNullValue(left) || IsNullValue(right))
+        {
+            result = NullType.Instance;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
     /// <summary>
-    /// Null-aware type matching: treats object type (representing null) specially.
-    /// - If actual is object (null was passed), it ONLY matches if expected is exactly object.
-    /// - If actual is a real type, it NEVER matches if expected is object (object is for null only).
-    /// This ensures explicit null handling: object in allowed types = null is allowed here.
+    /// Null-aware type matching: treats null-marker types specially.
+    /// - canonical marker is NullType
+    /// - legacy marker object is also accepted for compatibility
+    /// - a null-marker actual matches only null-marker expected and vice versa
     /// </summary>
     public static bool TypeMatchesWithNullAwareness(Type actual, Type expected, bool allowParentTypes)
     {
-        // Case 1: actual is null (object)
-        if (ReferenceEquals(actual, typeof(object)))
+        // Case 1: actual is null marker (NullType or legacy object)
+        if (IsNullArgumentType(actual))
         {
-            // Null ONLY matches if expected is exactly object
-            return ReferenceEquals(expected, typeof(object));
+            // Null-marker ONLY matches if expected is also a null-marker
+            return IsNullArgumentType(expected);
         }
 
-        // Case 2: expected is object (meaning the syntax only allows null)
-        if (ReferenceEquals(expected, typeof(object)))
+        // Case 2: expected is null marker (meaning the syntax allows null)
+        if (IsNullArgumentType(expected))
         {
-            // Non-null types NEVER match object (object is for null only)
+            // Non-null types NEVER match null-marker types
             return false;
         }
 
         // Case 3: both are real types - use standard matching (exact or parent type)
-        return ReferenceEquals(actual, expected) || 
-               allowParentTypes && actual.IsAssignableFrom(expected);
+        return TypeMatches(actual, expected, allowParentTypes);
     }
 
+    public static bool MatchesAnyExpectedWithNullAwareness(Type actual, IEnumerable<Type> expectedTypes, bool allowParentTypes)
+        => expectedTypes.Any(expected => TypeMatchesWithNullAwareness(actual, expected, allowParentTypes));
 }
