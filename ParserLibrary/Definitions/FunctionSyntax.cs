@@ -53,6 +53,9 @@ public class FunctionSyntax
     [JsonIgnore]
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
 
+    //args, context, cancellation token, returns ValidationResult
+    [JsonIgnore]
+    public Func<object?[], object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
 
     public static FunctionSyntax CreateEmpty(Type outputType, int? scenarioId, string? description = null, params string[] examples)
     {

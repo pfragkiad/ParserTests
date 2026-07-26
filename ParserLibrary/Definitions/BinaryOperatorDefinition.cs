@@ -16,6 +16,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
 
     // Optional cross-syntax validation (e.g., domain rules)
     public Func<object?, object?, Result<BinaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
+    public Func<object?, object?, object?, CancellationToken, Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
 
     public Result<Type, ValidationResult> ResolveOutputType(object? left, object? right, bool allowParentTypes = true)
     {
@@ -39,7 +40,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
 
     public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? left, object? right, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
     {
-        var match = GetValidSyntax(left, right, allowParentTypes);
+        var match = await GetValidSyntaxAsync(left, right, context, allowParentTypes, ct);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
@@ -99,6 +100,66 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
             LeftType = leftType,
             RightType = rightType
         };
+    }
+
+    public async Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(object? left, object? right, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    {
+        var leftType = GetArgumentType(left);
+        var rightType = GetArgumentType(right);
+
+        if (Syntaxes is null || Syntaxes.Count == 0)
+            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' has no declared syntaxes.", null);
+
+        foreach (var syn in Syntaxes)
+        {
+            if (!syn.IsMatch(leftType, rightType, allowParentTypes)) continue;
+
+            if (syn.AdditionalValidationAsync is not null)
+            {
+                var validation = await syn.AdditionalValidationAsync(left, right, context, ct);
+                if (!validation.IsValid) return validation;
+            }
+            else
+            {
+                var validation = syn.AdditionalValidation?.Invoke(left, right) ?? ValidationHelpers.Success;
+                if (!validation.IsValid) return validation;
+            }
+
+            if (AdditionalGlobalValidationAsync is not null)
+            {
+                var globalValidation = await AdditionalGlobalValidationAsync(left, right, context, ct);
+                if (globalValidation.IsFailure) return globalValidation.Error!;
+            }
+            else if (AdditionalGlobalValidation is not null)
+            {
+                var globalValidation = AdditionalGlobalValidation(left, right);
+                if (globalValidation.IsFailure) return globalValidation.Error!;
+            }
+
+            return new BinaryOperatorSyntaxMatch
+            {
+                MatchedSyntax = syn,
+                LeftType = leftType,
+                RightType = rightType
+            };
+        }
+
+        var resolvedNames = $"({FormatTypeName(leftType)}, {FormatTypeName(rightType)})";
+
+        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        {
+            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+            var leftTypes = FormatTypeSet(syn.LeftTypes);
+            var rightTypes = FormatTypeSet(syn.RightTypes);
+            return $"  {scenarioPart}Binary: ({leftTypes}, {rightTypes}) -> {FormatTypeName(syn.OutputType)}";
+        });
+
+        string message =
+            $"'{Name}' operator operands do not match any declared syntax." +
+            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+        return ValidationHelpers.FailureResult("operands", message, resolvedNames);
     }
 
     // New: instance mapper to DTO (mirrors FunctionInformation pattern)

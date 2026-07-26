@@ -28,6 +28,9 @@ public sealed class BinaryOperatorSyntax
     // Per-syntax validation hook (runs after type matching)
     public Func<object?, object?, ValidationResult>? AdditionalValidation { get; init; }
 
+    // Per-syntax async validation hook (runs after type matching)
+    public Func<object?, object?, object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+
     public bool IsMatch(Type left, Type right, bool allowParentTypes)
     {
         // Use null-aware type matching to ensure that null (object) only matches

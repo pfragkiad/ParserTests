@@ -425,6 +425,8 @@ public partial class ParserBase : Tokenizer, IParser
             var node = (Node<Token>)nb;
             var token = node.Value!;
 
+            ct.ThrowIfCancellationRequested();
+
             switch (token.TokenType)
             {
                 case TokenType.Literal:
@@ -714,6 +716,9 @@ public partial class ParserBase : Tokenizer, IParser
         _logger.LogDebug("Evaluating...");
         foreach (var token in postfixTokens)
         {
+            ct.ThrowIfCancellationRequested();
+
+
             if (token.TokenType == TokenType.Function)
             {
                 Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);

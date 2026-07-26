@@ -74,6 +74,7 @@ public class FunctionDefinition : OperatorDefinition
 
 
     public Func<object?[], Result<SyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
+    public Func<object?[], object?, CancellationToken, Task<Result<SyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
 
     public Result<Type, ValidationResult> ResolveOutputType(object?[] args)
     {
@@ -93,13 +94,11 @@ public class FunctionDefinition : OperatorDefinition
     }
 
     //both CalcAsync and Calc support
-    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true) 
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
     {
-        var syntaxMatch = ValidateArgumentTypes(args, allowParentTypes);
+        var syntaxMatch = await ValidateArgumentTypesAsync(args, context, ct, allowParentTypes);
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
-
-        //only Calc can be async for the moment
         var syntax = syntaxMatch.Value!.MatchedSyntax;
         if (syntax.CalcAsync is not null)
         {
@@ -138,6 +137,32 @@ public class FunctionDefinition : OperatorDefinition
         }
 
         // Resolve argument types (support passing Type directly) for the return payload
+        var resolved = ResolveArgumentTypes(args);
+
+        return new SyntaxMatch
+        {
+            MatchedSyntax = syntaxResult.Value!,
+            ResolvedTypes = resolved
+        };
+    }
+
+    // Reuse GetValidSyntaxAsync internally; Apply AdditionalValidationAsync and return resolved types + matched syntax
+    public async Task<Result<SyntaxMatch, ValidationResult>> ValidateArgumentTypesAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
+    {
+        var syntaxResult = await GetValidSyntaxAsync(args, context, ct, allowParentTypes);
+        if (syntaxResult.IsFailure) return syntaxResult.Error!;
+
+        if (AdditionalGlobalValidationAsync is not null)
+        {
+            var addVal = await AdditionalGlobalValidationAsync(args, context, ct);
+            if (addVal.IsFailure) return addVal.Error!;
+        }
+        else if (AdditionalGlobalValidation is not null)
+        {
+            var addVal = AdditionalGlobalValidation(args);
+            if (addVal.IsFailure) return addVal.Error!;
+        }
+
         var resolved = ResolveArgumentTypes(args);
 
         return new SyntaxMatch
@@ -216,6 +241,79 @@ public class FunctionDefinition : OperatorDefinition
 
                 return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
             });
+    }
+
+    public async Task<Result<FunctionSyntax, ValidationResult>> GetValidSyntaxAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
+    {
+        var resolved = ResolveArgumentTypes(args);
+
+        if (Syntaxes is null || Syntaxes.Count == 0)
+            return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no declared syntaxes.", null);
+
+        foreach (var syn in Syntaxes)
+        {
+            if (!(syn.IsFixedMatch(resolved, allowParentTypes) || syn.IsDynamicMatch(resolved, allowParentTypes)))
+                continue;
+
+            var strCheck = ValidateStringConstraints(args);
+            if (!strCheck.IsValid) return strCheck;
+
+            if (syn.AdditionalValidationAsync is not null)
+            {
+                var addValAsync = await syn.AdditionalValidationAsync(args, context, ct);
+                if (!addValAsync.IsValid) return addValAsync;
+            }
+            else if (syn.AdditionalValidation is not null)
+            {
+                var addVal = syn.AdditionalValidation(args);
+                if (!addVal.IsValid) return addVal;
+            }
+
+            return syn;
+        }
+
+        var resolvedNames = resolved.Length == 0
+            ? "<no arguments>"
+            : string.Join(", ", resolved.Select(TypeNameDisplay.GetDisplayTypeName));
+
+        string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
+        {
+            string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
+            if (syn.InputsFixed is { Count: > 0 })
+            {
+                var fixedParts = syn.InputsFixed!
+                    .Select(set => set.Count == 1
+                        ? TypeNameDisplay.GetDisplayTypeName(set.First())
+                        : "[" + string.Join("|", set.Select(TypeNameDisplay.GetDisplayTypeName)) + "]")
+                    .ToArray();
+                return $"  {scenarioPart}Fixed: ({string.Join(", ", fixedParts)}) -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+            else if (syn.InputsDynamic.HasValue)
+            {
+                var dyn = syn.InputsDynamic.Value;
+                string first = dyn.FirstInputType is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.FirstInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                string middle = dyn.MiddleInputTypes is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.MiddleInputTypes.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                string last = dyn.LastInputType is { Count: > 0 }
+                    ? "(" + string.Join("|", dyn.LastInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
+                    : "-";
+                return $"  {scenarioPart}Dynamic: first={first}, middle={middle}* (min {dyn.MinMiddleArgumentsCount}), last={last} -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+            else
+            {
+                return $"  {scenarioPart}Empty -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
+            }
+        });
+
+        string message =
+            $"'{Name}' arguments do not match any declared syntax." +
+            $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
+            $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
+
+        return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
     }
 
     public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later

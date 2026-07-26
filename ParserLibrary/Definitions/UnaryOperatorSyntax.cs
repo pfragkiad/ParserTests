@@ -27,6 +27,9 @@ public sealed class UnaryOperatorSyntax
     // Per-syntax validation hook (runs after type matching)
     public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
 
+    // Per-syntax async validation hook (runs after type matching)
+    public Func<object?[], object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+
     public bool IsMatch(Type operand, bool allowParentTypes)
         => TypeHelpers.MatchesAnyExpectedWithNullAwareness(operand, OperandTypes, allowParentTypes);
 }
