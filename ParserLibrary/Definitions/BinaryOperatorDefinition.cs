@@ -15,30 +15,40 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
     public List<BinaryOperatorSyntax>? Syntaxes { get; init; }
 
     // Optional cross-syntax validation (e.g., domain rules)
-    public Func<object?, object?, Result<BinaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
-    public Func<object?, object?, object?, CancellationToken, Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
+    public Func<object?,object?, ParserContext?, Result<BinaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
+    public Func<object?, object?, ParserContext?, CancellationToken, Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
 
-    public Result<Type, ValidationResult> ResolveOutputType(object? left, object? right, bool allowParentTypes = true)
+    public Result<Type, ValidationResult> ResolveOutputType(object? left, object? right,ParserContext? context,  bool allowParentTypes)
     {
-        var res = GetValidSyntax(left, right, allowParentTypes);
+        var res = GetValidSyntax(left, right, context, allowParentTypes);
         if (res.IsFailure) return res.Error!;
         return res.Value!.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object? left, object?
-        right, object? context = null, bool allowParentTypes = true)
+    public Result<object?, ValidationResult> ValidateAndCalc(
+        object? left,
+        object? right,
+        ParserContext? context,
+        bool allowParentTypes)
     {
-        var match = GetValidSyntax(left, right, allowParentTypes);
+        var match = GetValidSyntax(left, right, context, allowParentTypes);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
-        if (syn.Calc is null)
-            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc).", null);
+        if (syn.Calc is not null)
+            return syn.Calc(left, right, context);
+        //if (syn.CalcAsync is not null) //temp disable
+        //    return syn.CalcAsync(left, right, context, CancellationToken.None).GetAwaiter().GetResult();
 
-        return syn.Calc(left, right, context);
+        return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
     }
 
-    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? left, object? right, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(
+        object? left,
+        object? right,
+        ParserContext? context,
+        bool allowParentTypes,
+        CancellationToken ct)
     {
         var match = await GetValidSyntaxAsync(left, right, context, allowParentTypes, ct);
         if (match.IsFailure) return match.Error!;
@@ -52,10 +62,10 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
         return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
     }
 
-    public ValidationResult Validate(object? left, object? right, bool allowParentTypes = true)
-        => GetValidSyntax(left, right, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
+    public ValidationResult Validate(object? left, object? right, ParserContext? context, bool allowParentTypes)
+        => GetValidSyntax(left, right, context, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
-    public Result<BinaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? left, object? right, bool allowParentTypes = true)
+    public Result<BinaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? left, object? right,ParserContext? context,  bool allowParentTypes)
     {
         var leftType = GetArgumentType(left);
         var rightType = GetArgumentType(right);
@@ -90,7 +100,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
 
         if (AdditionalGlobalValidation is not null)
         {
-            var globalValidation = AdditionalGlobalValidation(left, right);
+            var globalValidation = AdditionalGlobalValidation(left, right, context);
             if (globalValidation.IsFailure) return globalValidation.Error!;
         }
 
@@ -102,7 +112,12 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
         };
     }
 
-    public async Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(object? left, object? right, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    public async Task<Result<BinaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(
+        object? left,
+        object? right,
+        ParserContext? context,
+        bool allowParentTypes,
+        CancellationToken ct)
     {
         var leftType = GetArgumentType(left);
         var rightType = GetArgumentType(right);
@@ -132,7 +147,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
             }
             else if (AdditionalGlobalValidation is not null)
             {
-                var globalValidation = AdditionalGlobalValidation(left, right);
+                var globalValidation = AdditionalGlobalValidation(left, right, context);
                 if (globalValidation.IsFailure) return globalValidation.Error!;
             }
 

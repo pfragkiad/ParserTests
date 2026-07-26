@@ -19,53 +19,55 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
     public List<UnaryOperatorSyntax>? Syntaxes { get; init; }
 
     // Optional cross-syntax validation (e.g., business rules)
-    public Func<object?[], Result<UnaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
-    public Func<object?[], object?, CancellationToken, Task<Result<UnaryOperatorSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
+    public Func<object?, ParserContext?, Result<UnaryOperatorSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
+    public Func<object?, ParserContext?, CancellationToken, Task<Result<UnaryOperatorSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
 
-    public Result<Type, ValidationResult> ResolveOutputType(object? operand, bool allowParentTypes = true)
+    public Result<Type, ValidationResult> ResolveOutputType(object? operand, ParserContext? context, bool allowParentTypes)
     {
-        var res = GetValidSyntax(operand, allowParentTypes);
+        var res = GetValidSyntax(operand, context, allowParentTypes);
         if (res.IsFailure) return res.Error!;
         return res.Value!.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object? operand, object? context = null, bool allowParentTypes = true)
+    public Result<object?, ValidationResult> ValidateAndCalc(object? operand, ParserContext? context, bool allowParentTypes)
     {
-        var match = GetValidSyntax(operand, allowParentTypes);
+        var match = GetValidSyntax(operand, context, allowParentTypes);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
-        if (syn.Calc is null)
-            return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc).", null);
+        if (syn.Calc is not null)
+            return syn.Calc(operand, context);
+        if (syn.CalcAsync is not null)
+            return syn.CalcAsync(operand, context, CancellationToken.None).GetAwaiter().GetResult();
 
-        return syn.Calc([operand], context);
+        return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
     }
 
-    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? operand, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object? operand, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
         var match = await GetValidSyntaxAsync(operand, context, allowParentTypes, ct);
         if (match.IsFailure) return match.Error!;
 
         var syn = match.Value!.MatchedSyntax;
         if (syn.CalcAsync is not null)
-            return await syn.CalcAsync([operand], context, ct);
+            return await syn.CalcAsync(operand, context, ct);
         if (syn.Calc is not null)
-            return syn.Calc([operand], context);
+            return syn.Calc(operand, context);
 
         return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
     }
 
-    public ValidationResult Validate(object? operand, bool allowParentTypes = true)
-        => GetValidSyntax(operand, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
+    public ValidationResult Validate(object? operand, ParserContext? context, bool allowParentTypes)
+        => GetValidSyntax(operand, context, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
-    public Result<UnaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? operand, bool allowParentTypes = true)
+    public Result<UnaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? operand, ParserContext? context, bool allowParentTypes)
     {
         var operandType = GetArgumentType(operand);
 
         var syntaxResult = FindMatchingSyntax(
             Syntaxes,
             syn => syn.IsMatch(operandType, allowParentTypes),
-            syn => syn.AdditionalValidation?.Invoke([operand]) ?? ValidationHelpers.Success,
+            syn => syn.AdditionalValidation?.Invoke(operand, context) ?? ValidationHelpers.Success,
             noSyntaxCategory: "operator",
             noSyntaxMessage: $"Operator '{Name}' has no declared syntaxes.",
             noMatchValidationFactory: () =>
@@ -91,7 +93,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
 
         if (AdditionalGlobalValidation is not null)
         {
-            var globalValidation = AdditionalGlobalValidation([operand]);
+            var globalValidation = AdditionalGlobalValidation(operand, context);
             if (globalValidation.IsFailure) return globalValidation.Error!;
         }
 
@@ -102,7 +104,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
         };
     }
 
-    public async Task<Result<UnaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(object? operand, object? context = null, bool allowParentTypes = true, CancellationToken ct = default)
+    public async Task<Result<UnaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(object? operand, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
         var operandType = GetArgumentType(operand);
 
@@ -115,23 +117,23 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
 
             if (syn.AdditionalValidationAsync is not null)
             {
-                var validation = await syn.AdditionalValidationAsync([operand], context, ct);
+                var validation = await syn.AdditionalValidationAsync(operand, context, ct);
                 if (!validation.IsValid) return validation;
             }
             else
             {
-                var validation = syn.AdditionalValidation?.Invoke([operand]) ?? ValidationHelpers.Success;
+                var validation = syn.AdditionalValidation?.Invoke(operand,context) ?? ValidationHelpers.Success;
                 if (!validation.IsValid) return validation;
             }
 
             if (AdditionalGlobalValidationAsync is not null)
             {
-                var globalValidation = await AdditionalGlobalValidationAsync([operand], context, ct);
+                var globalValidation = await AdditionalGlobalValidationAsync(operand, context, ct);
                 if (globalValidation.IsFailure) return globalValidation.Error!;
             }
             else if (AdditionalGlobalValidation is not null)
             {
-                var globalValidation = AdditionalGlobalValidation([operand]);
+                var globalValidation = AdditionalGlobalValidation(operand, context);
                 if (globalValidation.IsFailure) return globalValidation.Error!;
             }
 

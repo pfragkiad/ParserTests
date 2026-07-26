@@ -4,18 +4,7 @@ using ParserLibrary.Parsers.Helpers;
 
 namespace ParserLibrary.Definitions;
 
-public class SyntaxMatch
-{
-    public required FunctionSyntax MatchedSyntax { get; init; }
 
-    public Type[] ResolvedTypes { get; init; } = [];
-}
-
-public class ExpectedFunctionArgumentsCount
-{
-    public IList<int>? FixedCounts { get; init; } = [];
-    public int? MinCount { get; init; }
-}
 
 public class FunctionDefinition : OperatorDefinition
 {
@@ -72,21 +61,23 @@ public class FunctionDefinition : OperatorDefinition
     }
 
 
+    //args, context,  return ValidationResult (success or failure with message)
+    public Func<object?[], object?, Result<FunctionSyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
 
-    public Func<object?[], Result<SyntaxMatch, ValidationResult>>? AdditionalGlobalValidation { get; init; }
-    public Func<object?[], object?, CancellationToken, Task<Result<SyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
+    //args, context, cancellation token, return ValidationResult (success or failure with message)
+    public Func<object?[], object?, CancellationToken, Task<Result<FunctionSyntaxMatch, ValidationResult>>>? AdditionalGlobalValidationAsync { get; init; }
 
-    public Result<Type, ValidationResult> ResolveOutputType(object?[] args)
+    public Result<Type, ValidationResult> ResolveOutputType(object?[] args, ParserContext? context, bool allowParentTypes)
     {
-        var result = ValidateArgumentTypes(args);
+        var result = ValidateArgumentTypes(args, context, allowParentTypes);
         if (result.IsFailure) return result.Error!;
         var syntaxMatch = result.Value!;
         return syntaxMatch.MatchedSyntax.OutputType;
     }
 
-    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, object? context, bool allowParentTypes = true) //only Calc, no async
+    public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, ParserContext? context, bool allowParentTypes) //only Calc, no async
     {
-        var syntaxMatch = ValidateArgumentTypes(args, allowParentTypes);
+        var syntaxMatch = ValidateArgumentTypes(args, context, allowParentTypes);
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
@@ -94,9 +85,9 @@ public class FunctionDefinition : OperatorDefinition
     }
 
     //both CalcAsync and Calc support
-    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
+    public async Task<Result<object?, ValidationResult>> ValidateAndCalcAsync(object?[] args, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
-        var syntaxMatch = await ValidateArgumentTypesAsync(args, context, ct, allowParentTypes);
+        var syntaxMatch = await ValidateArgumentTypesAsync(args, context, allowParentTypes, ct);
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
@@ -116,30 +107,30 @@ public class FunctionDefinition : OperatorDefinition
 
 
 
-    public ValidationResult Validate(object?[] args)
+    public ValidationResult Validate(object?[] args, ParserContext? context, bool allowParentTypes)
     {
-        var result = ValidateArgumentTypes(args);
+        var result = ValidateArgumentTypes(args, context, allowParentTypes);
         return result.Match(_ => ValidationHelpers.Success, err => err);
     }
 
     // Reuse GetValidSyntax internally; Apply AdditionalValidation and return resolved types + matched syntax
-    public Result<SyntaxMatch, ValidationResult> ValidateArgumentTypes(object?[] args, bool allowParentTypes = true)
+    public Result<FunctionSyntaxMatch, ValidationResult> ValidateArgumentTypes(object?[] args,ParserContext? context,  bool allowParentTypes)
     {
         // Use the single source of truth for matching and string constraints
-        var syntaxResult = GetValidSyntax(args, allowParentTypes);
+        var syntaxResult = GetValidSyntax(args, context, allowParentTypes);
         if (syntaxResult.IsFailure) return syntaxResult.Error!;
 
         // Additional business validation after syntax and string checks
         if (AdditionalGlobalValidation is not null)
         {
-            var addVal = AdditionalGlobalValidation(args);
+            var addVal = AdditionalGlobalValidation(args,context);
             if (addVal.IsFailure) return addVal.Error!;
         }
 
         // Resolve argument types (support passing Type directly) for the return payload
         var resolved = ResolveArgumentTypes(args);
 
-        return new SyntaxMatch
+        return new FunctionSyntaxMatch
         {
             MatchedSyntax = syntaxResult.Value!,
             ResolvedTypes = resolved
@@ -147,9 +138,9 @@ public class FunctionDefinition : OperatorDefinition
     }
 
     // Reuse GetValidSyntaxAsync internally; Apply AdditionalValidationAsync and return resolved types + matched syntax
-    public async Task<Result<SyntaxMatch, ValidationResult>> ValidateArgumentTypesAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
+    public async Task<Result<FunctionSyntaxMatch, ValidationResult>> ValidateArgumentTypesAsync(object?[] args, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
-        var syntaxResult = await GetValidSyntaxAsync(args, context, ct, allowParentTypes);
+        var syntaxResult = await GetValidSyntaxAsync(args, context, allowParentTypes, ct);
         if (syntaxResult.IsFailure) return syntaxResult.Error!;
 
         if (AdditionalGlobalValidationAsync is not null)
@@ -159,13 +150,13 @@ public class FunctionDefinition : OperatorDefinition
         }
         else if (AdditionalGlobalValidation is not null)
         {
-            var addVal = AdditionalGlobalValidation(args);
+            var addVal = AdditionalGlobalValidation(args,context);
             if (addVal.IsFailure) return addVal.Error!;
         }
 
         var resolved = ResolveArgumentTypes(args);
 
-        return new SyntaxMatch
+        return new FunctionSyntaxMatch
         {
             MatchedSyntax = syntaxResult.Value!,
             ResolvedTypes = resolved
@@ -173,7 +164,7 @@ public class FunctionDefinition : OperatorDefinition
     }
 
     // Centralized matcher: validates syntaxes, nulls, type compatibility (with inheritance), and string constraints
-    public Result<FunctionSyntax, ValidationResult> GetValidSyntax(object?[] args, bool allowParentTypes = true)
+    public Result<FunctionSyntax, ValidationResult> GetValidSyntax(object?[] args,ParserContext? context, bool allowParentTypes)
     {
         // Resolve argument types (support passing Type directly)
         var resolved = ResolveArgumentTypes(args);
@@ -188,7 +179,7 @@ public class FunctionDefinition : OperatorDefinition
 
                 if (syn.AdditionalValidation is not null)
                 {
-                    var addVal = syn.AdditionalValidation(args);
+                    var addVal = syn.AdditionalValidation(args,context);
                     if (!addVal.IsValid) return addVal;
                 }
 
@@ -243,7 +234,7 @@ public class FunctionDefinition : OperatorDefinition
             });
     }
 
-    public async Task<Result<FunctionSyntax, ValidationResult>> GetValidSyntaxAsync(object?[] args, object? context, CancellationToken ct, bool allowParentTypes = true)
+    public async Task<Result<FunctionSyntax, ValidationResult>> GetValidSyntaxAsync(object?[] args, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
         var resolved = ResolveArgumentTypes(args);
 
@@ -265,7 +256,7 @@ public class FunctionDefinition : OperatorDefinition
             }
             else if (syn.AdditionalValidation is not null)
             {
-                var addVal = syn.AdditionalValidation(args);
+                var addVal = syn.AdditionalValidation(args, context);
                 if (!addVal.IsValid) return addVal;
             }
 
@@ -316,12 +307,12 @@ public class FunctionDefinition : OperatorDefinition
         return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
     }
 
-    public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later
-          ValidateArgumentTypes(args, allowParentTypes)
-          .Match<Result<Type[], ValidationResult>>(
-              ok => ok.ResolvedTypes,
-              err => err
-          );
+    //public Result<Type[], ValidationResult> ValidateArgumentTypesLegacy(object?[] args, bool allowParentTypes = true) => //to be removed later
+    //      ValidateArgumentTypes(args, allowParentTypes)
+    //      .Match<Result<Type[], ValidationResult>>(
+    //          ok => ok.ResolvedTypes,
+    //          err => err
+    //      );
 
 
     public ValidationResult ValidateStringConstraints(object?[] callArgs)
@@ -383,3 +374,15 @@ public class FunctionDefinition : OperatorDefinition
 }
 
 
+public class FunctionSyntaxMatch
+{
+    public required FunctionSyntax MatchedSyntax { get; init; }
+
+    public Type[] ResolvedTypes { get; init; } = [];
+}
+
+public class ExpectedFunctionArgumentsCount
+{
+    public IList<int>? FixedCounts { get; init; } = [];
+    public int? MinCount { get; init; }
+}

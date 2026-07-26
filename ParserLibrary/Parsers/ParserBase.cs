@@ -1023,6 +1023,8 @@ public partial class ParserBase : Tokenizer, IParser
 
     #region Functions mgmt via Catalog
 
+    public virtual bool AllowParentTypesInValidation => true;
+
     public virtual FunctionDefinition? GetFunctionInformation(string functionName)
     {
         return FunctionCatalog?.Get(functionName);
@@ -1032,42 +1034,42 @@ public partial class ParserBase : Tokenizer, IParser
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.Validate(args);
+        return f.Validate(args, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ResolveOutputType(args);
+        return f.ResolveOutputType(args, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
-    public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
+    //public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
+    //{
+    //    FunctionDefinition? f = GetFunctionInformation(functionName);
+    //    if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+    //    return f.ValidateArgumentTypesLegacy(args, allowParentTypes: AllowParentTypesInValidation);
+    //}
+
+    public virtual Result<FunctionSyntaxMatch, ValidationResult> GetFunctionSyntax(string functionName, object?[] args)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ValidateArgumentTypesLegacy(args, allowParentTypes: true);
-    }
-
-    public virtual Result<SyntaxMatch, ValidationResult> GetFunctionSyntax(string functionName, object?[] args)
-    {
-        FunctionDefinition? f = GetFunctionInformation(functionName);
-        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ValidateArgumentTypes(args, allowParentTypes: true);
+        return f.ValidateArgumentTypes(args, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ValidateAndCalc(args, Context);
+        return f.ValidateAndCalc(args, Context, allowParentTypes: AllowParentTypesInValidation); //does not cover CalcAsync
     }
 
     public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateFunctionAsync(string functionName, object?[] args, CancellationToken ct)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return await f.ValidateAndCalcAsync(args, Context, ct); //also covers Calc
+        return await f.ValidateAndCalcAsync(args, Context, allowParentTypes: AllowParentTypesInValidation, ct: ct); //also covers Calc
     }
 
     #endregion
@@ -1100,7 +1102,7 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.Validate(leftArg, rightArg);
+        return info.Validate(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation );
     }
 
     // Catalog-backed unary operator validation
@@ -1108,7 +1110,7 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.Validate(arg);
+        return info.Validate(arg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     // Return operand types for binary operator (catalog-backed)
@@ -1117,7 +1119,7 @@ public partial class ParserBase : Tokenizer, IParser
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
 
-        var r = info.GetValidSyntax(leftArg, rightArg, allowParentTypes: true);
+        var r = info.GetValidSyntax(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation);
         if (r.IsFailure) return r.Error!;
         return (r.Value!.LeftType, r.Value!.RightType);
     }
@@ -1128,7 +1130,7 @@ public partial class ParserBase : Tokenizer, IParser
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
 
-        var r = info.GetValidSyntax(arg, allowParentTypes: true);
+        var r = info.GetValidSyntax(arg, Context, allowParentTypes: AllowParentTypesInValidation);
         if (r.IsFailure) return r.Error!;
         return r.Value!.OperandType;
     }
@@ -1138,14 +1140,14 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ValidateAndCalc(leftArg, rightArg, Context);
+        return info.ValidateAndCalc(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateBinaryOperatorAsync(string operatorName, object? leftArg, object? rightArg, CancellationToken ct)
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return await info.ValidateAndCalcAsync(leftArg, rightArg, Context, ct: ct);
+        return await info.ValidateAndCalcAsync(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation,  ct: ct);
     }
 
     // Catalog-backed validate + evaluate (unary)
@@ -1153,14 +1155,14 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ValidateAndCalc(arg, Context);
+        return info.ValidateAndCalc(arg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateUnaryOperatorAsync(string operatorName, object? arg, CancellationToken ct)
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return await info.ValidateAndCalcAsync(arg, Context, ct: ct);
+        return await info.ValidateAndCalcAsync(arg, Context, allowParentTypes: AllowParentTypesInValidation, ct: ct);
     }
 
     // Catalog-backed resolve output type (binary)
@@ -1168,7 +1170,7 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ResolveOutputType(leftArg, rightArg);
+        return info.ResolveOutputType(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     // Catalog-backed resolve output type (unary)
@@ -1176,7 +1178,7 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.ResolveOutputType(arg);
+        return info.ResolveOutputType(arg,Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     // Added two catalog-backed helpers for retrieving operator syntax matches (binary + unary).
@@ -1185,14 +1187,14 @@ public partial class ParserBase : Tokenizer, IParser
     {
         var info = GetBinaryOperatorInformation(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.GetValidSyntax(leftArg, rightArg, allowParentTypes: true);
+        return info.GetValidSyntax(leftArg, rightArg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual Result<UnaryOperatorSyntaxMatch, ValidationResult> GetUnaryOperatorSyntax(string operatorName, object? arg)
     {
         var info = ResolveUnaryOperatorInfoForName(operatorName);
         if (info is null) return ValidationHelpers.UnknownOperatorResult(operatorName);
-        return info.GetValidSyntax(arg, allowParentTypes: true);
+        return info.GetValidSyntax(arg, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     #endregion

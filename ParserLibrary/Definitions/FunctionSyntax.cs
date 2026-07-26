@@ -45,17 +45,20 @@ public class FunctionSyntax
 
     public string? Description { get; init; }
 
-    public Func<object?[],object?, object?>? Calc { get; init; } //args, context, returns result (IF NULL THEN USE CALCASYNC?)
+    public Func<object?[],ParserContext?, object?>? Calc { get; init; } //args, context, returns result (IF NULL THEN USE CALCASYNC?)
 
     //args, context, cancellation token, returns result
-    public Func<object?[], object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+    public Func<object?[], ParserContext?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
 
+
+    //args, context, returns result
     [JsonIgnore]
-    public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
+    public Func<object?[], ParserContext?, ValidationResult>? AdditionalValidation { get; init; }
+
 
     //args, context, cancellation token, returns ValidationResult
     [JsonIgnore]
-    public Func<object?[], object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+    public Func<object?[], ParserContext?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
 
     public static FunctionSyntax CreateEmpty(Type outputType, int? scenarioId, string? description = null, params string[] examples)
     {

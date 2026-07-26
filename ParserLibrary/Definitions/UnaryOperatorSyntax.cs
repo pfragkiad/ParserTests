@@ -19,16 +19,16 @@ public sealed class UnaryOperatorSyntax
     public string[]? Examples { get; init; }
 
     // args: [operand]; context: optional runtime context
-    public Func<object?[], object?, object?>? Calc { get; init; }
+    public Func<object?, ParserContext?, object?>? Calc { get; init; }
 
     // args: [operand], context, cancellation token, returns result
-    public Func<object?[], object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+    public Func<object?, ParserContext?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
 
     // Per-syntax validation hook (runs after type matching)
-    public Func<object?[], ValidationResult>? AdditionalValidation { get; init; }
+    public Func<object?, ParserContext?, ValidationResult>? AdditionalValidation { get; init; }
 
     // Per-syntax async validation hook (runs after type matching)
-    public Func<object?[], object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+    public Func<object?, ParserContext?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
 
     public bool IsMatch(Type operand, bool allowParentTypes)
         => TypeHelpers.MatchesAnyExpectedWithNullAwareness(operand, OperandTypes, allowParentTypes);

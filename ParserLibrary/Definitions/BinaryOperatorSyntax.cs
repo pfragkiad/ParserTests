@@ -20,16 +20,16 @@ public sealed class BinaryOperatorSyntax
     public string[]? Examples { get; init; }
 
     // args: left, right; context: optional runtime context
-    public Func<object?, object?, object?, object?>? Calc { get; init; }
+    public Func<object?, object?, ParserContext?, object?>? Calc { get; init; }
 
     // args: left, right, context, cancellation token, returns result
-    public Func<object?, object?, object?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+    public Func<object?, object?, ParserContext?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
 
     // Per-syntax validation hook (runs after type matching)
     public Func<object?, object?, ValidationResult>? AdditionalValidation { get; init; }
 
     // Per-syntax async validation hook (runs after type matching)
-    public Func<object?, object?, object?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+    public Func<object?, object?, ParserContext?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
 
     public bool IsMatch(Type left, Type right, bool allowParentTypes)
     {
