@@ -71,7 +71,7 @@ public class Node<T> : NodeBase
         // Clone Other collection if it exists
         if (this.Other?.Count > 0)
         {
-            cloned.Other = new List<NodeBase>();
+            cloned.Other = [];
             foreach (var otherNode in this.Other)
             {
                 if (otherNode is Node<T> typedOtherNode)

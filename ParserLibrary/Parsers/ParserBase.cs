@@ -8,6 +8,7 @@ using ParserLibrary.Parsers.Compilation;
 using ParserLibrary.Parsers.Helpers;
 using ParserLibrary.Parsers.Interfaces;
 using ParserLibrary.Tokenizers.Interfaces;
+using Serilog.Core;
 
 namespace ParserLibrary.Parsers;
 
@@ -141,25 +142,28 @@ public partial class ParserBase : Tokenizer, IParser
             if (token.TokenType == TokenType.Function)
             {
                 _ = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
-                _logger.LogDebug("Pushing {token} from stack (function node)", token);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (function node)", token);
                 continue;
             }
 
             if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 _ = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
-                _logger.LogDebug("Push {token} to stack", token);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Push {token} to stack", token);
                 continue;
             }
 
             if (token.TokenType == TokenType.Operator || token.TokenType == TokenType.OperatorUnary || token.TokenType == TokenType.ArgumentSeparator)
             {
                 _ = CreateOperatorNodeAndPushToExpressionStack(stack, nodeDictionary, token);
-                _logger.LogDebug("Pushing {token} from stack (operator node)", token);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (operator node)", token);
                 continue;
             }
-
-            _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
+            if (_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Unexpected token type {type} for token {token}", token.TokenType, token);
             throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
         }
 
@@ -232,7 +236,8 @@ public partial class ParserBase : Tokenizer, IParser
                     _ => default
                 };
                 nodeValueDictionary.Add(functionNode, functionResult);
-                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
             }
 
@@ -244,8 +249,8 @@ public partial class ParserBase : Tokenizer, IParser
                     nodeValueDictionary.Add(tokenNode, value = literalParser(token.Text));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
-
-                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
@@ -273,11 +278,13 @@ public partial class ParserBase : Tokenizer, IParser
                         result = unaryOperators[token.Text](operand);
                     }
                     nodeValueDictionary.Add(operatorNode, result);
-                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
                 {
-                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
             }
         }
@@ -371,39 +378,18 @@ public partial class ParserBase : Tokenizer, IParser
             var node = (Node<Token>)nb;
             var token = node.Value!;
 
-            switch (token.TokenType)
+            nodeValueDictionary[node] = token.TokenType switch
             {
-                case TokenType.Literal:
-                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup);
-                    break;
-
-                case TokenType.Identifier:
-                    nodeValueDictionary[node] =
-                        variables is not null && variables.TryGetValue(token.Text, out var idVal)
-                            ? idVal
-                            : null;
-                    break;
-
-                case TokenType.Operator:
-                    nodeValueDictionary[node] = EvaluateOperator(node, nodeValueDictionary);
-                    break;
-
-                case TokenType.OperatorUnary:
-                    nodeValueDictionary[node] = EvaluateUnaryOperator(node, nodeValueDictionary);
-                    break;
-
-                case TokenType.Function:
-                    nodeValueDictionary[node] = EvaluateFunction(node, nodeValueDictionary);
-                    break;
-
-                case TokenType.ArgumentSeparator:
-                    // No value produced for separators (used for function arg routing)
-                    nodeValueDictionary[node] = null;
-                    break;
-
-                default:
-                    throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
-            }
+                TokenType.Literal => token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup),
+                TokenType.Identifier => variables is not null && variables.TryGetValue(token.Text, out var idVal)
+                                            ? idVal
+                                            : null,
+                TokenType.Operator => EvaluateOperator(node, nodeValueDictionary),
+                TokenType.OperatorUnary => EvaluateUnaryOperator(node, nodeValueDictionary),
+                TokenType.Function => EvaluateFunction(node, nodeValueDictionary),
+                TokenType.ArgumentSeparator => null,// No value produced for separators (used for function arg routing)
+                _ => throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}"),
+            };
         }
 
         return nodeValueDictionary[root];
@@ -430,39 +416,18 @@ public partial class ParserBase : Tokenizer, IParser
 
             ct.ThrowIfCancellationRequested();
 
-            switch (token.TokenType)
+            nodeValueDictionary[node] = token.TokenType switch
             {
-                case TokenType.Literal:
-                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup);
-                    break;
-
-                case TokenType.Identifier:
-                    nodeValueDictionary[node] =
-                        variables is not null && variables.TryGetValue(token.Text, out var idVal)
-                            ? idVal
-                            : null;
-                    break;
-
-                case TokenType.Operator:
-                    nodeValueDictionary[node] = await EvaluateOperatorAsync(node, nodeValueDictionary, ct);
-                    break;
-
-                case TokenType.OperatorUnary:
-                    nodeValueDictionary[node] = await EvaluateUnaryOperatorAsync(node, nodeValueDictionary, ct);
-                    break;
-
-                case TokenType.Function:
-                    nodeValueDictionary[node] = await EvaluateFunctionAsync(node, nodeValueDictionary, ct);
-                    break;
-
-                case TokenType.ArgumentSeparator:
-                    // No value produced for separators (used for function arg routing)
-                    nodeValueDictionary[node] = null;
-                    break;
-
-                default:
-                    throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}");
-            }
+                TokenType.Literal => token.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup),
+                TokenType.Identifier => variables is not null && variables.TryGetValue(token.Text, out var idVal)
+                                            ? idVal
+                                            : null,
+                TokenType.Operator => await EvaluateOperatorAsync(node, nodeValueDictionary, ct),
+                TokenType.OperatorUnary => await EvaluateUnaryOperatorAsync(node, nodeValueDictionary, ct),
+                TokenType.Function => await EvaluateFunctionAsync(node, nodeValueDictionary, ct),
+                TokenType.ArgumentSeparator => null,// No value produced for separators (used for function arg routing)
+                _ => throw new InvalidOperationException($"Unexpected token type {token.TokenType} for token {token}"),
+            };
         }
 
         return nodeValueDictionary[root];
@@ -565,7 +530,8 @@ public partial class ParserBase : Tokenizer, IParser
                 Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 var functionResult = EvaluateFunctionType(functionNode, nodeValueDictionary);
                 nodeValueDictionary.Add(functionNode, functionResult);
-                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
             }
 
@@ -587,7 +553,8 @@ public partial class ParserBase : Tokenizer, IParser
                         nodeValueDictionary.Add(tokenNode, value = variables[token.Text]?.GetType());
                 }
 
-                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
@@ -601,11 +568,13 @@ public partial class ParserBase : Tokenizer, IParser
                             ? EvaluateOperatorType(operatorNode, nodeValueDictionary)
                             : EvaluateUnaryOperatorType(operatorNode, nodeValueDictionary);
                     nodeValueDictionary.Add(operatorNode, result);
-                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
                 {
-                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
             }
         }
@@ -660,7 +629,8 @@ public partial class ParserBase : Tokenizer, IParser
                 Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? functionResult = EvaluateFunction(functionNode, nodeValueDictionary);
                 nodeValueDictionary.Add(functionNode, functionResult);
-                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
             }
 
@@ -672,7 +642,8 @@ public partial class ParserBase : Tokenizer, IParser
                     nodeValueDictionary.Add(tokenNode, value = tokenNode.Value!.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
-                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
@@ -686,12 +657,14 @@ public partial class ParserBase : Tokenizer, IParser
                             ? EvaluateOperator(operatorNode, nodeValueDictionary)
                             : EvaluateUnaryOperator(operatorNode, nodeValueDictionary);
                     nodeValueDictionary.Add(operatorNode, result);
-                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
                 {
                     nodeValueDictionary.Add(operatorNode, null); //argument separator produces no result
-                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
             }
         }
@@ -716,7 +689,8 @@ public partial class ParserBase : Tokenizer, IParser
         if (mergeConstants)
             variables = MergeVariableConstants(variables);
 
-        _logger.LogDebug("Evaluating...");
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Evaluating...");
         foreach (var token in postfixTokens)
         {
             ct.ThrowIfCancellationRequested();
@@ -727,7 +701,8 @@ public partial class ParserBase : Tokenizer, IParser
                 Node<Token> functionNode = CreateFunctionNodeAndPushToExpressionStack(stack, nodeDictionary, token);
                 object? functionResult = await EvaluateFunctionAsync(functionNode, nodeValueDictionary, ct);
                 nodeValueDictionary.Add(functionNode, functionResult);
-                _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pushing {token} from stack (function node) (result: {result})", token, functionResult);
                 continue;
             }
 
@@ -739,7 +714,8 @@ public partial class ParserBase : Tokenizer, IParser
                     nodeValueDictionary.Add(tokenNode, value = tokenNode.Value!.IsNull ? null : EvaluateLiteral(token.Text, token.CaptureGroup));
                 else if (token.TokenType == TokenType.Identifier && variables is not null)
                     nodeValueDictionary.Add(tokenNode, value = variables[token.Text]);
-                _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
                 continue;
             }
 
@@ -753,12 +729,14 @@ public partial class ParserBase : Tokenizer, IParser
                             ? await EvaluateOperatorAsync(operatorNode, nodeValueDictionary, ct)
                             : await EvaluateUnaryOperatorAsync(operatorNode, nodeValueDictionary, ct);
                     nodeValueDictionary.Add(operatorNode, result);
-                    _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (operator node) (result: {result})", token, result);
                 }
                 else
                 {
                     nodeValueDictionary.Add(operatorNode, null); //argument separator produces no result
-                    _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Pushing {token} from stack (argument separator node)", token);
                 }
             }
         }
@@ -780,7 +758,8 @@ public partial class ParserBase : Tokenizer, IParser
         Node<Token> functionNode = new(token);
         Token tokenInFunction = stack.Pop();
         functionNode.Right = nodeDictionary[tokenInFunction];
-        _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Pop {token} from stack (function right child)", tokenInFunction);
         nodeDictionary.Add(token, functionNode);
         stack.Push(token);
         return functionNode;
@@ -803,8 +782,11 @@ public partial class ParserBase : Tokenizer, IParser
             Token rightToken = stack.Pop(), leftToken = stack.Pop();
             operatorNode.Right = nodeDictionary[rightToken];
             operatorNode.Left = nodeDictionary[leftToken];
-            _logger.LogDebug("Pop {rightToken} from stack (right child)", rightToken);
-            _logger.LogDebug("Pop {leftToken} from stack (left child)", leftToken);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Pop {rightToken} from stack (right child)", rightToken);
+                _logger.LogDebug("Pop {leftToken} from stack (left child)", leftToken);
+            }
         }
         else //UNARY
         {
@@ -813,12 +795,14 @@ public partial class ParserBase : Tokenizer, IParser
             if (op.Prefix)
             {
                 operatorNode.Right = nodeDictionary[childToken];
-                _logger.LogDebug("Pop {rightToken} from stack (right child)", childToken);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pop {rightToken} from stack (right child)", childToken);
             }
             else
             {
                 operatorNode.Left = nodeDictionary[childToken];
-                _logger.LogDebug("Pop {leftToken} from stack (left child)", childToken);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Pop {leftToken} from stack (left child)", childToken);
             }
         }
 
@@ -832,7 +816,8 @@ public partial class ParserBase : Tokenizer, IParser
         if (stack.Count <= 1) return;
 
         string stackItemsString = string.Join(" ", stack.Reverse().Select(t => t.Text));
-        _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
+        if (_logger.IsEnabled(LogLevel.Error))
+            _logger.LogError("The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {items}", stackItemsString);
         throw new InvalidOperationException(
             $"The stack should be empty at the end of operations. Check the postfix expression. Current items in stack: {stackItemsString}");
     }
@@ -995,27 +980,33 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand) =>
+        ParserLibrarySettings.WithCalcFallback ? EvaluateOperatorAsync(operatorName, leftOperand, rightOperand, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
     protected virtual Task<object?> EvaluateOperatorAsync(string operatorName, object? leftOperand, object? rightOperand, CancellationToken ct) =>
-        Task.FromResult(EvaluateOperator(operatorName, leftOperand, rightOperand));
+        ParserLibrarySettings.WithCalcFallback ? Task.FromResult(EvaluateOperator(operatorName, leftOperand, rightOperand)) :
+        throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
     protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand) =>
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
     protected virtual object? EvaluateUnaryOperator(string operatorName, object? operand) =>
+        ParserLibrarySettings.WithCalcFallback ? EvaluateUnaryOperatorAsync(operatorName, operand, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
     protected virtual Task<object?> EvaluateUnaryOperatorAsync(string operatorName, object? operand, CancellationToken ct) =>
-        Task.FromResult(EvaluateUnaryOperator(operatorName, operand));
+        ParserLibrarySettings.WithCalcFallback ? Task.FromResult(EvaluateUnaryOperator(operatorName, operand)) :
+        throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
     protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand) =>
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
     protected virtual object? EvaluateFunction(string functionName, object?[] args) =>
+        ParserLibrarySettings.WithCalcFallback ? EvaluateFunctionAsync(functionName, args, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown function ({functionName})");
 
     protected virtual async Task<object?> EvaluateFunctionAsync(string functionName, object?[] args, CancellationToken ct) =>
+        ParserLibrarySettings.WithCalcFallback ? Task.FromResult(EvaluateFunction(functionName, args)) :
         throw new InvalidOperationException($"Unknown function ({functionName})");
 
 
@@ -1038,14 +1029,21 @@ public partial class ParserBase : Tokenizer, IParser
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.Validate(args, Context, allowParentTypes: true);
+        return f.Validate(args, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual Result<Type, ValidationResult> ResolveFunctionType(string functionName, object?[] args)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ResolveOutputType(args, Context, allowParentTypes: true);
+        return f.ResolveOutputType(args, Context, allowParentTypes: AllowParentTypesInValidation);
+    }
+
+    public virtual async Task<Result<Type, ValidationResult>> ResolveFunctionTypeAsync(string functionName, object?[] args, CancellationToken ct)
+    {
+        FunctionDefinition? f = GetFunctionInformation(functionName);
+        if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
+        return await f.ResolveOutputTypeAsync(args, Context, allowParentTypes: AllowParentTypesInValidation, ct: ct);
     }
 
     //public virtual Result<Type[], ValidationResult> GetFunctionArgumentTypes(string functionName, object?[] args)
@@ -1059,21 +1057,21 @@ public partial class ParserBase : Tokenizer, IParser
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ValidateArgumentTypes(args, Context, allowParentTypes: true);
+        return f.ValidateArgumentTypes(args, Context, allowParentTypes: AllowParentTypesInValidation);
     }
 
     public virtual Result<object?, ValidationResult> ValidateAndEvaluateFunction(string functionName, object?[] args)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return f.ValidateAndCalc(args, Context, allowParentTypes: true); //does not cover CalcAsync
+        return f.ValidateAndCalc(args, Context, allowParentTypes: AllowParentTypesInValidation); //does not cover CalcAsync
     }
 
     public virtual async Task<Result<object?, ValidationResult>> ValidateAndEvaluateFunctionAsync(string functionName, object?[] args, CancellationToken ct)
     {
         FunctionDefinition? f = GetFunctionInformation(functionName);
         if (f is null) return ValidationHelpers.UnknownFunctionResult(functionName);
-        return await f.ValidateAndCalcAsync(args, Context, allowParentTypes: true, ct: ct); //also covers Calc
+        return await f.ValidateAndCalcAsync(args, Context, allowParentTypes: AllowParentTypesInValidation, ct: ct); //also covers Calc
     }
 
     #endregion
@@ -1202,85 +1200,5 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
     #endregion
-
-
-    #region Operators
-
-    // Back-compat overload: default to allowing parent types (same policy as functions/unary)
-
-    //to be removed
-    protected Result<(Type, Type), ValidationResult> GetBinaryOperatorArgumentTypes(
-        string operatorName,
-        object? leftArg,
-        object? rightArg,
-        HashSet<(Type, Type)> allowedOperandTypes,
-        bool allowParentTypes = true)
-    {
-        //// Nulls not allowed
-        //if (leftArg is null || rightArg is null)
-        //    return new ValidationResult(failures: [
-        //        new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
-        //    ]);
-
-        // Resolve operand types (support passing Type directly)
-        Type leftType = leftArg is Type lt ? TypeHelpers.NormalizeNullMarkerType(lt) : TypeHelpers.ResolveRuntimeArgumentType(leftArg);
-        Type rightType = rightArg is Type rt ? TypeHelpers.NormalizeNullMarkerType(rt) : TypeHelpers.ResolveRuntimeArgumentType(rightArg);
-
-        // If no constraints provided, accept any types
-        if (allowedOperandTypes is null || allowedOperandTypes.Count == 0)
-            return (leftType, rightType);
-
-        // Validate allowed combinations (exact or superclass/interface when allowed)
-        bool anyMatch = allowedOperandTypes.Any(p =>
-            TypeHelpers.TypeMatches(leftType, p.Item1, allowParentTypes) &&
-            TypeHelpers.TypeMatches(rightType, p.Item2, allowParentTypes));
-
-        if (anyMatch)
-            return (leftType, rightType);
-
-        // Build helpful error message
-        string allowedStr = string.Join(", ", allowedOperandTypes.Select(p => $"({p.Item1.Name}, {p.Item2.Name})"));
-        return new ValidationResult(failures: [
-            new ValidationFailure(
-                "operands",
-                $"{operatorName} operator allowed operand type pairs are [{allowedStr}], got ({leftType.Name}, {rightType.Name}).")
-        ]);
-    }
-
-    //to be removed
-    protected Result<Type, ValidationResult> GetUnaryOperatorArgumentType(
-        string operatorName,
-        object? arg,
-        HashSet<Type> allowedOperandType,
-        bool allowParentTypes = true)
-    {
-        // Nulls not allowed
-        if (arg is null)
-            return new ValidationResult(failures: [
-                new ValidationFailure("operands", $"{operatorName} operator does not accept null operands.")
-            ]);
-
-        // Resolve operand type (support passing Type directly)
-        Type actual = arg is Type t ? t : arg.GetType();
-
-        // If no constraints provided, accept any type
-        if (allowedOperandType is null || allowedOperandType.Count == 0)
-            return actual;
-
-        // Check exact or superclass/interface (when allowed)
-        bool match = allowedOperandType.Any(expected => TypeHelpers.TypeMatches(actual, expected, allowParentTypes));
-        if (match)
-            return actual;
-
-        string allowedStr = string.Join(", ", allowedOperandType.Select(x => x.Name));
-        return ValidationHelpers.FailureResult(
-            "operands",
-            $"{operatorName} operator allowed operand types are [{allowedStr}], got {actual.Name}.", actual.Name
-        );
-    }
-
-    #endregion
-
-
 
 }

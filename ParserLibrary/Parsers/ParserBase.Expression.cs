@@ -178,9 +178,7 @@ public partial class ParserBase
         {
             var n = stack.Pop();
             var tok = (Token)n.Value!;
-            if (!dict.ContainsKey(tok))
-                dict.Add(tok, n);
-
+            dict.TryAdd(tok, n);
             if (n.Left is Node<Token> l) stack.Push(l);
             if (n.Right is Node<Token> r) stack.Push(r);
         }

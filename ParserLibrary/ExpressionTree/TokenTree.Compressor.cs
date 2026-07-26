@@ -464,10 +464,8 @@ public partial class TokenTree
         CompressionResult result,
         Node<Token> node,
         Dictionary<string, object?> localVariables,
-        Parsers.ParserBase parser)
-    {
-        return EvaluateNodeWithDependencies(result.Entries, node, localVariables, parser);
-    }
+        ParserBase parser)
+        => EvaluateNodeWithDependencies(result.Entries, node, localVariables, parser);
 
     /// <summary>
     /// Evaluates a node after calculating all referenced temp dependencies into a shared variable cache.
@@ -477,9 +475,51 @@ public partial class TokenTree
         IReadOnlyList<CompressionEntry> entries,
         Node<Token> node,
         Dictionary<string, object?> localVariables,
-        Parsers.ParserBase parser)
+        ParserBase parser)
+        => EvaluateNodeWithDependenciesCore(
+                entries, node, localVariables,
+                parser.TokenizerOptions.TokenPatterns.CaseSensitive,
+                n => Task.FromResult(parser.Evaluate(n, localVariables, false)))
+           .GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Asynchronously evaluates a node after calculating all referenced temp dependencies.
+    /// Dependencies are evaluated in leaf-first topological order using <see cref="ParserBase.EvaluateAsync"/>.
+    /// </summary>
+    public static Task<object?> EvaluateNodeWithDependenciesAsync(
+        CompressionResult result,
+        Node<Token> node,
+        Dictionary<string, object?> localVariables,
+        ParserBase parser,
+        CancellationToken ct = default)
+        => EvaluateNodeWithDependenciesAsync(result.Entries, node, localVariables, parser, ct);
+
+    /// <summary>
+    /// Asynchronously evaluates a node after calculating all referenced temp dependencies.
+    /// Dependencies are evaluated in leaf-first topological order using <see cref="ParserBase.EvaluateAsync"/>.
+    /// </summary>
+    public static Task<object?> EvaluateNodeWithDependenciesAsync(
+        IReadOnlyList<CompressionEntry> entries,
+        Node<Token> node,
+        Dictionary<string, object?> localVariables,
+        ParserBase parser,
+        CancellationToken ct = default)
+        => EvaluateNodeWithDependenciesCore(
+                entries, node, localVariables,
+                parser.TokenizerOptions.TokenPatterns.CaseSensitive,
+                n => parser.EvaluateAsync(n, localVariables, false, ct));
+
+    /// <summary>
+    /// Shared core: resolves the dependency chain in topological order and calls
+    /// <paramref name="evaluateNode"/> for each subtree that needs computing.
+    /// </summary>
+    private static async Task<object?> EvaluateNodeWithDependenciesCore(
+        IReadOnlyList<CompressionEntry> entries,
+        Node<Token> node,
+        Dictionary<string, object?> localVariables,
+        bool caseSensitive,
+        Func<Node<Token>, Task<object?>> evaluateNode)
     {
-        bool caseSensitive = parser.TokenizerOptions.TokenPatterns.CaseSensitive;
         StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
         Dictionary<string, CompressionEntry> entryByTemp = new(entries.Count, comparer);
@@ -497,27 +537,23 @@ public partial class TokenTree
             {
                 if (localVariables.ContainsKey(nestedDependency)
                     || !entryByTemp.TryGetValue(nestedDependency, out CompressionEntry? nestedEntry))
-                {
                     continue;
-                }
 
-                object? nestedValue = parser.Evaluate(nestedEntry.SubstitutedSubtree, localVariables, false);
+                object? nestedValue = await evaluateNode(nestedEntry.SubstitutedSubtree);
                 localVariables[nestedDependency] = nestedValue;
                 nestedEntry.Result = nestedValue;
             }
 
             if (localVariables.ContainsKey(dependency)
                 || !entryByTemp.TryGetValue(dependency, out CompressionEntry? dependencyEntry))
-            {
                 continue;
-            }
 
-            object? dependencyValue = parser.Evaluate(dependencyEntry.SubstitutedSubtree, localVariables, false);
+            object? dependencyValue = await evaluateNode(dependencyEntry.SubstitutedSubtree);
             localVariables[dependency] = dependencyValue;
             dependencyEntry.Result = dependencyValue;
         }
 
-        return parser.Evaluate(node, localVariables, false);
+        return await evaluateNode(node);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -947,7 +983,7 @@ public partial class TokenTree
     /// </summary>
     private static Node<Token> NormalizeSubstitutedSubtree(
         Node<Token> subtree,
-        IReadOnlyList<CompressionEntry> plan,
+        List<CompressionEntry> plan,
         TokenPatterns patterns)
     {
         if (plan.Count == 0) return subtree;

@@ -75,6 +75,16 @@ public class FunctionDefinition : OperatorDefinition
         return syntaxMatch.MatchedSyntax.OutputType;
     }
 
+
+    public async Task<Result<Type, ValidationResult>> ResolveOutputTypeAsync(object?[] args, ParserContext? context, bool allowParentTypes, CancellationToken ct)
+    {
+        var result = await ValidateArgumentTypesAsync(args, context, allowParentTypes, ct);
+        if (result.IsFailure) return result.Error!;
+        var syntaxMatch = result.Value!;
+        return syntaxMatch.MatchedSyntax.OutputType;
+    }
+
+
     public Result<object?, ValidationResult> ValidateAndCalc(object?[] args, ParserContext? context, bool allowParentTypes) //only Calc, no async
     {
         var syntaxMatch = ValidateArgumentTypes(args, context, allowParentTypes);
@@ -412,7 +422,7 @@ public class FunctionDefinition : OperatorDefinition
                     ? new InputFixedDto
                     {
                         Position = idx + 1,
-                        Types = set.Select(TypeNameDisplay.GetDisplayTypeName).Distinct().ToList()
+                        Types = [.. set.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
                     }
                     : null)
                 .Where(x => x is not null)
