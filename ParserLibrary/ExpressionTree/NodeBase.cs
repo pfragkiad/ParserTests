@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.ExpressionTree;
+namespace ParserLibrary.ExpressionTree;
 
 public abstract class NodeBase(string text)
 {

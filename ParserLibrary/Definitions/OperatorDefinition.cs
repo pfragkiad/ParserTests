@@ -1,4 +1,4 @@
-﻿using CustomResultError;
+using CustomResultError;
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 
@@ -33,33 +33,6 @@ public class OperatorDefinition
         for (int i = 0; i < args.Length; i++)
             resolved[i] = GetArgumentType(args[i]);
         return resolved;
-    }
-
-    protected static Result<TSyntax, ValidationResult> FindMatchingSyntax<TSyntax>(
-        IList<TSyntax>? syntaxes,
-        Func<TSyntax, bool> isMatch,
-        Func<TSyntax, ValidationResult>? validateMatchedSyntax,
-        string noSyntaxCategory,
-        string noSyntaxMessage,
-        Func<ValidationResult> noMatchValidationFactory)
-    {
-        if (syntaxes is null || syntaxes.Count == 0)
-            return ValidationHelpers.FailureResult(noSyntaxCategory, noSyntaxMessage, null);
-
-        foreach (var syntax in syntaxes)
-        {
-            if (!isMatch(syntax)) continue;
-
-            if (validateMatchedSyntax is not null)
-            {
-                var validation = validateMatchedSyntax(syntax);
-                if (!validation.IsValid) return validation;
-            }
-
-            return syntax;
-        }
-
-        return noMatchValidationFactory();
     }
 
     // ----------------- Shared helpers for building syntax descriptions -----------------

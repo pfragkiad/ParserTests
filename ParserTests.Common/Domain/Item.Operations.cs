@@ -1,4 +1,4 @@
-﻿namespace ParserTests.Common;
+namespace ParserTests.Common;
 
 public partial class Item
 {

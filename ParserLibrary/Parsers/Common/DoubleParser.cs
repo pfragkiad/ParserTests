@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Parsers.Common;
+namespace ParserLibrary.Parsers.Common;
 
 public class DoubleParser : ParserBase
 {

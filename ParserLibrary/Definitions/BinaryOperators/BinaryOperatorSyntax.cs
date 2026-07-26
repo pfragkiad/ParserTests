@@ -1,7 +1,7 @@
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 
-namespace ParserLibrary.Definitions;
+namespace ParserLibrary.Definitions.BinaryOperators;
 
 public sealed class BinaryOperatorSyntax
 {
@@ -41,11 +41,4 @@ public sealed class BinaryOperatorSyntax
         bool rightOk = TypeHelpers.MatchesAnyExpectedWithNullAwareness(right, RightTypes, allowParentTypes);
         return rightOk;
     }
-}
-
-public sealed class BinaryOperatorSyntaxMatch
-{
-    public required BinaryOperatorSyntax MatchedSyntax { get; init; }
-    public required Type LeftType { get; init; }
-    public required Type RightType { get; init; }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using ParserLibrary;
 using ParserLibrary.Parsers.Common;
 using System.Numerics;

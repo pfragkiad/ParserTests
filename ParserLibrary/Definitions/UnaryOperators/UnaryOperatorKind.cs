@@ -1,4 +1,4 @@
-namespace ParserLibrary.Definitions;
+namespace ParserLibrary.Definitions.UnaryOperators;
 
 public enum UnaryOperatorKind : byte
 {

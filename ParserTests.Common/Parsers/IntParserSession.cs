@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using ParserLibrary.Parsers;
 
 namespace ParserTests.Common.Parsers;

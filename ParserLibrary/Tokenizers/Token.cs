@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Tokenizers;
+namespace ParserLibrary.Tokenizers;
 using System.Text.RegularExpressions;
 
 public class Token : IComparable<Token>

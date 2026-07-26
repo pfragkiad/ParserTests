@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Tokenizers;
+namespace ParserLibrary.Tokenizers;
 
 public enum TokenType
 {

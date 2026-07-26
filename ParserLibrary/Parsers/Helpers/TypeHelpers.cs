@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Parsers.Helpers;
+namespace ParserLibrary.Parsers.Helpers;
 
 public static class TypeHelpers
 {

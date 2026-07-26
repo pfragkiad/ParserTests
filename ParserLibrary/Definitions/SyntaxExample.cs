@@ -1,7 +1,12 @@
-﻿namespace ParserLibrary.Definitions;
+using System.Text.Json.Serialization;
+
+namespace ParserLibrary.Definitions;
 
 public readonly struct SyntaxExample
 {
-    public string Syntax { get; init; }
+    public required string Syntax { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+
     public string? Description { get; init; }
 }

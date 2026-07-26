@@ -1,4 +1,4 @@
-﻿using ParserLibrary.Parsers;
+using ParserLibrary.Parsers;
 using ParserLibrary.Tokenizers;
 
 namespace ParserUnitTests;

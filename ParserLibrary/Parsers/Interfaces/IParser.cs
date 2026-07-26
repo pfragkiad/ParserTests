@@ -1,4 +1,4 @@
-﻿using ParserLibrary.Parsers.Validation;
+using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Tokenizers.Interfaces;
 using ParserLibrary.Tokenizers;
 using ParserLibrary.ExpressionTree;

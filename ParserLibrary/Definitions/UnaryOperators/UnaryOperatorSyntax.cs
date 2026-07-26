@@ -1,7 +1,7 @@
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 
-namespace ParserLibrary.Definitions;
+namespace ParserLibrary.Definitions.UnaryOperators;
 
 public sealed class UnaryOperatorSyntax
 {
@@ -32,10 +32,4 @@ public sealed class UnaryOperatorSyntax
 
     public bool IsMatch(Type operand, bool allowParentTypes)
         => TypeHelpers.MatchesAnyExpectedWithNullAwareness(operand, OperandTypes, allowParentTypes);
-}
-
-public sealed class UnaryOperatorSyntaxMatch
-{
-    public required UnaryOperatorSyntax MatchedSyntax { get; init; }
-    public required Type OperandType { get; init; }
 }

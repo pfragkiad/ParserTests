@@ -1,8 +1,8 @@
-﻿using CustomResultError;
+using CustomResultError;
 using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 
-namespace ParserLibrary.Definitions;
+namespace ParserLibrary.Definitions.Functions;
 
 
 
@@ -81,7 +81,12 @@ public class FunctionDefinition : OperatorDefinition
         if (syntaxMatch.IsFailure) return syntaxMatch.Error!;
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
-        return syntax.Calc!(args, context);
+        if (syntax.Calc is not null)
+            return syntax.Calc(args, context);
+        if (ParserLibrarySettings.WithCalcFallback && syntax.CalcAsync is not null)
+            return syntax.CalcAsync(args, context, CancellationToken.None).GetAwaiter().GetResult();
+
+        return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no calculation method.", null);
     }
 
     //both CalcAsync and Calc support
@@ -92,17 +97,11 @@ public class FunctionDefinition : OperatorDefinition
 
         var syntax = syntaxMatch.Value!.MatchedSyntax;
         if (syntax.CalcAsync is not null)
-        {
             return await syntax.CalcAsync(args, context, ct);
-        }
-        else if (syntax.Calc is not null)
-        {
+        if (ParserLibrarySettings.WithCalcFallback && syntax.Calc is not null)
             return syntax.Calc(args, context);
-        }
-        else
-        {
-            return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no calculation method.", null);
-        }
+
+        return ValidationHelpers.FailureResult("function", $"Function '{Name}' has no calculation method.", null);
     }
 
 
@@ -123,7 +122,12 @@ public class FunctionDefinition : OperatorDefinition
         // Additional business validation after syntax and string checks
         if (AdditionalGlobalValidation is not null)
         {
-            var addVal = AdditionalGlobalValidation(args,context);
+            var addVal = AdditionalGlobalValidation(args, context);
+            if (addVal.IsFailure) return addVal.Error!;
+        }
+        else if (ParserLibrarySettings.WithValidationFallback && AdditionalGlobalValidationAsync is not null)
+        {
+            var addVal = AdditionalGlobalValidationAsync(args, context, CancellationToken.None).GetAwaiter().GetResult();
             if (addVal.IsFailure) return addVal.Error!;
         }
 
@@ -148,9 +152,9 @@ public class FunctionDefinition : OperatorDefinition
             var addVal = await AdditionalGlobalValidationAsync(args, context, ct);
             if (addVal.IsFailure) return addVal.Error!;
         }
-        else if (AdditionalGlobalValidation is not null)
+        else if (ParserLibrarySettings.WithValidationFallback && AdditionalGlobalValidation is not null)
         {
-            var addVal = AdditionalGlobalValidation(args,context);
+            var addVal = AdditionalGlobalValidation(args, context);
             if (addVal.IsFailure) return addVal.Error!;
         }
 
@@ -164,75 +168,8 @@ public class FunctionDefinition : OperatorDefinition
     }
 
     // Centralized matcher: validates syntaxes, nulls, type compatibility (with inheritance), and string constraints
-    public Result<FunctionSyntax, ValidationResult> GetValidSyntax(object?[] args,ParserContext? context, bool allowParentTypes)
-    {
-        // Resolve argument types (support passing Type directly)
-        var resolved = ResolveArgumentTypes(args);
-
-        return FindMatchingSyntax(
-            Syntaxes,
-            syn => syn.IsFixedMatch(resolved, allowParentTypes) || syn.IsDynamicMatch(resolved, allowParentTypes),
-            syn =>
-            {
-                var strCheck = ValidateStringConstraints(args);
-                if (!strCheck.IsValid) return strCheck;
-
-                if (syn.AdditionalValidation is not null)
-                {
-                    var addVal = syn.AdditionalValidation(args,context);
-                    if (!addVal.IsValid) return addVal;
-                }
-
-                return ValidationHelpers.Success;
-            },
-            noSyntaxCategory: "function",
-            noSyntaxMessage: $"Function '{Name}' has no declared syntaxes.",
-            noMatchValidationFactory: () =>
-            {
-                var resolvedNames = resolved.Length == 0
-                    ? "<no arguments>"
-                    : string.Join(", ", resolved.Select(TypeNameDisplay.GetDisplayTypeName));
-
-                string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
-                {
-                    string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
-                    if (syn.InputsFixed is { Count: > 0 })
-                    {
-                        var fixedParts = syn.InputsFixed!
-                            .Select(set => set.Count == 1
-                                ? TypeNameDisplay.GetDisplayTypeName(set.First())
-                                : "[" + string.Join("|", set.Select(TypeNameDisplay.GetDisplayTypeName)) + "]")
-                            .ToArray();
-                        return $"  {scenarioPart}Fixed: ({string.Join(", ", fixedParts)}) -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-                    }
-                    else if (syn.InputsDynamic.HasValue)
-                    {
-                        var dyn = syn.InputsDynamic.Value;
-                        string first = dyn.FirstInputType is { Count: > 0 }
-                            ? "(" + string.Join("|", dyn.FirstInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                            : "-";
-                        string middle = dyn.MiddleInputTypes is { Count: > 0 }
-                            ? "(" + string.Join("|", dyn.MiddleInputTypes.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                            : "-";
-                        string last = dyn.LastInputType is { Count: > 0 }
-                            ? "(" + string.Join("|", dyn.LastInputType.Select(TypeNameDisplay.GetDisplayTypeName)) + ")"
-                            : "-";
-                        return $"  {scenarioPart}Dynamic: first={first}, middle={middle}* (min {dyn.MinMiddleArgumentsCount}), last={last} -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-                    }
-                    else
-                    {
-                        return $"  {scenarioPart}Empty -> {TypeNameDisplay.GetDisplayTypeName(syn.OutputType)}";
-                    }
-                });
-
-                string message =
-                    $"'{Name}' arguments do not match any declared syntax." +
-                    $"{Environment.NewLine}Provided types: [{resolvedNames}]" +
-                    $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
-
-                return ValidationHelpers.FailureResult("arguments", message, resolvedNames);
-            });
-    }
+    public Result<FunctionSyntax, ValidationResult> GetValidSyntax(object?[] args, ParserContext? context, bool allowParentTypes)
+        => GetValidSyntaxAsync(args, context, allowParentTypes, CancellationToken.None).GetAwaiter().GetResult();
 
     public async Task<Result<FunctionSyntax, ValidationResult>> GetValidSyntaxAsync(object?[] args, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
@@ -369,20 +306,158 @@ public class FunctionDefinition : OperatorDefinition
         return new ValidationResult();
     }
 
-    public FunctionDefinitionDto ToDefinitionDto() =>
-        FunctionDefinitionDto.From(this);
-}
+    public FunctionDefinitionDto ToDefinitionDto() 
+    {
+        return new FunctionDefinitionDto
+        {
+            Name = Name,
+            IsCustomFunction = IsCustomFunction,
+            Description = string.IsNullOrWhiteSpace(Description) ? null : Description,
 
+            Aliases = Aliases is { Length: > 0 }
+                ? [.. Aliases.Distinct()]
+                : null,
 
-public class FunctionSyntaxMatch
-{
-    public required FunctionSyntax MatchedSyntax { get; init; }
+            //MinArgumentsCount = MinArgumentsCount,
+            //MaxArgumentsCount = MaxArgumentsCount,
+            //FixedArgumentsCount = FixedArgumentsCount,
 
-    public Type[] ResolvedTypes { get; init; } = [];
-}
+            Examples = Examples?.Count > 0 ? [.. Examples] : null,
 
-public class ExpectedFunctionArgumentsCount
-{
-    public IList<int>? FixedCounts { get; init; } = [];
-    public int? MinCount { get; init; }
+            //// Types (names instead of Type)
+            //AllowedTypesPerPosition = AllowedTypesPerPosition is { Count: > 0 }
+            //    ? [.. AllowedTypesPerPosition
+            //        .Select((set, idx) => set is { Count: > 0 }
+            //            ? new AllowedTypesPerPositionDto
+            //            {
+            //                Position = idx + 1, // 1-based
+            //                Types = set.Select(TypeNameDisplay.GetDisplayTypeName)
+            //                           .Distinct()
+            //                           .ToList()
+            //            }
+            //            : null)
+            //        .Where(x => x is not null)
+            //        .Select(x => x!)]
+            //    : null,
+
+            //AllowedTypesForAll = AllowedTypesForAll is { Count: > 0 }
+            //    ? [.. AllowedTypesForAll.Select(TypeNameDisplay.GetDisplayTypeName)]
+            //    : null,
+
+            //AllowedTypesForLast = AllowedTypesForLast is { Count: > 0 }
+            //    ? [.. AllowedTypesForLast.Select(TypeNameDisplay.GetDisplayTypeName)]
+            //    : null,
+
+            // String values per position
+            AllowedStringValuesPerPosition = AllowedStringValuesPerPosition is { Count: > 0 }
+                ? [.. AllowedStringValuesPerPosition
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => kv.Value is { Count: > 0 }
+                        ? new ValuesPerPositionDto
+                        {
+                            Position = kv.Key + 1, // 1-based
+                            Values = kv.Value.ToList()
+                        }
+                        : null)
+                    .Where(x => x is not null)
+                    .Select(x => x!)]
+                : null,
+
+            AllowedStringValuesForAll = AllowedStringValuesForAll is { Count: > 0 }
+                ? [.. AllowedStringValuesForAll]
+                : null,
+
+            AllowedStringValuesForLast = AllowedStringValuesForLast is { Count: > 0 }
+                ? [.. AllowedStringValuesForLast]
+                : null,
+
+            // String formats per position
+            AllowedStringFormatsPerPosition = AllowedStringFormatsPerPosition is { Count: > 0 }
+                ? [.. AllowedStringFormatsPerPosition
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => kv.Value is { Count: > 0 }
+                        ? new ValuesPerPositionDto
+                        {
+                            Position = kv.Key + 1, // 1-based
+                            Values = kv.Value.ToList()
+                        }
+                        : null)
+                    .Where(x => x is not null)
+                    .Select(x => x!)]
+                : null,
+
+            AllowedStringFormatsForAll = AllowedStringFormatsForAll is { Count: > 0 }
+                ? [.. AllowedStringFormatsForAll]
+                : null,
+
+            AllowedStringFormatsForLast = AllowedStringFormatsForLast is { Count: > 0 }
+                ? [.. AllowedStringFormatsForLast]
+                : null,
+
+            // Function syntaxes
+            Syntaxes = Syntaxes is { Count: > 0 }
+                ? [.. Syntaxes.Select(MapSyntax)]
+                : null
+        };
+    }
+
+    private static FunctionSyntaxDto MapSyntax(FunctionSyntax syn)
+    {
+        var dyn = syn.InputsDynamic;
+
+        // Map to [{ position, types[] }] with 1-based positions
+        var inputsFixed = syn.InputsFixed is { Count: > 0 }
+            ? syn.InputsFixed
+                .Select((set, idx) => set is { Count: > 0 }
+                    ? new InputFixedDto
+                    {
+                        Position = idx + 1,
+                        Types = set.Select(TypeNameDisplay.GetDisplayTypeName).Distinct().ToList()
+                    }
+                    : null)
+                .Where(x => x is not null)
+                .Select(x => x!)
+                .ToList()
+            : null;
+
+        InputsDynamicDto? inputsDynamic = null;
+        if (dyn is not null)
+        {
+            var first = dyn.Value.FirstInputType;
+            var last = dyn.Value.LastInputType;
+            var middle = dyn.Value.MiddleInputTypes;
+            var minVar = dyn.Value.MinMiddleArgumentsCount;
+
+            var hasFirst = first is { Count: > 0 };
+            var hasLast = last is { Count: > 0 };
+            var hasMiddle = middle is { Count: > 0 };
+
+            if (hasFirst || hasLast || hasMiddle || minVar > 0)
+            {
+                inputsDynamic = new InputsDynamicDto
+                {
+                    FirstInputTypes = hasFirst ? [.. first!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
+                    LastInputTypes = hasLast ? [.. last!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
+                    Types = hasMiddle ? [.. middle!.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()] : null,
+                    MinVariableArgumentsCount = minVar > 0 ? minVar : null
+                };
+            }
+        }
+
+        return new FunctionSyntaxDto
+        {
+            Scenario = syn.Scenario,
+            Expression = string.IsNullOrWhiteSpace(syn.Expression) ? null : syn.Expression,
+            ExpressionClean = syn.ExpressionClean,
+            InputsFixed = inputsFixed,
+            InputsDynamic = inputsDynamic,
+            // multi-examples array
+            Examples = syn.Examples is { Length: > 0 } ? [.. syn.Examples] : null,
+            // ensure output last via JsonPropertyOrder
+            OutputType = syn.OutputType is not null
+                ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType)
+                : null,
+            Description = string.IsNullOrWhiteSpace(syn.Description) ? null : syn.Description
+        };
+    }
 }

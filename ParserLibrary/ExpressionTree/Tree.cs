@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.ExpressionTree;
+namespace ParserLibrary.ExpressionTree;
 
 public class Tree<T> where T : notnull
 {

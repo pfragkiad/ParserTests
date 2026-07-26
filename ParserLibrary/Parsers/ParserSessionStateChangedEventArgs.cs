@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.Parsers;
+namespace ParserLibrary.Parsers;
 
 public sealed class ParserSessionStateChangedEventArgs : EventArgs
 {

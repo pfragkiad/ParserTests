@@ -4,7 +4,7 @@ using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
 using System.Linq;
 
-namespace ParserLibrary.Definitions;
+namespace ParserLibrary.Definitions.UnaryOperators;
 
 public sealed class UnaryOperatorDefinition : OperatorDefinition
 {
@@ -37,7 +37,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
         var syn = match.Value!.MatchedSyntax;
         if (syn.Calc is not null)
             return syn.Calc(operand, context);
-        if (syn.CalcAsync is not null)
+        if (ParserLibrarySettings.WithCalcFallback && syn.CalcAsync is not null)
             return syn.CalcAsync(operand, context, CancellationToken.None).GetAwaiter().GetResult();
 
         return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
@@ -51,7 +51,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
         var syn = match.Value!.MatchedSyntax;
         if (syn.CalcAsync is not null)
             return await syn.CalcAsync(operand, context, ct);
-        if (syn.Calc is not null)
+        if (ParserLibrarySettings.WithCalcFallback && syn.Calc is not null)
             return syn.Calc(operand, context);
 
         return ValidationHelpers.FailureResult("operator", $"Operator '{Name}' is not executable (no Calc/CalcAsync).", null);
@@ -61,48 +61,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
         => GetValidSyntax(operand, context, allowParentTypes).Match(_ => ValidationHelpers.Success, err => err);
 
     public Result<UnaryOperatorSyntaxMatch, ValidationResult> GetValidSyntax(object? operand, ParserContext? context, bool allowParentTypes)
-    {
-        var operandType = GetArgumentType(operand);
-
-        var syntaxResult = FindMatchingSyntax(
-            Syntaxes,
-            syn => syn.IsMatch(operandType, allowParentTypes),
-            syn => syn.AdditionalValidation?.Invoke(operand, context) ?? ValidationHelpers.Success,
-            noSyntaxCategory: "operator",
-            noSyntaxMessage: $"Operator '{Name}' has no declared syntaxes.",
-            noMatchValidationFactory: () =>
-            {
-                var resolvedNames = FormatTypeName(operandType);
-
-                string syntaxesDescription = BuildSyntaxesDescription(Syntaxes, syn =>
-                {
-                    string scenarioPart = syn.Scenario.HasValue ? $"(Scenario {syn.Scenario}) " : "";
-                    var operandTypes = FormatTypeSet(syn.OperandTypes);
-                    return $"  {scenarioPart}Unary: ({operandTypes}) -> {FormatTypeName(syn.OutputType)}";
-                });
-
-                string message =
-                    $"{Name} operator operand does not match any declared syntax." +
-                    $"{Environment.NewLine}Provided type: [{resolvedNames}]" +
-                    $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
-
-                return ValidationHelpers.FailureResult("operands", message, resolvedNames);
-            });
-
-        if (syntaxResult.IsFailure) return syntaxResult.Error!;
-
-        if (AdditionalGlobalValidation is not null)
-        {
-            var globalValidation = AdditionalGlobalValidation(operand, context);
-            if (globalValidation.IsFailure) return globalValidation.Error!;
-        }
-
-        return new UnaryOperatorSyntaxMatch
-        {
-            MatchedSyntax = syntaxResult.Value!,
-            OperandType = operandType
-        };
-    }
+        => GetValidSyntaxAsync(operand, context, allowParentTypes, CancellationToken.None).GetAwaiter().GetResult();
 
     public async Task<Result<UnaryOperatorSyntaxMatch, ValidationResult>> GetValidSyntaxAsync(object? operand, ParserContext? context, bool allowParentTypes, CancellationToken ct)
     {
@@ -131,7 +90,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
                 var globalValidation = await AdditionalGlobalValidationAsync(operand, context, ct);
                 if (globalValidation.IsFailure) return globalValidation.Error!;
             }
-            else if (AdditionalGlobalValidation is not null)
+            else if (ParserLibrarySettings.WithValidationFallback && AdditionalGlobalValidation is not null)
             {
                 var globalValidation = AdditionalGlobalValidation(operand, context);
                 if (globalValidation.IsFailure) return globalValidation.Error!;
@@ -159,5 +118,43 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
             $"{Environment.NewLine}Available syntaxes:{Environment.NewLine}{syntaxesDescription}";
 
         return ValidationHelpers.FailureResult("operands", message, resolvedNames);
+    }
+
+
+    public UnaryOperatorDefinitionDto ToDefinitionDto()
+    {
+        return new UnaryOperatorDefinitionDto
+        {
+            Name = Name,
+            Kind = Kind,
+            Description = string.IsNullOrWhiteSpace(Description) ? null : Description,
+
+            Aliases = Aliases is { Length: > 0 }
+                ? [.. Aliases.Distinct()]
+                : null,
+
+            Examples = Examples?.Count > 0 ? [.. Examples] : null,
+
+            Syntaxes = Syntaxes is { Count: > 0 }
+                ? [.. Syntaxes.Select(MapSyntax)]
+                : null
+        };
+    }
+
+    private static UnaryOperatorSyntaxDto MapSyntax(UnaryOperatorSyntax syn)
+    {
+        return new UnaryOperatorSyntaxDto
+        {
+            Scenario = syn.Scenario,
+            OperandTypes = syn.OperandTypes is { Count: > 0 }
+                ? [.. syn.OperandTypes.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
+                : null,
+            Examples = syn.Examples is { Length: > 0 } ? [.. syn.Examples] : null,
+            // ensure output last via JsonPropertyOrder
+            OutputType = syn.OutputType is not null
+                ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType)
+                : null,
+            Description = string.IsNullOrWhiteSpace(syn.Description) ? null : syn.Description
+        };
     }
 }

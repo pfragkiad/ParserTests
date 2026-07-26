@@ -1,4 +1,4 @@
-﻿using OneOf;
+using OneOf;
 using ParserLibrary.Parsers.Validation;
 using ParserLibrary.Parsers.Validation.CheckResults;
 using ParserLibrary.Parsers.Validation.Reports;

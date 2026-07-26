@@ -1,4 +1,4 @@
-﻿namespace ParserLibrary.ExpressionTree;
+namespace ParserLibrary.ExpressionTree;
 
 /// <summary>
 /// Extension methods that apply only when the tree holds Token nodes (Tree&lt;Token&gt;).

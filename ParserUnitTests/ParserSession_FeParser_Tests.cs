@@ -73,7 +73,7 @@ public class FeParser(ILogger<FeParser> logger, ParserServices dependencies) : D
         // Switch expression for easy extensibility
         return functionName.ToLowerInvariant() switch
         {
-            // if(<bool>, <expr1>, <expr2>) – first is strictly bool, others can be any type
+            // if(<bool>, <expr1>, <expr2>) ï¿½ first is strictly bool, others can be any type
             "if" => ((bool)args[0]!) ? (dynamic)args[1]! : (dynamic)args[2]!,
 
             // add more functions here as new cases...
