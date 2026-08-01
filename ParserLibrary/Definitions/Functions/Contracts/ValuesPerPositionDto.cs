@@ -1,4 +1,4 @@
-namespace ParserLibrary.Definitions.Functions;
+namespace ParserLibrary.Definitions.Functions.Contracts;
 
 public sealed class ValuesPerPositionDto
 {

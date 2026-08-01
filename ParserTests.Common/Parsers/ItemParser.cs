@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ParserLibrary.Definitions;
 using ParserLibrary.Parsers;
 
 namespace ParserTests.Common.Parsers;
@@ -52,12 +53,12 @@ public class ItemParser(ILogger<ItemParser> logger, ParserServices ps) : ParserB
         };
     }
 
-    private static Type? Unwrap(object? o) => o as Type;
+    private static Type ResolveType(object? value) => OperatorDefinition.GetArgumentType(value);
 
-    private static bool IsInt(object? o) => Unwrap(o) == typeof(int);
-    private static bool IsDouble(object? o) => Unwrap(o) == typeof(double);
-    private static bool IsItem(object? o) => Unwrap(o) == typeof(Item);
-    private static bool IsNumeric(object? o) => IsInt(o) || IsDouble(o);
+    private static bool IsInt(object? value) => ResolveType(value) == typeof(int);
+    private static bool IsDouble(object? value) => ResolveType(value) == typeof(double);
+    private static bool IsItem(object? value) => ResolveType(value) == typeof(Item);
+    private static bool IsNumeric(object? value) => IsInt(value) || IsDouble(value);
 
     private static Type PromoteNumeric(object? left, object? right)
         => (IsDouble(left) || IsDouble(right)) ? typeof(double) : typeof(int);

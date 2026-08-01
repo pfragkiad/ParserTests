@@ -1,5 +1,6 @@
 using CustomResultError;
 using FluentValidation.Results;
+using ParserLibrary.Definitions.BinaryOperators.Contracts;
 using ParserLibrary.Definitions.Functions;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
@@ -23,7 +24,7 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
     {
         var res = GetValidSyntax(left, right, context, allowParentTypes);
         if (res.IsFailure) return res.Error!;
-        return res.Value!.MatchedSyntax.OutputType;
+        return res.Value!.MatchedSyntax.ResolveOutputTypeOrDefault(left, right, context);
     }
 
     public Result<object?, ValidationResult> ValidateAndCalc(
@@ -159,6 +160,10 @@ public sealed class BinaryOperatorDefinition : OperatorDefinition
                 ? [.. syn.RightTypes.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
                 : null,
             Examples = syn.Examples is { Length: > 0 } ? [.. syn.Examples] : null,
+            HasValueDependentOutputType = syn.HasValueDependentOutputType ? true : null,
+            PossibleOutputTypes = syn.PossibleOutputTypes is { Count: > 0 }
+                ? [.. syn.GetAllOutputTypes().Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
+                : null,
             OutputType = syn.OutputType is not null ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType) : null,
             Description = string.IsNullOrWhiteSpace(syn.Description) ? null : syn.Description
         };

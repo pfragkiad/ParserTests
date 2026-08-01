@@ -26,6 +26,8 @@ public class FunctionSyntax
 
     public required Type OutputType { get; init; }
 
+    public HashSet<Type>? PossibleOutputTypes { get; init; }
+
     public string[]? Examples { get; init; }
 
     public string? Description { get; init; }
@@ -34,6 +36,12 @@ public class FunctionSyntax
 
     //args, context, cancellation token, returns result
     public Func<object?[], ParserContext?, CancellationToken, Task<object?>>? CalcAsync { get; init; }
+
+    [JsonIgnore]
+    public Func<object?[], ParserContext?, Type?>? ResolveOutputTypeFromValues { get; init; }
+
+    [JsonIgnore]
+    public Func<object?[], ParserContext?, CancellationToken, Task<Type?>>? ResolveOutputTypeFromValuesAsync { get; init; }
 
 
     //args, context, returns result
@@ -44,6 +52,40 @@ public class FunctionSyntax
     //args, context, cancellation token, returns ValidationResult
     [JsonIgnore]
     public Func<object?[], ParserContext?, CancellationToken, Task<ValidationResult>>? AdditionalValidationAsync { get; init; }
+
+    public Type ResolveOutputTypeOrDefault(object?[] args, ParserContext? context)
+    {
+        return ResolveOutputTypeFromValues?.Invoke(args, context) ?? OutputType;
+    }
+
+    public async Task<Type> ResolveOutputTypeOrDefaultAsync(object?[] args, ParserContext? context, CancellationToken ct)
+    {
+        if (ResolveOutputTypeFromValuesAsync is not null)
+            return await ResolveOutputTypeFromValuesAsync(args, context, ct) ?? OutputType;
+
+        return ResolveOutputTypeOrDefault(args, context);
+    }
+
+    public IEnumerable<Type> GetAllOutputTypes()
+    {
+        yield return OutputType;
+
+        if (PossibleOutputTypes is null)
+            yield break;
+
+        foreach (var type in PossibleOutputTypes)
+        {
+            if (type != OutputType)
+                yield return type;
+        }
+    }
+
+    public bool HasValueDependentOutputType =>
+        ResolveOutputTypeFromValues is not null ||
+        ResolveOutputTypeFromValuesAsync is not null ||
+        PossibleOutputTypes is { Count: > 0 };
+
+    public bool HasMultipleOutputTypes => PossibleOutputTypes is { Count: > 0 };
 
     public static FunctionSyntax CreateEmpty(Type outputType, int? scenarioId, string? description = null, params string[] examples)
     {

@@ -1,5 +1,6 @@
 using CustomResultError;
 using FluentValidation.Results;
+using ParserLibrary.Definitions.Functions.Contracts;
 using ParserLibrary.Parsers.Helpers;
 
 namespace ParserLibrary.Definitions.Functions;
@@ -72,7 +73,7 @@ public class FunctionDefinition : OperatorDefinition
         var result = ValidateArgumentTypes(args, context, allowParentTypes);
         if (result.IsFailure) return result.Error!;
         var syntaxMatch = result.Value!;
-        return syntaxMatch.MatchedSyntax.OutputType;
+        return syntaxMatch.MatchedSyntax.ResolveOutputTypeOrDefault(args, context);
     }
 
 
@@ -81,7 +82,7 @@ public class FunctionDefinition : OperatorDefinition
         var result = await ValidateArgumentTypesAsync(args, context, allowParentTypes, ct);
         if (result.IsFailure) return result.Error!;
         var syntaxMatch = result.Value!;
-        return syntaxMatch.MatchedSyntax.OutputType;
+        return await syntaxMatch.MatchedSyntax.ResolveOutputTypeOrDefaultAsync(args, context, ct);
     }
 
 
@@ -463,6 +464,10 @@ public class FunctionDefinition : OperatorDefinition
             InputsDynamic = inputsDynamic,
             // multi-examples array
             Examples = syn.Examples is { Length: > 0 } ? [.. syn.Examples] : null,
+            HasValueDependentOutputType = syn.HasValueDependentOutputType ? true : null,
+            PossibleOutputTypes = syn.PossibleOutputTypes is { Count: > 0 }
+                ? [.. syn.GetAllOutputTypes().Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
+                : null,
             // ensure output last via JsonPropertyOrder
             OutputType = syn.OutputType is not null
                 ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType)

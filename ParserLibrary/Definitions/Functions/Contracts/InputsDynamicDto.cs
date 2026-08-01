@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ParserLibrary.Definitions.Functions;
+namespace ParserLibrary.Definitions.Functions.Contracts;
 
 public sealed class InputsDynamicDto
 {

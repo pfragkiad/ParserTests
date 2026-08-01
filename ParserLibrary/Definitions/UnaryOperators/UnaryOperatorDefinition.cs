@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using ParserLibrary.Parsers.Helpers;
 using System.Text.Json.Serialization;
 using System.Linq;
+using ParserLibrary.Definitions.UnaryOperators.Contracts;
 
 namespace ParserLibrary.Definitions.UnaryOperators;
 
@@ -26,7 +27,7 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
     {
         var res = GetValidSyntax(operand, context, allowParentTypes);
         if (res.IsFailure) return res.Error!;
-        return res.Value!.MatchedSyntax.OutputType;
+        return res.Value!.MatchedSyntax.ResolveOutputTypeOrDefault(operand, context);
     }
 
     public Result<object?, ValidationResult> ValidateAndCalc(object? operand, ParserContext? context, bool allowParentTypes)
@@ -150,6 +151,10 @@ public sealed class UnaryOperatorDefinition : OperatorDefinition
                 ? [.. syn.OperandTypes.Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
                 : null,
             Examples = syn.Examples is { Length: > 0 } ? [.. syn.Examples] : null,
+            HasValueDependentOutputType = syn.HasValueDependentOutputType ? true : null,
+            PossibleOutputTypes = syn.PossibleOutputTypes is { Count: > 0 }
+                ? [.. syn.GetAllOutputTypes().Select(TypeNameDisplay.GetDisplayTypeName).Distinct()]
+                : null,
             // ensure output last via JsonPropertyOrder
             OutputType = syn.OutputType is not null
                 ? TypeNameDisplay.GetDisplayTypeName(syn.OutputType)

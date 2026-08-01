@@ -1,12 +1,13 @@
-using System.Linq;
 using System.Text.Json.Serialization;
-using ParserLibrary.Parsers;
 
-namespace ParserLibrary.Definitions.BinaryOperators;
+namespace ParserLibrary.Definitions.UnaryOperators.Contracts;
 
-public sealed class BinaryOperatorDefinitionDto
+public sealed class UnaryOperatorDefinitionDto
 {
     public required string Name { get; init; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public UnaryOperatorKind Kind { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Aliases { get; init; }
@@ -19,7 +20,7 @@ public sealed class BinaryOperatorDefinitionDto
 
     // Operator syntaxes
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public List<BinaryOperatorSyntaxDto>? Syntaxes { get; init; }
+    public List<UnaryOperatorSyntaxDto>? Syntaxes { get; init; }
 
-   
+ 
 }

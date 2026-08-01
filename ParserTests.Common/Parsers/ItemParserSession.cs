@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ParserLibrary.Definitions;
 using ParserLibrary.Parsers;
 
 namespace ParserTests.Common.Parsers;
@@ -57,12 +58,15 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
 
     protected override Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand)
     {
-        bool isLeftInt = leftOperand as Type == typeof(int);
-        bool isRightInt = rightOperand as Type == typeof(int);
-        bool isLeftNumeric = leftOperand as Type == typeof(int) || leftOperand as Type == typeof(double);
-        bool isRightNumeric = rightOperand as Type == typeof(int) || rightOperand as Type == typeof(double);
-        bool isLeftItem = leftOperand is Type t && t == typeof(Item);
-        bool isRightItem = rightOperand is Type t2 && t2 == typeof(Item);
+        var leftType = OperatorDefinition.GetArgumentType(leftOperand);
+        var rightType = OperatorDefinition.GetArgumentType(rightOperand);
+
+        bool isLeftInt = leftType == typeof(int);
+        bool isRightInt = rightType == typeof(int);
+        bool isLeftNumeric = leftType == typeof(int) || leftType == typeof(double);
+        bool isRightNumeric = rightType == typeof(int) || rightType == typeof(double);
+        bool isLeftItem = leftType == typeof(Item);
+        bool isRightItem = rightType == typeof(Item);
 
         if (operatorName == "+")
         {
@@ -79,7 +83,8 @@ public class ItemParserSession(ILogger<ItemParserSession> logger, ParserServices
             if ((isLeftItem && isRightInt) || (isLeftInt && isRightItem)) return typeof(Item); //Item * int or int * Item returns Item
             if ((isLeftItem && isRightNumeric) || (isLeftNumeric && isRightItem)) return typeof(double); //Item * double or double * Item returns double
         }
-            return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
+
+        return base.EvaluateOperatorType(operatorName, leftOperand, rightOperand);
     }
 
     // Respect case sensitivity for built-in function metadata lookups

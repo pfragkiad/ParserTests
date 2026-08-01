@@ -442,7 +442,7 @@ public partial class ParserBase : Tokenizer, IParser
         if (mergeConstants)
             variables = MergeVariableConstants(variables);
 
-        var nodeValueDictionary = new Dictionary<Node<Token>, object?>();
+        var nodeValueDictionary = new Dictionary<Node<Token>, TypeInferenceValue>();
 
         foreach (var nb in tree.Root.PostOrderNodes())
         {
@@ -452,17 +452,19 @@ public partial class ParserBase : Tokenizer, IParser
             switch (token.TokenType)
             {
                 case TokenType.Literal:
-                    nodeValueDictionary[node] = token.IsNull ? null : EvaluateLiteralType(token.Text, token.CaptureGroup);
+                    nodeValueDictionary[node] = token.IsNull
+                        ? TypeInferenceValue.FromRuntimeValue(null)
+                        : TypeInferenceValue.FromRuntimeValue(EvaluateLiteral(token.Text, token.CaptureGroup));
                     break;
 
                 case TokenType.Identifier:
                     if (variables is not null && variables.TryGetValue(token.Text, out var v))
                     {
-                        nodeValueDictionary[node] = v is Type tType ? tType : v?.GetType();
+                        nodeValueDictionary[node] = TypeInferenceValue.FromVariable(v);
                     }
                     else
                     {
-                        nodeValueDictionary[node] = null;
+                        nodeValueDictionary[node] = TypeInferenceValue.Unknown;
                     }
                     break;
 
@@ -487,7 +489,7 @@ public partial class ParserBase : Tokenizer, IParser
             }
         }
 
-        return (Type)nodeValueDictionary[tree.Root]!;
+        return nodeValueDictionary[tree.Root].ResolvedType;
     }
 
     public virtual Type EvaluateType(
@@ -507,7 +509,7 @@ public partial class ParserBase : Tokenizer, IParser
 
         Stack<Token> stack = new();
         Dictionary<Token, Node<Token>> nodeDictionary = [];
-        Dictionary<Node<Token>, object?> nodeValueDictionary = [];
+        Dictionary<Node<Token>, TypeInferenceValue> nodeValueDictionary = [];
 
         return EvaluateType(postfixTokens, variables, stack, nodeDictionary, nodeValueDictionary, mergeConstants);
     }
@@ -517,7 +519,7 @@ public partial class ParserBase : Tokenizer, IParser
         Dictionary<string, object?>? variables,
         Stack<Token> stack,
         Dictionary<Token, Node<Token>> nodeDictionary,
-        Dictionary<Node<Token>, object?> nodeValueDictionary,
+        Dictionary<Node<Token>, TypeInferenceValue> nodeValueDictionary,
         bool mergeConstants)
     {
         if (mergeConstants)
@@ -538,20 +540,20 @@ public partial class ParserBase : Tokenizer, IParser
             if (token.TokenType == TokenType.Literal || token.TokenType == TokenType.Identifier)
             {
                 var tokenNode = CreateNodeAndPushToExpressionStack(stack, nodeDictionary, token);
-                object? value = null;
+                var value = TypeInferenceValue.Unknown;
 
                 if (token.TokenType == TokenType.Literal)
                 {
-                    // BUGFIX: store type (or null for Token.Null), not the parsed value
-                    nodeValueDictionary.Add(tokenNode, value = token.IsNull ? null : EvaluateLiteralType(token.Text, token.CaptureGroup));
+                    value = token.IsNull
+                        ? TypeInferenceValue.FromRuntimeValue(null)
+                        : TypeInferenceValue.FromRuntimeValue(EvaluateLiteral(token.Text, token.CaptureGroup));
                 }
-                else if (token.TokenType == TokenType.Identifier && variables is not null)
+                else if (token.TokenType == TokenType.Identifier && variables is not null && variables.TryGetValue(token.Text, out var variableValue))
                 {
-                    if (variables[token.Text] is Type tType)
-                        nodeValueDictionary.Add(tokenNode, value = tType);
-                    else
-                        nodeValueDictionary.Add(tokenNode, value = variables[token.Text]?.GetType());
+                    value = TypeInferenceValue.FromVariable(variableValue);
                 }
+
+                nodeValueDictionary.Add(tokenNode, value);
 
                 if (_logger.IsEnabled(LogLevel.Debug))
                     _logger.LogDebug("Push {token} to stack (value: {value})", token, value);
@@ -583,7 +585,7 @@ public partial class ParserBase : Tokenizer, IParser
         //ThrowExceptionForOrphanArgumentSeparators(nodeDictionary); // NEW
 
         var root = nodeDictionary[stack.Pop()];
-        return (Type)nodeValueDictionary[root]!;
+        return nodeValueDictionary[root].ResolvedType;
     }
 
     protected virtual object? Evaluate(
@@ -874,11 +876,14 @@ public partial class ParserBase : Tokenizer, IParser
         return await EvaluateOperatorAsync(operatorName, leftOperand, rightOperand, ct);
     }
 
-    protected Type EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    protected TypeInferenceValue EvaluateOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, TypeInferenceValue> nodeValueDictionary)
     {
-        var (LeftOperand, RightOperand) = operatorNode.GetBinaryArguments(nodeValueDictionary);
+        var (leftNode, rightNode) = operatorNode.GetBinaryArgumentNodes();
+        var leftOperand = nodeValueDictionary[leftNode];
+        var rightOperand = nodeValueDictionary[rightNode];
         string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
-        return EvaluateOperatorType(operatorName, LeftOperand, RightOperand);
+        var resolvedType = EvaluateOperatorType(operatorName, leftOperand.ToResolverArgument(), rightOperand.ToResolverArgument());
+        return TypeInferenceValue.FromDeclaredType(resolvedType);
     }
 
     protected object? EvaluateUnaryOperator(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -899,13 +904,14 @@ public partial class ParserBase : Tokenizer, IParser
         return await EvaluateUnaryOperatorAsync(operatorName, operand, ct);
     }
 
-    protected Type EvaluateUnaryOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    protected TypeInferenceValue EvaluateUnaryOperatorType(Node<Token> operatorNode, Dictionary<Node<Token>, TypeInferenceValue> nodeValueDictionary)
     {
         string operatorName = _patterns.CaseSensitive ? operatorNode.Text : operatorNode.Text.ToLower();
-        var operand = operatorNode.GetUnaryArgument(
-            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix,
-            nodeValueDictionary);
-        return EvaluateUnaryOperatorType(operatorName, operand);
+        var operandNode = operatorNode.GetUnaryArgumentNode(
+            _options.TokenPatterns.UnaryOperatorDictionary[operatorName].Prefix);
+        var operand = nodeValueDictionary[operandNode];
+        var resolvedType = EvaluateUnaryOperatorType(operatorName, operand.ToResolverArgument());
+        return TypeInferenceValue.FromDeclaredType(resolvedType);
     }
 
     protected object? EvaluateFunction(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
@@ -948,24 +954,30 @@ public partial class ParserBase : Tokenizer, IParser
     }
 
 
-    protected Type EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, object?> nodeValueDictionary)
+    protected TypeInferenceValue EvaluateFunctionType(Node<Token> functionNode, Dictionary<Node<Token>, TypeInferenceValue> nodeValueDictionary)
     {
         string functionName = _patterns.CaseSensitive ? functionNode.Text : functionNode.Text.ToLower();
-        object?[] args = functionNode.GetFunctionArguments(nodeValueDictionary);
+        var args = functionNode
+            .GetFunctionArgumentNodes()
+            .Select(node => nodeValueDictionary[node])
+            .ToArray();
+        var resolverArgs = ToResolverArguments(args);
 
         if (CustomFunctions.TryGetValue(functionName, out var funcDef))
         {
-            if (args.Length != funcDef.Parameters.Length)
+            if (resolverArgs.Length != funcDef.Parameters.Length)
                 throw new ArgumentException($"Function '{functionName}' expects {funcDef.Parameters.Length} arguments.");
 
             var localVars = new Dictionary<string, object?>(_patterns.Comparer);
             for (int i = 0; i < funcDef.Parameters.Length; i++)
-                localVars[funcDef.Parameters[i]] = args[i];
+                localVars[funcDef.Parameters[i]] = resolverArgs[i];
 
-            return EvaluateType(funcDef.Body, localVars);
+            var resolvedType = EvaluateType(funcDef.Body, localVars);
+            return TypeInferenceValue.FromDeclaredType(resolvedType);
         }
 
-        return EvaluateFunctionType(functionName, args);
+        var functionType = EvaluateFunctionType(functionName, resolverArgs);
+        return TypeInferenceValue.FromDeclaredType(functionType);
     }
 
     #endregion
@@ -979,6 +991,7 @@ public partial class ParserBase : Tokenizer, IParser
         return value is null ? TypeHelpers.NullArgumentType : value.GetType();
     }
 
+    //At least one of EvaluateOperator/EvaluateOperatorAsync must be overridden in derived class to provide operator evaluation logic.
     protected virtual object? EvaluateOperator(string operatorName, object? leftOperand, object? rightOperand) =>
         ParserLibrarySettings.WithCalcFallback ? EvaluateOperatorAsync(operatorName, leftOperand, rightOperand, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
@@ -990,6 +1003,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected virtual Type EvaluateOperatorType(string operatorName, object? leftOperand, object? rightOperand) =>
         throw new InvalidOperationException($"Unknown operator ({operatorName})");
 
+    //At least one of EvaluateUnaryOperator/EvaluateUnaryOperatorAsync must be overridden in derived class to provide operator evaluation logic.
     protected virtual object? EvaluateUnaryOperator(string operatorName, object? operand) =>
         ParserLibrarySettings.WithCalcFallback ? EvaluateUnaryOperatorAsync(operatorName, operand, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
@@ -1001,6 +1015,7 @@ public partial class ParserBase : Tokenizer, IParser
     protected virtual Type EvaluateUnaryOperatorType(string operatorName, object? operand) =>
         throw new InvalidOperationException($"Unknown unary operator ({operatorName})");
 
+    //At least one of EvaluateFunction/EvaluateFunctionAsync must be overridden in derived class to provide function evaluation logic.
     protected virtual object? EvaluateFunction(string functionName, object?[] args) =>
         ParserLibrarySettings.WithCalcFallback ? EvaluateFunctionAsync(functionName, args, CancellationToken.None).GetAwaiter().GetResult() :
         throw new InvalidOperationException($"Unknown function ({functionName})");
