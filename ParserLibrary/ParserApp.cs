@@ -243,7 +243,8 @@ public static class ParserApp
            })
            // Scoped: one resolver per request — guarantees unique temp names across
            // the main expression and any lambda sub-compressions in the same request.
-           .AddScoped<ITempVariableNameResolver, TempVariableNameResolver>();
+           .AddKeyedScoped<ITempVariableNameResolver, TempVariableNameResolver>("temp", (s,key)=> new TempVariableNameResolver("_T"))
+           .AddKeyedScoped<ITempVariableNameResolver, TempVariableNameResolver>("lambda", (s, key) => new TempVariableNameResolver("__L"));
     }
 
     private static IServiceCollection AddParserSupportServices(this IServiceCollection services, string key)
@@ -288,7 +289,8 @@ public static class ParserApp
          })
          // Scoped: one resolver per request — guarantees unique temp names across
          // the main expression and any lambda sub-compressions in the same request.
-         .AddScoped<ITempVariableNameResolver, TempVariableNameResolver>();
+         .AddKeyedScoped<ITempVariableNameResolver, TempVariableNameResolver>("temp", (s,key)=> new TempVariableNameResolver("_T"))
+         .AddKeyedScoped<ITempVariableNameResolver, TempVariableNameResolver>("lambda", (s, key) => new TempVariableNameResolver("__L"));
     }
 
 
